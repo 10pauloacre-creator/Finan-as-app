@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { X, Loader2, AlertCircle, Wifi } from 'lucide-react';
 import usePluggyConnect from 'use-pluggy-connect';
 import type { SyncResult } from '@/app/api/pluggy/sync/route';
@@ -26,11 +26,15 @@ interface WidgetProps {
 }
 
 function PluggyWidget({ connectToken, onFechar, onEtapa, onMsg, onResultado }: WidgetProps) {
+  // Guarda a etapa atual para o onClose saber se deve fechar ou não
+  const etapaRef = useRef<Etapa>('carregando');
+
   const { init, ready, error } = usePluggyConnect({
     connectToken,
     includeSandbox: true, // mostra sandbox até aprovação da produção Pluggy
     theme: 'dark',
     onSuccess: async (data) => {
+      etapaRef.current = 'sincronizando';
       onEtapa('sincronizando');
       onMsg('Importando dados bancários...');
       try {
@@ -45,17 +49,25 @@ function PluggyWidget({ connectToken, onFechar, onEtapa, onMsg, onResultado }: W
         }
         const syncData = await res.json() as SyncResult;
         onResultado(syncData);
+        etapaRef.current = 'sucesso';
         onEtapa('sucesso');
       } catch (e) {
         onMsg(e instanceof Error ? e.message : 'Erro ao sincronizar');
+        etapaRef.current = 'erro';
         onEtapa('erro');
       }
     },
     onError: (e) => {
       onMsg(e.message ?? 'Erro ao conectar com o banco. Tente novamente.');
+      etapaRef.current = 'erro';
       onEtapa('erro');
     },
-    onClose: onFechar,
+    // Só fecha o modal se o usuário cancelou (não depois de conectar com sucesso)
+    onClose: () => {
+      if (etapaRef.current === 'widget' || etapaRef.current === 'carregando') {
+        onFechar();
+      }
+    },
   });
 
   // Open the widget as soon as it's ready
