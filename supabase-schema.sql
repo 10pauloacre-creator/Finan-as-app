@@ -76,6 +76,17 @@ create table if not exists investimentos (
   criado_em        timestamptz default now()
 );
 
+-- ── Eventos de webhook (notificações Pluggy) ─────────────────────────────────
+create table if not exists webhook_events (
+  id          text primary key default gen_random_uuid()::text,
+  event_type  text not null,
+  item_id     text not null,
+  synced      boolean default false,
+  criado_em   timestamptz default now()
+);
+create index if not exists idx_webhook_events_synced   on webhook_events(synced);
+create index if not exists idx_webhook_events_item     on webhook_events(item_id);
+
 -- ── Empréstimos ───────────────────────────────────────────────────────────────
 create table if not exists emprestimos (
   id                  text primary key,

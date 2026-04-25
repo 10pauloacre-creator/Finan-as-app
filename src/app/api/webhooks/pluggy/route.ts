@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getItem, getAccounts, getAllTransactions, getInvestments, getLoans } from '@/lib/pluggy-server';
+import { getSupabaseServer } from '@/lib/supabase-server';
 
 // ── Tipos do payload Pluggy Webhook ────────────────────────────────────────────
 
@@ -24,7 +25,28 @@ export async function POST(req: NextRequest) {
     console.error('[webhook/pluggy] background error:', err),
   );
 
+  // Salva evento no Supabase para o frontend saber que há dados novos
+  if (body.itemId) {
+    salvarEvento(body).catch(() => {});
+  }
+
   return NextResponse.json({ received: true });
+}
+
+// ── Persistência no Supabase ──────────────────────────────────────────────────
+
+async function salvarEvento(payload: PluggyWebhookEvent) {
+  try {
+    const db = getSupabaseServer();
+    await db.from('webhook_events').upsert({
+      id:         payload.eventId ?? crypto.randomUUID(),
+      event_type: payload.event,
+      item_id:    payload.itemId,
+      synced:     false,
+    }, { onConflict: 'id' });
+  } catch (err) {
+    console.error('[webhook/pluggy] salvarEvento:', err);
+  }
 }
 
 // ── Lógica por tipo de evento ──────────────────────────────────────────────────

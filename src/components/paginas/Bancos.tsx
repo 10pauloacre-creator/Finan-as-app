@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Plus, Pencil, Trash2, Building2, ArrowUpRight, ArrowDownLeft,
   Check, X, Wifi, WifiOff, RefreshCw, AlertCircle,
@@ -26,8 +26,9 @@ export default function Bancos() {
   const [novoSaldo, setNovoSaldo]       = useState('');
   const [mostrarForm, setMostrarForm]   = useState(false);
   const [contaSel, setContaSel]         = useState<string | null>(null);
-  const [modalPluggy, setModalPluggy]   = useState(false);
-  const [sincronizando, setSincronizando] = useState<string | null>(null); // itemId em sync
+  const [modalPluggy, setModalPluggy]     = useState(false);
+  const [sincronizando, setSincronizando] = useState<string | null>(null);
+  const [itemsPendentes, setItemsPendentes] = useState<string[]>([]); // itemIds com dados novos
 
   const [form, setForm] = useState({
     banco: 'outro' as BancoSlug,
@@ -134,6 +135,24 @@ export default function Bancos() {
     });
   }
 
+  // Verifica eventos pendentes do webhook ao montar
+  const verificarEventosPendentes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/webhooks/events');
+      if (!res.ok) return;
+      const { events } = await res.json() as { events: { item_id: string }[] };
+      const ids = [...new Set(events.map(e => e.item_id).filter(Boolean))];
+      setItemsPendentes(ids);
+    } catch { /* silencioso */ }
+  }, []);
+
+  useEffect(() => {
+    verificarEventosPendentes();
+    // Recheck a cada 2 minutos
+    const interval = setInterval(verificarEventosPendentes, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [verificarEventosPendentes]);
+
   // Re-sincroniza um item Pluggy já conectado
   async function handleResync(itemId: string) {
     setSincronizando(itemId);
@@ -146,6 +165,13 @@ export default function Bancos() {
       if (!res.ok) throw new Error('Falha na sincronização');
       const data = await res.json() as SyncResult;
       handlePluggySincronizado(data);
+      // Marca eventos como lidos
+      await fetch('/api/webhooks/events', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId }),
+      }).catch(() => {});
+      setItemsPendentes(prev => prev.filter(id => id !== itemId));
     } catch (e) {
       alert('Erro ao ressincronizar: ' + (e instanceof Error ? e.message : 'Erro'));
     } finally {
@@ -196,6 +222,31 @@ export default function Bancos() {
           </button>
         </div>
       </div>
+
+      {/* Banner de dados novos disponíveis (via webhook) */}
+      {itemsPendentes.length > 0 && (
+        <div className="flex items-center justify-between bg-amber-950/30 border border-amber-600/30 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />
+            <p className="text-amber-300 text-xs font-medium">
+              Dados novos disponíveis — clique em ↻ para atualizar
+            </p>
+          </div>
+          <div className="flex gap-1">
+            {itemsPendentes.map(itemId => (
+              <button
+                key={itemId}
+                onClick={() => handleResync(itemId)}
+                disabled={sincronizando === itemId}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-600/20 text-amber-300 hover:bg-amber-600/30 disabled:opacity-50 transition-colors"
+              >
+                <RefreshCw size={11} className={sincronizando === itemId ? 'animate-spin' : ''} />
+                Atualizar
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Banner Open Finance (quando há contas conectadas) */}
       {itemsConectados.size > 0 && (
