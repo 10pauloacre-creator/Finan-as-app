@@ -28,7 +28,7 @@ interface WidgetProps {
 function PluggyWidget({ connectToken, onFechar, onEtapa, onMsg, onResultado }: WidgetProps) {
   const { init, ready, error } = usePluggyConnect({
     connectToken,
-    includeSandbox: process.env.NODE_ENV === 'development',
+    includeSandbox: true, // mostra sandbox até aprovação da produção Pluggy
     theme: 'dark',
     onSuccess: async (data) => {
       onEtapa('sincronizando');
