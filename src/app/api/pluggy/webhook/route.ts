@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ webhook, criado: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[pluggy/webhook POST]', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const msg  = err instanceof Error ? err.message : 'Erro desconhecido';
+    const detail = JSON.stringify(err, Object.getOwnPropertyNames(err));
+    console.error('[pluggy/webhook POST]', detail);
+    return NextResponse.json({ error: msg, detail }, { status: 500 });
   }
 }
 
