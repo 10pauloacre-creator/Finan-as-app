@@ -43,15 +43,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ webhook: existente, criado: false });
     }
 
-    const webhook = await client.createWebhook({
-      url,
-      event: 'item/updated',
-    });
+    // createWebhook(event, url) — evento primeiro, depois URL
+    const webhook = await client.createWebhook('item/updated', url);
 
     // Cria também para item/created e item/error
     await Promise.allSettled([
-      client.createWebhook({ url, event: 'item/created' }),
-      client.createWebhook({ url, event: 'item/error' }),
+      client.createWebhook('item/created', url),
+      client.createWebhook('item/error' as Parameters<typeof client.createWebhook>[0], url),
     ]);
 
     return NextResponse.json({ webhook, criado: true });
