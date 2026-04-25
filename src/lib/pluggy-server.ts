@@ -6,7 +6,7 @@ import type { Account, Transaction, Investment, Loan, Item } from 'pluggy-sdk';
 // Re-exporta os tipos do SDK para usar nas rotas
 export type { Account, Transaction, Investment, Loan, Item };
 
-function getClient(): PluggyClient {
+export function getClient(): PluggyClient {
   const clientId     = process.env.PLUGGY_CLIENT_ID;
   const clientSecret = process.env.PLUGGY_CLIENT_SECRET;
   if (!clientId || !clientSecret) {

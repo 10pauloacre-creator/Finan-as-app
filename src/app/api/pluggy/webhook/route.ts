@@ -1,13 +1,6 @@
 // Gerencia webhooks Pluggy: registrar, listar e deletar
 import { NextRequest, NextResponse } from 'next/server';
-import { PluggyClient } from 'pluggy-sdk';
-
-function getClient() {
-  return new PluggyClient({
-    clientId:     process.env.PLUGGY_CLIENT_ID!,
-    clientSecret: process.env.PLUGGY_CLIENT_SECRET!,
-  });
-}
+import { getClient } from '@/lib/pluggy-server';
 
 // URL pública do nosso receptor de webhooks
 function getWebhookUrl(req: NextRequest): string {
