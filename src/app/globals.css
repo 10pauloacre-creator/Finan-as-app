@@ -1,26 +1,207 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  /* FinanceiroIA — Design System: Modern Dark Cinema + Fintech */
+  --background:            #080B14;
+  --foreground:            #F1F5F9;
+  --card:                  rgba(255,255,255,0.03);
+  --card-foreground:       #F1F5F9;
+  --popover:               #0E1220;
+  --popover-foreground:    #F1F5F9;
+  --primary:               #7C3AED;
+  --primary-foreground:    #FFFFFF;
+  --secondary:             rgba(255,255,255,0.06);
+  --secondary-foreground:  #F1F5F9;
+  --muted:                 rgba(255,255,255,0.05);
+  --muted-foreground:      #64748B;
+  --accent:                rgba(124,58,237,0.15);
+  --accent-foreground:     #A78BFA;
+  --destructive:           #EF4444;
+  --border:                rgba(255,255,255,0.07);
+  --input:                 rgba(255,255,255,0.06);
+  --ring:                  #7C3AED;
+  --radius:                0.75rem;
+  --chart-1:               #7C3AED;
+  --chart-2:               #10B981;
+  --chart-3:               #F59E0B;
+  --chart-4:               #EF4444;
+  --chart-5:               #3B82F6;
+  --sidebar:               #0A0E1A;
+  --sidebar-foreground:    #F1F5F9;
+  --sidebar-primary:       #7C3AED;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:        rgba(255,255,255,0.05);
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border:        rgba(255,255,255,0.06);
+  --sidebar-ring:          #7C3AED;
+}
+
+/* ── Design tokens custom ─────────────────────────────── */
+:root {
+  --fin-surface:           rgba(255,255,255,0.03);
+  --fin-surface-hover:     rgba(255,255,255,0.055);
+  --fin-border:            rgba(255,255,255,0.07);
+  --fin-border-strong:     rgba(255,255,255,0.12);
+  --fin-glow-purple:       rgba(124,58,237,0.25);
+  --fin-glow-green:        rgba(16,185,129,0.2);
+  --fin-glow-red:          rgba(239,68,68,0.2);
+  --fin-nubank:            #820AD1;
+  --fin-itau:              #F08300;
+  --fin-radius-card:       16px;
+  --fin-transition:        cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Glass card ────────────────────────────────────────── */
+.glass-card {
+  background: var(--fin-surface);
+  border: 1px solid var(--fin-border);
+  border-radius: var(--fin-radius-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 200ms var(--fin-transition),
+              border-color 200ms var(--fin-transition);
+}
+.glass-card:hover {
+  background: var(--fin-surface-hover);
+  border-color: var(--fin-border-strong);
+}
+
+/* ── Glow button ───────────────────────────────────────── */
+.btn-primary {
+  background: #7C3AED;
+  box-shadow: 0 0 20px rgba(124,58,237,0.35);
+  transition: all 150ms var(--fin-transition);
+}
+.btn-primary:hover {
+  background: #6D28D9;
+  box-shadow: 0 0 28px rgba(124,58,237,0.5);
+}
+.btn-primary:active { transform: scale(0.97); }
+
+/* ── Custom scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.4); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.7); }
+
+/* ── Animations ────────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-fade-up { animation: fadeSlideUp 300ms var(--fin-transition) both; }
+
+/* ── Tabular numbers for financial data ─────────────────── */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ── Remove tap highlight ───────────────────────────────── */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* ── Prevent text selection on buttons ─────────────────── */
+button { user-select: none; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

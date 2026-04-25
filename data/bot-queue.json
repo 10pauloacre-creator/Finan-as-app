@@ -1,0 +1,31 @@
+[
+  {
+    "tipo": "despesa",
+    "valor": 90,
+    "descricao": "manutenção do carro",
+    "categoria": "Transporte",
+    "data": "2026-04-24",
+    "hora": null,
+    "metodo_pagamento": "pix",
+    "parcelas": null,
+    "local": "Pemasa em Rio Branco",
+    "id": "bot-1776999208906-o3w7u",
+    "importado": true,
+    "criadoEm": "2026-04-24T02:53:28.906Z"
+  },
+  {
+    "tipo": "despesa",
+    "valor": 90,
+    "descricao": "lanche em San Diego Mar de Acre",
+    "categoria": "Alimentação",
+    "data": "2026-04-24",
+    "hora": null,
+    "metodo_pagamento": "pix",
+    "parcelas": null,
+    "local": "San Diego Mar de Acre",
+    "banco": "Nubank",
+    "id": "bot-1776999654200-jdpck",
+    "importado": true,
+    "criadoEm": "2026-04-24T03:00:54.200Z"
+  }
+]
