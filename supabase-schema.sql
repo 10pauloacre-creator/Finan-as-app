@@ -12,7 +12,7 @@ create table if not exists categorias (
   criado_em      timestamptz default now()
 );
 
--- ── Contas bancárias ─────────────────────────────────────────────────────────
+-- ── Contas bancárias ──────────────────────────────────────────────────────────
 create table if not exists contas (
   id                  text primary key,
   banco               text not null,
@@ -76,7 +76,7 @@ create table if not exists investimentos (
   criado_em        timestamptz default now()
 );
 
--- ── Empréstimos (novo) ────────────────────────────────────────────────────────
+-- ── Empréstimos ───────────────────────────────────────────────────────────────
 create table if not exists emprestimos (
   id                  text primary key,
   tipo                text not null,
@@ -91,24 +91,24 @@ create table if not exists emprestimos (
   criado_em           timestamptz default now()
 );
 
--- ── Índices para performance ──────────────────────────────────────────────────
-create index if not exists idx_transacoes_data          on transacoes(data);
-create index if not exists idx_transacoes_categoria     on transacoes(categoria_id);
-create index if not exists idx_transacoes_pluggy_id     on transacoes(pluggy_id);
-create index if not exists idx_contas_pluggy_item       on contas(pluggy_item_id);
-create index if not exists idx_cartoes_pluggy_item      on cartoes(pluggy_item_id);
-create index if not exists idx_investimentos_pluggy_id  on investimentos(pluggy_id);
-
 -- ── Colunas novas em tabelas existentes (se já rodou o schema antigo) ─────────
-alter table contas      add column if not exists pluggy_item_id    text;
-alter table contas      add column if not exists pluggy_account_id text;
-alter table contas      add column if not exists pluggy_sync_em    timestamptz;
-alter table cartoes     add column if not exists pluggy_item_id    text;
-alter table cartoes     add column if not exists pluggy_account_id text;
-alter table cartoes     add column if not exists pluggy_sync_em    timestamptz;
-alter table transacoes  add column if not exists pluggy_id         text;
-alter table transacoes  add column if not exists pluggy_account_id text;
-alter table investimentos add column if not exists valor_atual     numeric default 0;
-alter table investimentos add column if not exists data_vencimento text;
-alter table investimentos add column if not exists pluggy_id       text;
+alter table contas        add column if not exists pluggy_item_id      text;
+alter table contas        add column if not exists pluggy_account_id   text;
+alter table contas        add column if not exists pluggy_sync_em      timestamptz;
+alter table cartoes       add column if not exists pluggy_item_id      text;
+alter table cartoes       add column if not exists pluggy_account_id   text;
+alter table cartoes       add column if not exists pluggy_sync_em      timestamptz;
+alter table transacoes    add column if not exists pluggy_id           text;
+alter table transacoes    add column if not exists pluggy_account_id   text;
+alter table investimentos add column if not exists valor_atual         numeric default 0;
+alter table investimentos add column if not exists data_vencimento     text;
+alter table investimentos add column if not exists pluggy_id           text;
 alter table investimentos alter column data_inicio drop not null;
+
+-- ── Índices para performance (depois dos alters) ──────────────────────────────
+create index if not exists idx_transacoes_data         on transacoes(data);
+create index if not exists idx_transacoes_categoria    on transacoes(categoria_id);
+create index if not exists idx_transacoes_pluggy       on transacoes(pluggy_id);
+create index if not exists idx_contas_pluggy_item      on contas(pluggy_item_id);
+create index if not exists idx_cartoes_pluggy_item     on cartoes(pluggy_item_id);
+create index if not exists idx_investimentos_pluggy    on investimentos(pluggy_id);
