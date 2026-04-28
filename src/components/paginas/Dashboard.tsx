@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useRef, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, Wallet, Brain, ArrowRight,
   Eye, EyeOff, Plus, CreditCard, Building2, Sparkles,
@@ -8,44 +8,421 @@ import {
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
-import { BANCO_INFO } from '@/types';
-import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-} from 'recharts';
-import { useState } from 'react';
+import { BANCO_INFO, BancoSlug } from '@/types';
 
-type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos';
+// Deriva sigla do nome do banco
+function bancoSigla(nome: string): string {
+  return nome.slice(0, 2).toUpperCase();
+}
+import Sparkline from '@/components/ui/Sparkline';
+import { useCountUp } from '@/hooks/useCountUp';
+
+type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'configuracoes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
 
-const CORES = ['#7C3AED','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#F97316','#8B5CF6'];
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
+const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+// ─── Donut SVG interativo ──────────────────────────────────────────────────────
+interface DonutItem { nome: string; valor: number; cor: string; icone?: string }
+function CategoryDonut({
+  items,
+  selectedCat,
+  onSelect,
+}: {
+  items: DonutItem[];
+  selectedCat: string | null;
+  onSelect: (nome: string | null) => void;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const total = items.reduce((s, i) => s + i.valor, 0);
+  const cx = 80, cy = 80, r = 58, ri = 38;
+
+  const slices = useMemo(() => {
+    let angle = -Math.PI / 2;
+    return items.map((item) => {
+      const sweep = total > 0 ? (item.valor / total) * 2 * Math.PI : 0;
+      const start = angle;
+      angle += sweep;
+      return { ...item, start, sweep };
+    });
+  }, [items, total]);
+
+  function polarToCart(cx: number, cy: number, r: number, angle: number) {
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  }
+
+  function slicePath(start: number, sweep: number, rOuter: number, rInner: number) {
+    if (sweep < 0.001) return '';
+    const [x1, y1] = polarToCart(cx, cy, rOuter, start);
+    const [x2, y2] = polarToCart(cx, cy, rOuter, start + sweep);
+    const [x3, y3] = polarToCart(cx, cy, rInner, start + sweep);
+    const [x4, y4] = polarToCart(cx, cy, rInner, start);
+    const large = sweep > Math.PI ? 1 : 0;
+    return `M${x1},${y1} A${rOuter},${rOuter} 0 ${large} 1 ${x2},${y2} L${x3},${y3} A${rInner},${rInner} 0 ${large} 0 ${x4},${y4} Z`;
+  }
+
+  const activeIndex = hovered !== null ? hovered : items.findIndex(i => i.nome === selectedCat);
+  const activeItem = activeIndex >= 0 ? items[activeIndex] : null;
+
+  return (
+    <div className="flex gap-3 items-start">
+      <div className="flex-shrink-0">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          {slices.map((s, i) => {
+            const isActive = i === activeIndex;
+            const rO = isActive ? r + 4 : r;
+            return (
+              <path
+                key={i}
+                d={slicePath(s.start, s.sweep, rO, ri)}
+                fill={s.cor}
+                opacity={activeIndex >= 0 && !isActive ? 0.45 : 1}
+                style={{ cursor: 'pointer', transition: 'opacity 0.15s, d 0.15s' }}
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => onSelect(selectedCat === s.nome ? null : s.nome)}
+              />
+            );
+          })}
+          {/* Centro */}
+          <circle cx={cx} cy={cy} r={ri - 2} fill="#0E1220" />
+          {activeItem ? (
+            <>
+              <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize="11" fontWeight="600">
+                {activeItem.nome.length > 10 ? activeItem.nome.slice(0, 9) + '…' : activeItem.nome}
+              </text>
+              <text x={cx} y={cy + 10} textAnchor="middle" fill="#94A3B8" fontSize="9">
+                {((activeItem.valor / (total || 1)) * 100).toFixed(0)}%
+              </text>
+            </>
+          ) : (
+            <text x={cx} y={cy + 4} textAnchor="middle" fill="#64748B" fontSize="10">
+              {items.length} categ.
+            </text>
+          )}
+        </svg>
+      </div>
+      <div className="flex-1 space-y-1 pt-1 max-h-[150px] overflow-y-auto pr-1">
+        {items.map((item, i) => (
+          <button
+            key={i}
+            onClick={() => onSelect(selectedCat === item.nome ? null : item.nome)}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all text-xs ${
+              selectedCat === item.nome
+                ? 'bg-white/10 ring-1 ring-white/20'
+                : 'hover:bg-white/5'
+            }`}
+          >
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.cor }} />
+            <span className="text-slate-400 flex-1 truncate">{item.nome}</span>
+            <span className="text-slate-300 tabular-nums font-medium">{formatarMoeda(item.valor)}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Evolution Chart SVG ──────────────────────────────────────────────────────
+interface EvoPoint { mes: string; receitas: number; despesas: number }
+function EvolutionChart({ data }: { data: EvoPoint[] }) {
+  const [hover, setHover] = useState<{ x: number; idx: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const W = 600, H = 180, PAD = { top: 16, right: 16, bottom: 28, left: 8 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const maxVal = useMemo(() => {
+    const allVals = data.flatMap(d => [d.receitas, d.despesas]);
+    return Math.max(...allVals, 1);
+  }, [data]);
+
+  function xOf(i: number) {
+    return PAD.left + (i / Math.max(data.length - 1, 1)) * innerW;
+  }
+  function yOf(v: number) {
+    return PAD.top + innerH - (v / maxVal) * innerH;
+  }
+
+  function makePath(key: 'receitas' | 'despesas') {
+    return data.map((d, i) => `${i === 0 ? 'M' : 'L'}${xOf(i)},${yOf(d[key])}`).join(' ');
+  }
+  function makeArea(key: 'receitas' | 'despesas') {
+    const line = makePath(key);
+    return `${line} L${xOf(data.length - 1)},${PAD.top + innerH} L${xOf(0)},${PAD.top + innerH} Z`;
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    const relX = svgX - PAD.left;
+    const step = innerW / Math.max(data.length - 1, 1);
+    const idx = Math.max(0, Math.min(data.length - 1, Math.round(relX / step)));
+    setHover({ x: xOf(idx), idx });
+  }
+
+  const hItem = hover !== null ? data[hover.idx] : null;
+
+  return (
+    <div className="relative">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
+        style={{ cursor: 'crosshair' }}
+      >
+        <defs>
+          <linearGradient id="evo-green" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="5%" stopColor="#10B981" stopOpacity="0.3" />
+            <stop offset="95%" stopColor="#10B981" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="evo-red" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="5%" stopColor="#EF4444" stopOpacity="0.25" />
+            <stop offset="95%" stopColor="#EF4444" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((f, i) => (
+          <line
+            key={i}
+            x1={PAD.left}
+            x2={W - PAD.right}
+            y1={PAD.top + innerH * (1 - f)}
+            y2={PAD.top + innerH * (1 - f)}
+            stroke="rgba(255,255,255,0.05)"
+            strokeWidth="1"
+          />
+        ))}
+
+        {/* Areas */}
+        <path d={makeArea('receitas')} fill="url(#evo-green)" />
+        <path d={makeArea('despesas')} fill="url(#evo-red)" />
+
+        {/* Lines */}
+        <path d={makePath('receitas')} fill="none" stroke="#10B981" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={makePath('despesas')} fill="none" stroke="#EF4444" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* X axis labels */}
+        {data.map((d, i) => (
+          <text key={i} x={xOf(i)} y={H - 6} textAnchor="middle" fill="#64748B" fontSize="11">
+            {d.mes}
+          </text>
+        ))}
+
+        {/* Crosshair */}
+        {hover && hItem && (
+          <>
+            <line
+              x1={hover.x} x2={hover.x}
+              y1={PAD.top} y2={PAD.top + innerH}
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth="1"
+              strokeDasharray="4 3"
+            />
+            <circle cx={hover.x} cy={yOf(hItem.receitas)} r="4" fill="#10B981" />
+            <circle cx={hover.x} cy={yOf(hItem.despesas)} r="4" fill="#EF4444" />
+
+            {/* Tooltip box */}
+            {(() => {
+              const tx = hover.x > W * 0.65 ? hover.x - 130 : hover.x + 10;
+              return (
+                <g>
+                  <rect x={tx} y={PAD.top + 4} width="120" height="52" rx="7" fill="#0E1220" opacity="0.95" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                  <text x={tx + 10} y={PAD.top + 20} fill="#94A3B8" fontSize="10" fontWeight="600">{hItem.mes}</text>
+                  <circle cx={tx + 10} cy={PAD.top + 33} r="3" fill="#10B981" />
+                  <text x={tx + 17} y={PAD.top + 37} fill="#10B981" fontSize="10">R$ {(hItem.receitas / 1000).toFixed(1)}k</text>
+                  <circle cx={tx + 10} cy={PAD.top + 47} r="3" fill="#EF4444" />
+                  <text x={tx + 17} y={PAD.top + 51} fill="#EF4444" fontSize="10">R$ {(hItem.despesas / 1000).toFixed(1)}k</text>
+                </g>
+              );
+            })()}
+          </>
+        )}
+      </svg>
+      <div className="flex gap-4 justify-center text-xs mt-1">
+        <span className="flex items-center gap-1.5 text-emerald-400">
+          <span className="w-3 h-[2px] bg-emerald-400 rounded inline-block" />Entradas
+        </span>
+        <span className="flex items-center gap-1.5 text-red-400">
+          <span className="w-3 h-[2px] bg-red-400 rounded inline-block" />Saídas
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── InsightCard com typewriter ───────────────────────────────────────────────
+interface DicaItem { id: string; tipo: 'alerta' | 'conquista' | 'dica'; titulo: string; mensagem: string }
+function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssistente: () => void }) {
+  const [idx, setIdx] = useState(0);
+  const [text, setText] = useState('');
+  const [typing, setTyping] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dica = dicas[idx % dicas.length];
+
+  useEffect(() => {
+    if (!dica) return;
+    setText('');
+    setTyping(true);
+    let i = 0;
+    const msg = dica.mensagem;
+    const run = () => {
+      if (i <= msg.length) {
+        setText(msg.slice(0, i));
+        i++;
+        timerRef.current = setTimeout(run, 18);
+      } else {
+        setTyping(false);
+      }
+    };
+    timerRef.current = setTimeout(run, 120);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [idx, dica]);
+
+  useEffect(() => {
+    const iv = setInterval(() => setIdx(v => v + 1), 8000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if (!dica) return null;
+
+  const indicadorCor =
+    dica.tipo === 'alerta' ? '#EF4444' :
+    dica.tipo === 'conquista' ? '#10B981' :
+    '#7C3AED';
+
+  const borderCor =
+    dica.tipo === 'alerta' ? 'rgba(239,68,68,0.2)' :
+    dica.tipo === 'conquista' ? 'rgba(16,185,129,0.2)' :
+    'rgba(124,58,237,0.2)';
+
+  return (
+    <div className="glass-card p-4" style={{ borderColor: borderCor }}>
+      <div className="flex items-start gap-3">
+        <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: indicadorCor }} />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-white mb-1">{dica.titulo}</div>
+          <div className="text-slate-400 text-sm leading-relaxed min-h-[2.5rem]">
+            {text}{typing && <span className="inline-block w-0.5 h-3.5 bg-slate-400 animate-pulse ml-0.5 align-text-bottom" />}
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex gap-1">
+              {dicas.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setIdx(i)}
+                  className="w-1.5 h-1.5 rounded-full transition-all"
+                  style={{ background: i === idx % dicas.length ? indicadorCor : 'rgba(255,255,255,0.15)' }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={onVerAssistente}
+              className="text-xs font-medium transition-colors flex items-center gap-1"
+              style={{ color: indicadorCor }}
+            >
+              Ver no Assistente <ArrowRight size={11} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── UpcomingCard ─────────────────────────────────────────────────────────────
+interface CartaoVenc { id: string; nome: string; dia_vencimento: number; fatura_atual: number; banco: string }
+function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar: () => void }) {
+  const hoje = new Date().getDate();
+  const proximos = useMemo(() => {
+    return cartoes
+      .map(c => {
+        const diasRestantes = c.dia_vencimento >= hoje
+          ? c.dia_vencimento - hoje
+          : 30 - hoje + c.dia_vencimento;
+        return { ...c, diasRestantes };
+      })
+      .filter(c => c.diasRestantes <= 15)
+      .sort((a, b) => a.diasRestantes - b.diasRestantes)
+      .slice(0, 5);
+  }, [cartoes, hoje]);
+
+  if (proximos.length === 0) return null;
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          📅 Próximas faturas
+        </span>
+        <button onClick={onNavegar} className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+          Ver cartões <ArrowRight size={12} />
+        </button>
+      </div>
+      <div className="space-y-2">
+        {proximos.map(c => {
+          const info = BANCO_INFO[c.banco as BancoSlug] || BANCO_INFO.outro;
+          const urgente = c.diasRestantes < 5;
+          return (
+            <div key={c.id} className="glass-card flex items-center gap-3 p-3">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: info.cor }}
+              >
+                {bancoSigla(info.nome)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-white truncate">{c.nome}</div>
+                <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
+                  {urgente ? '⚠ Urgente · ' : ''}{c.diasRestantes === 0 ? 'Vence hoje' : `Vence em ${c.diasRestantes} dia${c.diasRestantes > 1 ? 's' : ''}`}
+                </div>
+              </div>
+              <div className="text-sm font-bold text-red-400 tabular-nums">{formatarMoeda(c.fatura_atual)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function Dashboard({ onNovoPagina }: Props) {
   const { transacoes, categorias, contas, cartoes, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
+  const [catFiltro, setCatFiltro] = useState<string | null>(null);
 
   const dadosMes = useMemo(() => {
     const doMes = transacoes.filter(t => {
       const d = new Date(t.data);
       return d.getMonth() + 1 === mes && d.getFullYear() === ano;
     });
-    const receitas  = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
-    const despesas  = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
-    const saldo     = receitas - despesas;
+    const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
+    const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
+    const saldo = receitas - despesas;
 
-    // Pizza por categoria
-    const porCat: Record<string, number> = {};
+    const porCat: Record<string, { valor: number; cor: string; icone: string }> = {};
     doMes.filter(t => t.tipo === 'despesa').forEach(t => {
-      const cat = categorias.find(c => c.id === t.categoria_id)?.nome || 'Outros';
-      porCat[cat] = (porCat[cat] || 0) + t.valor;
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      const nome = cat?.nome || 'Outros';
+      if (!porCat[nome]) porCat[nome] = { valor: 0, cor: cat?.cor || '#6B7280', icone: cat?.icone || '💳' };
+      porCat[nome].valor += t.valor;
     });
-    const graficoPizza = Object.entries(porCat)
-      .sort(([,a],[,b]) => b - a).slice(0, 6)
-      .map(([nome, valor]) => ({ nome, valor }));
 
-    // Área — últimos 6 meses
+    const graficoPizza = Object.entries(porCat)
+      .sort(([, a], [, b]) => b.valor - a.valor)
+      .slice(0, 6)
+      .map(([nome, info], i) => ({ nome, valor: info.valor, cor: info.cor || CORES[i % CORES.length], icone: info.icone }));
+
     const areaData = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
       const m = d.getMonth() + 1; const a = d.getFullYear();
@@ -69,43 +446,73 @@ export default function Dashboard({ onNovoPagina }: Props) {
     return saldoContas - faturaTotal;
   }, [contas, cartoes]);
 
-  // Dicas automáticas
   useEffect(() => {
     if (dadosMes.doMes.length === 0) return;
-    const dicas = [];
+    const dicas: typeof dicasIA = [];
     if (dadosMes.despesas > dadosMes.receitas * 0.9 && dadosMes.receitas > 0) {
-      dicas.push({ id:'1', tipo:'alerta' as const, titulo:'Gastos acima do ideal', mensagem:`Você usou ${((dadosMes.despesas/dadosMes.receitas)*100).toFixed(0)}% da sua renda. O ideal é manter abaixo de 80%.`, criado_em: new Date().toISOString() });
+      dicas.push({ id: '1', tipo: 'alerta', titulo: 'Gastos acima do ideal', mensagem: `Você usou ${((dadosMes.despesas / dadosMes.receitas) * 100).toFixed(0)}% da sua renda. O ideal é manter abaixo de 80%.`, criado_em: new Date().toISOString() });
     }
     if (dadosMes.saldo > 0) {
-      dicas.push({ id:'3', tipo:'conquista' as const, titulo:'Saldo positivo!', mensagem:`Você tem ${formatarMoeda(dadosMes.saldo)} sobrando. ${selicAtual ? `Investindo na Selic (${selicAtual}% a.a.) renderiam ${formatarMoeda(dadosMes.saldo * selicAtual / 100 / 12)}/mês.` : 'Considere investir!'}`, criado_em: new Date().toISOString() });
+      dicas.push({ id: '3', tipo: 'conquista', titulo: 'Saldo positivo!', mensagem: `Você tem ${formatarMoeda(dadosMes.saldo)} sobrando. ${selicAtual ? `Investindo na Selic (${selicAtual}% a.a.) renderiam ${formatarMoeda(dadosMes.saldo * selicAtual / 100 / 12)}/mês.` : 'Considere investir!'}`, criado_em: new Date().toISOString() });
+    }
+    if (dadosMes.graficoPizza.length > 0) {
+      const topCat = dadosMes.graficoPizza[0];
+      dicas.push({ id: '4', tipo: 'dica', titulo: `Maior gasto: ${topCat.nome}`, mensagem: `${topCat.nome} representa ${((topCat.valor / dadosMes.despesas) * 100).toFixed(0)}% dos seus gastos (${formatarMoeda(topCat.valor)}). Analise se é possível reduzir.`, criado_em: new Date().toISOString() });
     }
     setDicasIA(dicas);
   }, [dadosMes, setDicasIA, selicAtual]);
 
+  // useCountUp para valores animados
+  const patrimonioAnimado = useCountUp(patrimonio);
+  const receitasAnimado = useCountUp(dadosMes.receitas);
+  const despesasAnimado = useCountUp(dadosMes.despesas);
+
   const ocultar = (v: string) => saldoOculto ? '••••••' : v;
+
+  // Gera sparkline fictícia baseada no saldo (variação cosmética)
+  function gerarSparkline(saldo: number): number[] {
+    const base = saldo > 0 ? saldo : 100;
+    return [
+      base * 0.82, base * 0.78, base * 0.85, base * 0.91,
+      base * 0.88, base * 0.93, base * 0.97, base * 1.0,
+    ];
+  }
+
+  // Transações filtradas por categoria selecionada no donut
+  const transacoesFiltradas = useMemo(() => {
+    const doMes = dadosMes.doMes;
+    if (!catFiltro) return doMes.slice(0, 8);
+    return doMes.filter(t => {
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      return (cat?.nome || 'Outros') === catFiltro;
+    }).slice(0, 8);
+  }, [dadosMes.doMes, catFiltro, categorias]);
 
   return (
     <div className="space-y-5 animate-fade-up">
 
-      {/* ── Header ───────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Patrimônio Total</p>
+          <p className="text-slate-400 text-sm font-medium mb-0.5">Olá, Paulo! 👋</p>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Patrimônio Líquido</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tabular-nums" style={{
               background: 'linear-gradient(135deg, #F1F5F9 0%, #A78BFA 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              {saldoOculto ? 'R$ ••••••' : formatarMoeda(patrimonio)}
+              {saldoOculto ? 'R$ ••••••' : formatarMoeda(patrimonioAnimado)}
             </h1>
-            <button onClick={() => setSaldoOculto(v => !v)}
+            <button
+              onClick={() => setSaldoOculto(v => !v)}
               className="text-slate-500 hover:text-slate-300 transition-colors p-1"
-              aria-label={saldoOculto ? 'Mostrar saldo' : 'Ocultar saldo'}>
+              aria-label={saldoOculto ? 'Mostrar saldo' : 'Ocultar saldo'}
+            >
               {saldoOculto ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            {MESES_ABREV[mes-1]} {ano} • {dadosMes.doMes.length} transações
+            {MESES_ABREV[mes - 1]} {ano} • {dadosMes.doMes.length} transações
           </p>
         </div>
         <div className="text-right">
@@ -116,7 +523,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </div>
 
-      {/* ── Cards resumo ─────────────────────────────── */}
+      {/* ── Cards resumo ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
         <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
           <div className="flex items-center justify-between mb-2">
@@ -125,7 +532,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
               <ArrowDownLeft size={14} className="text-emerald-400" />
             </div>
           </div>
-          <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(dadosMes.receitas))}</div>
+          <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
         </div>
         <div className="glass-card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
           <div className="flex items-center justify-between mb-2">
@@ -134,11 +541,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
               <ArrowUpRight size={14} className="text-red-400" />
             </div>
           </div>
-          <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(dadosMes.despesas))}</div>
+          <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
         </div>
       </div>
 
-      {/* ── Contas bancárias ─────────────────────────── */}
+      {/* ── Próximas faturas ─────────────────────────────────────────────── */}
+      <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
+
+      {/* ── Contas bancárias com sparkline ──────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -152,21 +562,25 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {contas.map(conta => {
-            const info = BANCO_INFO[conta.banco];
+            const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
+            const sparkData = gerarSparkline(conta.saldo);
             return (
               <button key={conta.id} onClick={() => onNovoPagina('bancos')}
                 className="glass-card p-4 text-left w-full group relative overflow-hidden">
-                {/* Barra colorida do banco */}
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
-                  style={{ background: info.cor }} />
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: info.cor }}>
-                    {info.nome.slice(0,2).toUpperCase()}
+                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                      style={{ background: info.cor, color: info.corTexto }}>
+                      {bancoSigla(info.nome)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">{info.nome}</div>
+                      <div className="text-[11px] text-slate-500 capitalize">{conta.tipo}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-white truncate">{info.nome}</div>
-                    <div className="text-[11px] text-slate-500 capitalize">{conta.tipo}</div>
+                  <div className="opacity-80">
+                    <Sparkline data={sparkData} color={info.cor} width={72} height={26} />
                   </div>
                 </div>
                 <div className="text-xl font-bold tabular-nums text-white">
@@ -179,7 +593,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </section>
 
-      {/* ── Cartões de crédito ───────────────────────── */}
+      {/* ── Cartões de crédito ──────────────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -193,7 +607,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
         <div className="space-y-3">
           {cartoes.map(cartao => {
-            const info = BANCO_INFO[cartao.banco];
+            const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
             const pct = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;
             const disponivel = cartao.limite - cartao.fatura_atual;
             const hoje = new Date().getDate();
@@ -204,13 +618,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
             return (
               <button key={cartao.id} onClick={() => onNovoPagina('cartoes')}
                 className="glass-card p-4 w-full text-left relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
-                  style={{ background: info.cor }} />
+                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: info.cor }}>
-                      {info.nome.slice(0,2).toUpperCase()}
+                      style={{ background: info.cor, color: info.corTexto }}>
+                      {bancoSigla(info.nome)}
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
@@ -218,26 +631,18 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-sm font-bold tabular-nums ${
-                      pct > 80 ? 'text-red-400' : pct > 50 ? 'text-yellow-400' : 'text-white'
-                    }`}>
+                    <div className={`text-sm font-bold tabular-nums ${pct > 80 ? 'text-red-400' : pct > 50 ? 'text-yellow-400' : 'text-white'}`}>
                       {ocultar(formatarMoeda(cartao.fatura_atual))}
                     </div>
                     <div className="text-[11px] text-slate-500">fatura atual</div>
                   </div>
                 </div>
-
-                {/* Barra de limite */}
                 <div className="mb-2">
                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${Math.min(pct, 100)}%`,
-                        background: pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : info.cor,
-                      }} />
+                      style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : info.cor }} />
                   </div>
                 </div>
-
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                   <span>Disponível: <span className="text-emerald-400 font-medium">{ocultar(formatarMoeda(disponivel))}</span></span>
                   <span>Vence em <span className={`font-medium ${diasVenc <= 5 ? 'text-red-400' : 'text-slate-300'}`}>{diasVenc}d</span> • dia {cartao.dia_vencimento}</span>
@@ -248,70 +653,30 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </section>
 
-      {/* ── Gráficos ─────────────────────────────────── */}
+      {/* ── Gráficos ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Área — 6 meses */}
+        {/* Evolução 6 meses */}
         <div className="glass-card p-5">
           <h3 className="text-sm font-semibold text-slate-300 mb-4">Evolução — 6 meses</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={dadosMes.areaData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#10B981" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#EF4444" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: '#64748B', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-              <Tooltip
-                formatter={(v) => [formatarMoeda(Number(v)), '']}
-                contentStyle={{ background: '#0E1220', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#F1F5F9', fontSize: 12 }}
-                labelStyle={{ color: '#94A3B8' }}
-              />
-              <Area type="monotone" dataKey="receitas" stroke="#10B981" strokeWidth={2} fill="url(#gradGreen)" dot={false} />
-              <Area type="monotone" dataKey="despesas" stroke="#EF4444" strokeWidth={2} fill="url(#gradRed)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-1 justify-center text-xs">
-            <span className="flex items-center gap-1.5 text-emerald-400"><span className="w-3 h-[2px] bg-emerald-400 rounded inline-block" />Entradas</span>
-            <span className="flex items-center gap-1.5 text-red-400"><span className="w-3 h-[2px] bg-red-400 rounded inline-block" />Saídas</span>
-          </div>
+          <EvolutionChart data={dadosMes.areaData} />
         </div>
 
-        {/* Pizza — categorias */}
+        {/* Donut categorias */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Gastos por Categoria</h3>
+          <h3 className="text-sm font-semibold text-slate-300 mb-4">
+            Gastos por Categoria
+            {catFiltro && (
+              <button onClick={() => setCatFiltro(null)} className="ml-2 text-xs text-purple-400 hover:text-purple-300">
+                × {catFiltro}
+              </button>
+            )}
+          </h3>
           {dadosMes.graficoPizza.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie data={dadosMes.graficoPizza} cx="50%" cy="50%"
-                    innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="valor">
-                    {dadosMes.graficoPizza.map((_, i) => (
-                      <Cell key={i} fill={CORES[i % CORES.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(v) => [formatarMoeda(Number(v)), '']}
-                    contentStyle={{ background: '#0E1220', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#F1F5F9', fontSize: 12 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
-                {dadosMes.graficoPizza.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CORES[i] }} />
-                    <span className="text-slate-400 truncate flex-1">{item.nome}</span>
-                    <span className="text-slate-300 tabular-nums">{formatarMoeda(item.valor)}</span>
-                  </div>
-                ))}
-              </div>
-            </>
+            <CategoryDonut
+              items={dadosMes.graficoPizza}
+              selectedCat={catFiltro}
+              onSelect={setCatFiltro}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center h-40 text-slate-600">
               <Wallet size={32} className="mb-2 opacity-30" />
@@ -321,39 +686,33 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </div>
 
-      {/* ── Painel IA ────────────────────────────────── */}
+      {/* ── Análise IA com typewriter ───────────────────────────────────── */}
       {dicasIA.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={15} className="text-purple-400" />
             <span className="text-sm font-semibold text-slate-300">Análise da IA</span>
           </div>
-          <div className="space-y-2">
-            {dicasIA.map(dica => (
-              <div key={dica.id} className={`glass-card p-4 text-sm ${
-                dica.tipo === 'alerta'    ? 'border-red-500/20' :
-                dica.tipo === 'conquista' ? 'border-emerald-500/20' :
-                                           'border-purple-500/20'
-              }`}>
-                <div className="font-semibold text-white mb-1">{dica.titulo}</div>
-                <div className="text-slate-400 text-sm leading-relaxed">{dica.mensagem}</div>
-              </div>
-            ))}
-          </div>
+          <InsightCard
+            dicas={dicasIA as DicaItem[]}
+            onVerAssistente={() => onNovoPagina('assistente')}
+          />
         </section>
       )}
 
-      {/* ── Últimas transações ───────────────────────── */}
+      {/* ── Últimas transações ──────────────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-slate-300">Últimas Transações</span>
+          <span className="text-sm font-semibold text-slate-300">
+            {catFiltro ? `Transações · ${catFiltro}` : 'Últimas Transações'}
+          </span>
           <button onClick={() => onNovoPagina('transacoes')}
             className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
             Ver todas <ArrowRight size={12} />
           </button>
         </div>
         <div className="space-y-2">
-          {dadosMes.doMes.slice(0, 8).map(t => {
+          {transacoesFiltradas.map(t => {
             const cat = categorias.find(c => c.id === t.categoria_id);
             return (
               <div key={t.id} className="glass-card flex items-center gap-3 p-3">
@@ -366,12 +725,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="text-xs text-slate-500">
                     {cat?.nome || 'Outros'}
                     {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
-                    {' • '}{new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'short' })}
+                    {' • '}{new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
                 </div>
-                <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${
-                  t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'
-                }`}>
+                <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                   {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
                 </div>
               </div>

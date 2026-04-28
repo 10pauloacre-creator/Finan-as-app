@@ -12,17 +12,19 @@ import Investimentos  from '@/components/paginas/Investimentos';
 import Bancos         from '@/components/paginas/Bancos';
 import Cartoes        from '@/components/paginas/Cartoes';
 import Assistente     from '@/components/paginas/Assistente';
+import Patrimonio     from '@/components/paginas/Patrimonio';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'configuracoes';
 
 /** Desktop sidebar — all pages */
 const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
   { id: 'transacoes',   label: 'Gastos',        icone: ArrowLeftRight  },
   { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
+  { id: 'patrimonio',   label: 'Patrimônio',    icone: TrendingUp      },
   { id: 'bancos',       label: 'Bancos',        icone: Building2       },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
@@ -68,6 +70,7 @@ export default function AppPrincipal() {
       case 'cartoes':       return <Cartoes />;
       case 'relatorios':    return <Relatorios />;
       case 'investimentos': return <Investimentos />;
+      case 'patrimonio':    return <Patrimonio />;
       default:              return <Dashboard onNovoPagina={setPagina} />;
     }
   }
