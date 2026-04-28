@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic, MicOff, ImageIcon, Send, Bot, CheckCircle2, XCircle,
-  Loader2, Sparkles, Volume2, AlertCircle,
+  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import type { TransacaoExtraida } from '@/app/api/assistente/texto/route';
+import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
 import type { MetodoPagamento, OrigemTransacao } from '@/types';
 
 /* ── Tipos ──────────────────────────────────────────────────────────────────── */
@@ -18,10 +19,12 @@ interface Mensagem {
   papel: MsgPapel;
   texto: string;
   imagemPreview?: string;   // object URL da imagem enviada
+  pdfNome?: string;         // nome do PDF anexado
+  pdfInfo?: string;         // ex: "12 lançamentos · R$ 1.234,56"
   eAudio?: boolean;
   transcricao?: string;
   transacao?: TransacaoExtraida;
-  transacoes?: TransacaoExtraida[];  // lote de extrato
+  transacoes?: TransacaoExtraida[];  // lote de extrato ou fatura
   confirmadas?: Set<number>;        // índices confirmados no lote
   status?: 'confirmada' | 'cancelada';
   carregando?: boolean;
@@ -82,7 +85,7 @@ function gerarId() {
 const MSG_BOAS_VINDAS: Mensagem = {
   id: 'boas-vindas',
   papel: 'assistente',
-  texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n\nVou extrair as informações e você confirma para salvar!',
+  texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n• 📄 **PDF** — fatura do cartão de crédito (lança todos os gastos de uma vez!)\n\nVou extrair as informações e você confirma para salvar!',
   ts: Date.now(),
 };
 
@@ -222,6 +225,21 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
           </div>
         )}
 
+        {/* Preview de PDF */}
+        {msg.pdfNome && (
+          <div className={`mb-2 ${isUser ? 'flex justify-end' : ''}`}>
+            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 max-w-[240px]">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                <FileText size={15} className="text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-blue-300 truncate">{msg.pdfNome}</p>
+                {msg.pdfInfo && <p className="text-[10px] text-slate-500 mt-0.5">{msg.pdfInfo}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bolha de texto */}
         {(msg.texto || msg.carregando) && (
           <div className={`
@@ -233,7 +251,12 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
             ${msg.carregando ? 'flex items-center gap-2' : ''}
           `}>
             {msg.carregando
-              ? <><Loader2 size={14} className="animate-spin text-purple-400" /><span className="text-slate-400">Processando...</span></>
+              ? <>
+                  <Loader2 size={14} className="animate-spin text-purple-400" />
+                  <span className="text-slate-400">
+                    {msg.pdfNome ? 'Analisando fatura com IA...' : 'Processando...'}
+                  </span>
+                </>
               : renderTexto(msg.texto)
             }
           </div>
@@ -257,21 +280,55 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
           />
         )}
 
-        {/* Cards de lote (extrato) */}
+        {/* Cards de lote (extrato / fatura PDF) */}
         {msg.transacoes && msg.transacoes.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {msg.transacoes.map((tx, i) => {
-              const confirmed = msg.confirmadas?.has(i);
+          <div className="mt-2">
+            {/* Barra de progresso do lote */}
+            {(() => {
+              const total     = msg.transacoes!.length;
+              const confirmed = msg.confirmadas?.size ?? 0;
+              const allDone   = confirmed === total;
               return (
-                <TransacaoCard
-                  key={i}
-                  tx={tx}
-                  status={confirmed ? 'confirmada' : undefined}
-                  onConfirmar={() => onConfirmarLote(msg.id, i)}
-                  onCancelar={() => onConfirmarLote(msg.id, -1)}  // no-op visual
-                />
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[11px] text-slate-500">
+                    {confirmed}/{total} confirmados
+                  </span>
+                  {!allDone && (
+                    <button
+                      onClick={() => {
+                        for (let i = 0; i < total; i++) {
+                          if (!msg.confirmadas?.has(i)) onConfirmarLote(msg.id, i);
+                        }
+                      }}
+                      className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                    >
+                      <CheckCircle2 size={11} />
+                      Confirmar todos
+                    </button>
+                  )}
+                  {allDone && (
+                    <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                      <CheckCircle2 size={11} /> Todos salvos!
+                    </span>
+                  )}
+                </div>
               );
-            })}
+            })()}
+
+            <div className="space-y-2">
+              {msg.transacoes.map((tx, i) => {
+                const confirmed = msg.confirmadas?.has(i);
+                return (
+                  <TransacaoCard
+                    key={i}
+                    tx={tx}
+                    status={confirmed ? 'confirmada' : undefined}
+                    onConfirmar={() => onConfirmarLote(msg.id, i)}
+                    onCancelar={() => {/* ignorar cancelamento individual no lote */}}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -294,6 +351,7 @@ export default function Assistente() {
 
   const bottomRef        = useRef<HTMLDivElement>(null);
   const fileInputRef     = useRef<HTMLInputElement>(null);
+  const pdfInputRef      = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
@@ -508,6 +566,67 @@ export default function Assistente() {
     }
   }
 
+  // ── Enviar PDF ──────────────────────────────────────────────────────────────
+
+  async function handlePDF(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const tamanhoMB = (file.size / 1024 / 1024).toFixed(1);
+    setEnviando(true);
+
+    // Mensagem do usuário com preview do PDF
+    addMsg({
+      papel: 'user',
+      texto: '',
+      pdfNome: file.name,
+      pdfInfo: `${tamanhoMB} MB`,
+    });
+
+    // Mensagem da IA carregando
+    const aiId = addMsg({
+      papel: 'assistente',
+      texto: '',
+      pdfNome: file.name,  // passa para exibir "Analisando fatura..."
+      carregando: true,
+    });
+
+    try {
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const res = await fetch('/api/assistente/pdf', { method: 'POST', body: fd });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        updateMsg(aiId, {
+          carregando: false,
+          pdfNome: undefined,
+          texto: `❌ ${err.error ?? 'Erro ao processar o PDF.'}`,
+        });
+        return;
+      }
+
+      const data = await res.json() as RespostaPDF;
+
+      updateMsg(aiId, {
+        carregando:  false,
+        pdfNome:     undefined,
+        texto:       data.resposta,
+        transacoes:  data.transacoes,
+        confirmadas: data.transacoes ? new Set() : undefined,
+      });
+    } catch {
+      updateMsg(aiId, {
+        carregando: false,
+        pdfNome: undefined,
+        texto: '❌ Erro ao enviar PDF. Verifique sua conexão.',
+      });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -521,7 +640,7 @@ export default function Assistente() {
         </div>
         <div>
           <h2 className="text-sm font-semibold text-white">Assistente IA</h2>
-          <p className="text-[11px] text-slate-500">Registre gastos por voz, texto ou foto</p>
+          <p className="text-[11px] text-slate-500">Texto · Voz · Foto · Fatura PDF</p>
         </div>
       </div>
 
@@ -561,6 +680,7 @@ export default function Assistente() {
             disabled={enviando || gravando}
             className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
             aria-label="Enviar imagem"
+            title="Foto de comprovante"
           >
             <ImageIcon size={18} />
           </button>
@@ -571,6 +691,24 @@ export default function Assistente() {
             capture="environment"
             className="hidden"
             onChange={handleImagem}
+          />
+
+          {/* Botão de PDF */}
+          <button
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={enviando || gravando}
+            className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-40 shrink-0"
+            aria-label="Enviar fatura PDF"
+            title="Fatura do cartão (PDF)"
+          >
+            <CreditCard size={17} />
+          </button>
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={handlePDF}
           />
 
           {/* Campo de texto */}
