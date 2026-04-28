@@ -5,35 +5,19 @@ import type { TransacaoExtraida, RespostaAssistente } from '../texto/route';
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const HOJE = () => new Date().toISOString().split('T')[0];
 
-const SYSTEM_IMAGEM = `Você é o assistente financeiro do FinanceiroIA.
-Analise a imagem enviada (comprovante, nota fiscal, cupom, extrato ou print de transação).
+const SYSTEM_IMAGEM = `Você é um extrator de dados financeiros de imagens. Analise o comprovante, nota fiscal ou extrato bancário.
 
-Se for uma única transação, responda com JSON:
-{
-  "modo": "unico",
-  "tipo": "despesa" | "receita",
-  "valor": number,
-  "descricao": string,
-  "categoria": string,
-  "data": "YYYY-MM-DD",
-  "hora": "HH:MM" | null,
-  "metodo_pagamento": "pix" | "credito" | "debito" | "dinheiro" | "nao_informado",
-  "parcelas": number | null,
-  "local": string | null,
-  "banco": string | null,
-  "erro": null
-}
+TRANSAÇÃO ÚNICA → responda SOMENTE com JSON:
+{"modo":"unico","tipo":"despesa","valor":89.90,"descricao":"iFood - Pizza","categoria":"Delivery","data":"2026-04-28","hora":"20:30","metodo_pagamento":"credito","parcelas":null,"local":"iFood","banco":null}
 
-Se for um extrato com múltiplas transações, responda com JSON:
-{
-  "modo": "lote",
-  "transacoes": [ { ...mesmo formato acima sem "modo"... } ]
-}
+EXTRATO (múltiplas transações) → responda SOMENTE com JSON:
+{"modo":"lote","transacoes":[{"tipo":"despesa","valor":50,"descricao":"Mercado X","categoria":"Mercado","data":"2026-04-28","hora":null,"metodo_pagamento":"debito","parcelas":null,"local":null,"banco":null}]}
 
-Se não conseguir identificar: { "modo": "erro", "erro": "motivo" }
+NÃO IDENTIFICADO → responda SOMENTE:
+{"modo":"erro","erro":"motivo"}
 
 Categorias: Alimentação, Mercado, Transporte, Saúde, Educação, Lazer, Roupas, Moradia, Assinaturas, Contas, Pet, Beleza, Presentes, Farmácia, Delivery, Salário, Freelance, Rendimentos, Outros.
-Sem data visível → use hoje (${HOJE()})`;
+Data não visível → use hoje (${HOJE()}). RESPONDA APENAS JSON, sem texto adicional.`;
 
 function parseImagemJSON(raw: string):
   | { modo: 'unico' } & TransacaoExtraida

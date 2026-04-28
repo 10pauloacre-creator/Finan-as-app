@@ -28,34 +28,26 @@ export interface RespostaAssistente {
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
-const SYSTEM_EXTRACAO = `Você é o assistente financeiro do FinanceiroIA.
-Sua função é extrair dados de gastos/receitas de mensagens em português brasileiro.
+const SYSTEM_EXTRACAO = `Você é um extrator de transações financeiras. Analise a mensagem e decida:
 
-Responda SOMENTE com JSON válido:
-{
-  "tipo": "despesa" | "receita",
-  "valor": number,
-  "descricao": string,
-  "categoria": string,
-  "data": "YYYY-MM-DD",
-  "hora": "HH:MM" | null,
-  "metodo_pagamento": "pix" | "credito" | "debito" | "dinheiro" | "nao_informado",
-  "parcelas": number | null,
-  "local": string | null,
-  "banco": string | null,
-  "erro": null
-}
+CASO 1 — contém gasto ou receita → responda SOMENTE com JSON (sem texto adicional):
+{"tipo":"despesa","valor":200,"descricao":"Manutenção geladeira","categoria":"Moradia","data":"2026-04-28","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":"Itaú"}
 
-Se não houver gasto/receita claro: { "erro": "motivo" }
+CASO 2 — não contém gasto/receita identificável → responda SOMENTE:
+{"erro":"motivo breve"}
+
+Campos obrigatórios: tipo, valor (number), descricao, categoria, data (YYYY-MM-DD).
+Campos opcionais (use null se não informado): hora (HH:MM), metodo_pagamento, parcelas, local, banco.
+metodo_pagamento: "pix" | "credito" | "debito" | "dinheiro" | "nao_informado"
 
 Categorias: Alimentação, Mercado, Transporte, Saúde, Educação, Lazer, Roupas, Moradia, Assinaturas, Contas, Pet, Beleza, Presentes, Farmácia, Delivery, Salário, Freelance, Rendimentos, Outros.
 
-Regras:
-- iFood/Rappi/delivery → Delivery | Mercado/supermercado → Mercado
-- Uber/99/ônibus/gasolina → Transporte | Netflix/Spotify → Assinaturas
-- Farmácia → Farmácia | Médico/plano → Saúde | Aluguel/condomínio → Moradia
-- Salário/holerite → Salário (receita) | Freelance/bico → Freelance (receita)
-- Sem data → use hoje (${HOJE()}) | Sem método → "nao_informado"`;
+Regras rápidas:
+iFood/Rappi → Delivery | Mercado/supermercado → Mercado | Uber/99/ônibus → Transporte
+Netflix/Spotify → Assinaturas | Farmácia → Farmácia | Aluguel → Moradia | Salário → receita+Salário
+Data não informada → ${HOJE()} | Método não informado → "nao_informado"
+
+IMPORTANTE: Responda APENAS com o JSON, sem explicações, sem markdown.`;
 
 const SYSTEM_CONVERSA = `Você é o assistente financeiro do FinanceiroIA, app de controle financeiro pessoal.
 Responda em português brasileiro de forma amigável, concisa e útil (máx. 3 parágrafos curtos).
@@ -65,12 +57,22 @@ Se o usuário mencionar um gasto sem detalhes suficientes, oriente-o a informar 
 // ── Parser JSON ──────────────────────────────────────────────────────────────
 
 export function parseTransacaoJSON(raw: string): TransacaoExtraida | { erro: string } {
-  const clean = raw.startsWith('```') ? raw.replace(/```json?\n?/g, '').replace(/```/g, '') : raw;
+  // Remove markdown code fences if present
+  const clean = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
   const match = clean.match(/\{[\s\S]*\}/);
   if (!match) return { erro: 'Resposta inválida da IA' };
   try {
     const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    if (parsed.erro) return { erro: String(parsed.erro) };
+    // Erro explícito do modelo
+    if (parsed.erro && typeof parsed.erro === 'string' && parsed.erro.length > 0) {
+      return { erro: parsed.erro };
+    }
+    // Verifica campos mínimos para ser uma transação válida
+    if (!parsed.valor || !parsed.descricao || !parsed.tipo) {
+      return { erro: 'Dados insuficientes na resposta.' };
+    }
+    // Remove a chave erro (pode ser null) para não poluir o objeto
+    delete parsed.erro;
     return parsed as unknown as TransacaoExtraida;
   } catch {
     return { erro: 'Não consegui interpretar a resposta.' };
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       extractRaw.choices[0]?.message?.content?.trim() ?? '',
     );
 
-    if (!('erro' in extractResult)) {
+    if ('valor' in extractResult) {
       const resposta =
         extractResult.tipo === 'despesa'
           ? `Encontrei uma **despesa** de R$ ${extractResult.valor.toFixed(2).replace('.', ',')}. Confira e confirme para salvar.`

@@ -9,27 +9,18 @@ import type { RespostaAssistente } from '../texto/route';
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const HOJE = () => new Date().toISOString().split('T')[0];
 
-const SYSTEM_EXTRACAO = `Você é o assistente financeiro do FinanceiroIA.
-Extraia dados de gastos/receitas de transcrições de áudio em português brasileiro.
+const SYSTEM_EXTRACAO = `Você é um extrator de transações financeiras. Analise a transcrição de áudio e decida:
 
-Responda SOMENTE com JSON válido:
-{
-  "tipo": "despesa" | "receita",
-  "valor": number,
-  "descricao": string,
-  "categoria": string,
-  "data": "YYYY-MM-DD",
-  "hora": "HH:MM" | null,
-  "metodo_pagamento": "pix" | "credito" | "debito" | "dinheiro" | "nao_informado",
-  "parcelas": number | null,
-  "local": string | null,
-  "banco": string | null,
-  "erro": null
-}
+CASO 1 — contém gasto ou receita → responda SOMENTE com JSON (sem texto adicional):
+{"tipo":"despesa","valor":200,"descricao":"Manutenção geladeira","categoria":"Moradia","data":"${new Date().toISOString().split('T')[0]}","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":"Itaú"}
 
-Se não houver gasto/receita: { "erro": "motivo" }
+CASO 2 — não contém gasto/receita → responda SOMENTE:
+{"erro":"motivo breve"}
+
+Campos obrigatórios: tipo (despesa|receita), valor (number), descricao, categoria, data (YYYY-MM-DD).
+Opcionais (null se não informado): hora (HH:MM), metodo_pagamento (pix|credito|debito|dinheiro|nao_informado), parcelas, local, banco.
 Categorias: Alimentação, Mercado, Transporte, Saúde, Educação, Lazer, Roupas, Moradia, Assinaturas, Contas, Pet, Beleza, Presentes, Farmácia, Delivery, Salário, Freelance, Rendimentos, Outros.
-Sem data → use hoje (${HOJE()}) | Sem método → "nao_informado"`;
+Data não informada → use hoje. RESPONDA APENAS JSON, sem texto adicional.`;
 
 const SYSTEM_CONVERSA = `Você é o assistente financeiro do FinanceiroIA.
 Responda em português brasileiro de forma amigável e concisa (máx. 3 parágrafos).
@@ -80,7 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       temperature: 0.1,
       messages: [
         { role: 'system', content: SYSTEM_EXTRACAO },
-        { role: 'user',   content: `[TRANSCRIÇÃO DE ÁUDIO]: ${transcricao}` },
+        { role: 'user',   content: transcricao },
       ],
     });
 
@@ -88,15 +79,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       extractRaw.choices[0]?.message?.content?.trim() ?? '',
     );
 
-    if (!('erro' in extractResult)) {
-      const resposta =
-        extractResult.tipo === 'despesa'
-          ? `Ouvi: *"${transcricao}"*\n\nEncontrei uma **despesa** de R$ ${extractResult.valor.toFixed(2).replace('.', ',')}. Confira e confirme.`
-          : `Ouvi: *"${transcricao}"*\n\nEncontrei uma **receita** de R$ ${extractResult.valor.toFixed(2).replace('.', ',')}. Confira e confirme.`;
+    // Usa 'valor' in para checar sucesso (evita falso negativo por erro:null)
+    if ('valor' in extractResult) {
+      const tx = extractResult;
+      const resposta = tx.tipo === 'despesa'
+        ? `Ouvi: *"${transcricao}"*\n\nEncontrei uma **despesa** de R$ ${tx.valor.toFixed(2).replace('.', ',')}. Confira e confirme.`
+        : `Ouvi: *"${transcricao}"*\n\nEncontrei uma **receita** de R$ ${tx.valor.toFixed(2).replace('.', ',')}. Confira e confirme.`;
 
       return NextResponse.json({
         tipo: 'transacao',
-        transacao: extractResult,
+        transacao: tx,
         transcricao,
         resposta,
       } satisfies RespostaAssistente);
@@ -117,7 +109,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       tipo: 'conversa',
       transcricao,
       resposta: chatRaw.choices[0]?.message?.content?.trim()
-        ?? 'Entendi o áudio mas não identifiquei um gasto. Pode descrever com valor e descrição?',
+        ?? 'Entendi o áudio mas não identifiquei um gasto. Descreva com valor e o que foi gasto.',
     } satisfies RespostaAssistente);
 
   } catch (err) {
