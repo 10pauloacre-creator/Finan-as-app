@@ -3,7 +3,7 @@
 // ============================
 
 export type MetodoPagamento = 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'outro';
-export type OrigemTransacao = 'manual' | 'whatsapp' | 'whatsapp_texto' | 'whatsapp_audio' | 'whatsapp_imagem' | 'extrato_foto' | 'open_banking';
+export type OrigemTransacao = 'manual' | 'whatsapp' | 'whatsapp_texto' | 'whatsapp_audio' | 'whatsapp_imagem' | 'extrato_foto' | 'open_banking' | 'assistente' | 'assistente_audio' | 'assistente_imagem';
 export type TipoTransacao = 'despesa' | 'receita' | 'transferencia';
 export type TipoInvestimento = 'tesouro_selic' | 'tesouro_ipca' | 'tesouro_prefixado' | 'cdb' | 'lci_lca' | 'acoes' | 'fundos_di' | 'poupanca' | 'cripto' | 'outro';
 export type BandeirCartao = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard';

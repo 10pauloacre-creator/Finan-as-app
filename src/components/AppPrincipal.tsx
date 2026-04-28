@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
-  Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw,
+  Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
 } from 'lucide-react';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
@@ -11,29 +11,31 @@ import Relatorios     from '@/components/paginas/Relatorios';
 import Investimentos  from '@/components/paginas/Investimentos';
 import Bancos         from '@/components/paginas/Bancos';
 import Cartoes        from '@/components/paginas/Cartoes';
+import Assistente     from '@/components/paginas/Assistente';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'configuracoes';
 
 /** Desktop sidebar — all pages */
 const navDesktop = [
-  { id: 'dashboard',    label: 'Início',      icone: LayoutDashboard },
-  { id: 'transacoes',   label: 'Gastos',       icone: ArrowLeftRight  },
-  { id: 'bancos',       label: 'Bancos',       icone: Building2       },
-  { id: 'cartoes',      label: 'Cartões',      icone: CreditCard      },
-  { id: 'relatorios',   label: 'Relatórios',   icone: BarChart3       },
-  { id: 'investimentos',label: 'Investir',     icone: TrendingUp      },
+  { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
+  { id: 'transacoes',   label: 'Gastos',        icone: ArrowLeftRight  },
+  { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
+  { id: 'bancos',       label: 'Bancos',        icone: Building2       },
+  { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
+  { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
+  { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
 
 /** Mobile bottom nav — max 5 items (UX guideline) */
 const navMobile = [
-  { id: 'dashboard',    label: 'Início',  icone: LayoutDashboard },
-  { id: 'transacoes',   label: 'Gastos',  icone: ArrowLeftRight  },
-  { id: 'bancos',       label: 'Bancos',  icone: Building2       },
-  { id: 'cartoes',      label: 'Cartões', icone: CreditCard      },
-  { id: 'investimentos',label: 'Investir',icone: TrendingUp      },
+  { id: 'dashboard',  label: 'Início',  icone: LayoutDashboard },
+  { id: 'transacoes', label: 'Gastos',  icone: ArrowLeftRight  },
+  { id: 'assistente', label: 'IA',      icone: Sparkles        },
+  { id: 'bancos',     label: 'Bancos',  icone: Building2       },
+  { id: 'cartoes',    label: 'Cartões', icone: CreditCard      },
 ] as const;
 
 export default function AppPrincipal() {
@@ -61,6 +63,7 @@ export default function AppPrincipal() {
     switch (pagina) {
       case 'dashboard':     return <Dashboard onNovoPagina={setPagina} />;
       case 'transacoes':    return <Transacoes />;
+      case 'assistente':    return <Assistente />;
       case 'bancos':        return <Bancos />;
       case 'cartoes':       return <Cartoes />;
       case 'relatorios':    return <Relatorios />;
