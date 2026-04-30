@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, CheckCircle, TrendingUp, Calendar, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { RefreshCw, AlertTriangle, CheckCircle, TrendingUp, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto } from '@/lib/contexto-financeiro';
 import { calcularPrevisao, GastoPrevisto } from '@/lib/previsao';
+import { calcularScore } from '@/lib/score-financeiro';
 import { formatarMoeda } from '@/lib/storage';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,9 +27,9 @@ type AgenteId = 'albert' | 'marie' | 'galileu';
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TTL: Record<AgenteId, number> = {
-  albert:  24 * 60 * 60 * 1000,        // 24h
-  marie:   7  * 24 * 60 * 60 * 1000,   // 7 days
-  galileu: 30 * 24 * 60 * 60 * 1000,   // 30 days
+  albert:  24 * 60 * 60 * 1000,
+  marie:   7  * 24 * 60 * 60 * 1000,
+  galileu: 30 * 24 * 60 * 60 * 1000,
 };
 
 const AGENTE_CONFIG = [
@@ -76,6 +77,8 @@ const AGENTE_CONFIG = [
   },
 ];
 
+const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function cacheKey(id: AgenteId) {
@@ -119,7 +122,21 @@ function iconeInsight(tipo: string) {
   return <CheckCircle size={14} className="text-slate-400 flex-shrink-0" />;
 }
 
-// ─── InsightCard ──────────────────────────────────────────────────────────────
+function corNivel(nivel: string): { bar: string; text: string } {
+  if (nivel === 'otimo') return { bar: '#10B981', text: 'text-emerald-400' };
+  if (nivel === 'bom')   return { bar: '#22C55E', text: 'text-green-400' };
+  if (nivel === 'atencao') return { bar: '#F59E0B', text: 'text-amber-400' };
+  return { bar: '#EF4444', text: 'text-red-400' };
+}
+
+function labelNivel(nivel: string): string {
+  if (nivel === 'otimo') return 'Ótimo';
+  if (nivel === 'bom') return 'Bom';
+  if (nivel === 'atencao') return 'Atenção';
+  return 'Crítico';
+}
+
+// ─── InsightItem ──────────────────────────────────────────────────────────────
 
 function InsightItem({ insight }: { insight: AgenteInsight }) {
   return (
@@ -149,7 +166,6 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Load from cache on mount
   useEffect(() => {
     const cached = lerCache(config.id);
     if (cached) {
@@ -190,7 +206,6 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
 
   return (
     <div className={`rounded-2xl border ${config.cor.border} ${config.cor.bg} p-5 space-y-4`}>
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{config.emoji}</span>
@@ -214,7 +229,6 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
         </button>
       </div>
 
-      {/* Last analysis time */}
       {cacheTs && (
         <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
           <Clock size={11} />
@@ -222,14 +236,12 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
         </div>
       )}
 
-      {/* Error */}
       {erro && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-400">
           Erro: {erro}
         </div>
       )}
 
-      {/* Insights */}
       {insights.length > 0 ? (
         <div className="space-y-2">
           {insights.map((insight, i) => (
@@ -246,7 +258,7 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
   );
 }
 
-// ─── Próximos Gastos ──────────────────────────────────────────────────────────
+// ─── ProximosGastos ───────────────────────────────────────────────────────────
 
 function ProximosGastos({ previsoes }: { previsoes: GastoPrevisto[] }) {
   if (previsoes.length === 0) {
@@ -276,7 +288,7 @@ function ProximosGastos({ previsoes }: { previsoes: GastoPrevisto[] }) {
                 : 'border-white/[0.06] bg-white/[0.02]'
             }`}
           >
-            <div className={`text-lg flex-shrink-0`}>{g.tipo === 'assinatura' ? '🔄' : '💳'}</div>
+            <div className="text-lg flex-shrink-0">{g.tipo === 'assinatura' ? '🔄' : '💳'}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{g.descricao}</p>
               <p className={`text-xs mt-0.5 ${urgente ? 'text-amber-400 font-semibold' : 'text-slate-500'}`}>
@@ -295,6 +307,234 @@ function ProximosGastos({ previsoes }: { previsoes: GastoPrevisto[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── EvolucaoScore ────────────────────────────────────────────────────────────
+
+function EvolucaoScore() {
+  const { transacoes, orcamentos, contas, cartoes, metas } = useFinanceiroStore();
+  const [mostrarFatores, setMostrarFatores] = useState(false);
+
+  const historicoScore = useMemo(() => {
+    const hoje = new Date();
+    const resultado: { mes: string; mesNum: number; anoNum: number; score: number; nivel: string }[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      const mesNum = data.getMonth() + 1;
+      const anoNum = data.getFullYear();
+
+      const txMes = transacoes.filter(t => {
+        const d = new Date(t.data + 'T00:00:00');
+        return d.getMonth() + 1 === mesNum && d.getFullYear() === anoNum;
+      });
+
+      const orcMes = orcamentos.filter(o => o.mes === mesNum && o.ano === anoNum);
+
+      const score = calcularScore({
+        transacoes: txMes,
+        orcamentos: orcMes,
+        contas,
+        cartoes,
+        metas,
+      });
+
+      resultado.push({
+        mes: MESES_ABREV[mesNum - 1],
+        mesNum,
+        anoNum,
+        score: score.total,
+        nivel: score.nivel,
+      });
+    }
+
+    return resultado;
+  }, [transacoes, orcamentos, contas, cartoes, metas]);
+
+  const scoreMesAtual = useMemo(() => {
+    const hoje = new Date();
+    const mes = hoje.getMonth() + 1;
+    const ano = hoje.getFullYear();
+    const txMes = transacoes.filter(t => {
+      const d = new Date(t.data + 'T00:00:00');
+      return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+    });
+    const orcMes = orcamentos.filter(o => o.mes === mes && o.ano === ano);
+    return calcularScore({ transacoes: txMes, orcamentos: orcMes, contas, cartoes, metas });
+  }, [transacoes, orcamentos, contas, cartoes, metas]);
+
+  const maxScore = Math.max(...historicoScore.map(h => h.score), 1);
+  const penultimo = historicoScore[historicoScore.length - 2];
+  const atual = historicoScore[historicoScore.length - 1];
+
+  const tendencia = penultimo && atual
+    ? atual.score > penultimo.score
+      ? `Alta de ${atual.score - penultimo.score} pontos em relação ao mês anterior.`
+      : atual.score < penultimo.score
+      ? `Queda de ${penultimo.score - atual.score} pontos em relação ao mês anterior.`
+      : 'Score estável em relação ao mês anterior.'
+    : '';
+
+  const arcRaio = 44;
+  const arcCirc = Math.PI * arcRaio;
+  const arcOffset = arcCirc - (scoreMesAtual.total / 100) * arcCirc;
+  const arcColor = corNivel(scoreMesAtual.nivel).bar;
+
+  return (
+    <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5 space-y-5">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Evolução do Score</h3>
+        <p className="text-xs text-slate-500 mt-0.5">Últimos 6 meses</p>
+      </div>
+
+      {/* Grafico de barras SVG */}
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${historicoScore.length * 60} 100`}
+          className="w-full"
+          style={{ minWidth: `${historicoScore.length * 60}px`, height: '100px' }}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {historicoScore.map((h, i) => {
+            const barHeight = Math.max(4, (h.score / 100) * 60);
+            const x = i * 60 + 10;
+            const barY = 70 - barHeight;
+            const cores = corNivel(h.nivel);
+            const eMesAtual = i === historicoScore.length - 1;
+            const barW = eMesAtual ? 32 : 28;
+            const xAjust = eMesAtual ? x - 2 : x;
+
+            return (
+              <g key={i}>
+                {/* Barra */}
+                <rect
+                  x={xAjust}
+                  y={barY}
+                  width={barW}
+                  height={barHeight}
+                  rx={4}
+                  fill={cores.bar}
+                  opacity={eMesAtual ? 1 : 0.6}
+                />
+                {/* Brilho no topo para mes atual */}
+                {eMesAtual && (
+                  <rect
+                    x={xAjust}
+                    y={barY}
+                    width={barW}
+                    height={4}
+                    rx={4}
+                    fill="white"
+                    opacity={0.2}
+                  />
+                )}
+                {/* Score acima da barra */}
+                <text
+                  x={xAjust + barW / 2}
+                  y={barY - 4}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill={cores.bar}
+                  fontWeight={eMesAtual ? 'bold' : 'normal'}
+                >
+                  {h.score}
+                </text>
+                {/* Label do mes */}
+                <text
+                  x={x + 14}
+                  y={85}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill={eMesAtual ? '#e2e8f0' : '#64748b'}
+                  fontWeight={eMesAtual ? 'bold' : 'normal'}
+                >
+                  {h.mes}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Texto resumo */}
+      <p className="text-xs text-slate-400">
+        <span className={`font-semibold ${corNivel(scoreMesAtual.nivel).text}`}>
+          Score atual: {scoreMesAtual.total}/100 ({labelNivel(scoreMesAtual.nivel)})
+        </span>
+        {tendencia && ` — ${tendencia}`}
+      </p>
+
+      {/* Card do score atual com arco */}
+      <div className="flex items-center gap-5 bg-white/[0.02] rounded-2xl border border-white/[0.06] p-4">
+        {/* Arco SVG */}
+        <div className="flex-shrink-0">
+          <svg width={100} height={60} viewBox="0 0 100 60">
+            {/* Track */}
+            <path
+              d="M 8 56 A 44 44 0 0 1 92 56"
+              fill="none"
+              stroke="#1e293b"
+              strokeWidth={10}
+              strokeLinecap="round"
+            />
+            {/* Progresso */}
+            <path
+              d="M 8 56 A 44 44 0 0 1 92 56"
+              fill="none"
+              stroke={arcColor}
+              strokeWidth={10}
+              strokeLinecap="round"
+              strokeDasharray={arcCirc}
+              strokeDashoffset={arcOffset}
+              style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+            />
+            {/* Numero */}
+            <text x="50" y="44" textAnchor="middle" fontSize="16" fontWeight="bold" fill="white">
+              {scoreMesAtual.total}
+            </text>
+          </svg>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className={`text-lg font-bold ${corNivel(scoreMesAtual.nivel).text}`}>
+            {labelNivel(scoreMesAtual.nivel)}
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">Score financeiro atual</p>
+          <button
+            onClick={() => setMostrarFatores(v => !v)}
+            className="mt-2 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            {mostrarFatores ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            Ver fatores
+          </button>
+        </div>
+      </div>
+
+      {/* Fatores expandidos */}
+      {mostrarFatores && (
+        <div className="space-y-2.5">
+          {scoreMesAtual.fatores.map((f, i) => {
+            const pct = Math.round((f.pontos / f.maximo) * 100);
+            return (
+              <div key={i} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300 font-medium">{f.nome}</span>
+                  <span className="text-slate-500 tabular-nums">{f.pontos}/{f.maximo} pts</span>
+                </div>
+                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%`, backgroundColor: corNivel(scoreMesAtual.nivel).bar }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-600 leading-snug">{f.descricao}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -320,6 +560,9 @@ export default function Agentes() {
         </p>
       </div>
 
+      {/* Evolucao do Score — topo */}
+      <EvolucaoScore />
+
       {/* Agent cards */}
       <div className="space-y-4">
         {AGENTE_CONFIG.map(cfg => (
@@ -327,7 +570,7 @@ export default function Agentes() {
         ))}
       </div>
 
-      {/* Próximos gastos */}
+      {/* Proximos gastos */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <div>

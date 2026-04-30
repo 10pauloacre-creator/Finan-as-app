@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
-  Target, Repeat, BrainCircuit,
+  Target, Repeat, BrainCircuit, CalendarDays,
 } from 'lucide-react';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
@@ -17,11 +17,12 @@ import Patrimonio     from '@/components/paginas/Patrimonio';
 import Orcamentos     from '@/components/paginas/Orcamentos';
 import Assinaturas    from '@/components/paginas/Assinaturas';
 import Agentes        from '@/components/paginas/Agentes';
+import Calendario     from '@/components/paginas/Calendario';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes' | 'calendario';
 
 /** Desktop sidebar — all pages */
 const navDesktop = [
@@ -35,6 +36,7 @@ const navDesktop = [
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
   { id: 'assinaturas',  label: 'Assinaturas',   icone: Repeat          },
+  { id: 'calendario',   label: 'Calendário',    icone: CalendarDays    },
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
 
@@ -81,6 +83,7 @@ export default function AppPrincipal() {
       case 'orcamentos':    return <Orcamentos />;
       case 'assinaturas':   return <Assinaturas />;
       case 'agentes':       return <Agentes />;
+      case 'calendario':    return <Calendario />;
       default:              return <Dashboard onNovoPagina={setPagina} />;
     }
   }
