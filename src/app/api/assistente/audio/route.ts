@@ -1,34 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
-import { writeFileSync, unlinkSync, createReadStream } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseTransacaoJSON } from '../texto/route';
 import type { RespostaAssistente } from '../texto/route';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];
 
-const SYSTEM_EXTRACAO = `Você é um extrator de transações financeiras. Analise a transcrição de áudio e decida:
+// Gemini suporta estes formatos de áudio inline
+const MIME_MAP: Record<string, string> = {
+  webm: 'audio/webm',
+  ogg:  'audio/ogg',
+  mp4:  'audio/mp4',
+  mp3:  'audio/mp3',
+  wav:  'audio/wav',
+  m4a:  'audio/mp4',
+};
 
-CASO 1 — contém gasto ou receita → responda SOMENTE com JSON (sem texto adicional):
-{"tipo":"despesa","valor":200,"descricao":"Manutenção geladeira","categoria":"Moradia","data":"${new Date().toISOString().split('T')[0]}","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":"Itaú"}
+function detectMime(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name?.split('.').pop()?.toLowerCase() ?? 'webm';
+  return MIME_MAP[ext] ?? 'audio/webm';
+}
 
-CASO 2 — não contém gasto/receita → responda SOMENTE:
-{"erro":"motivo breve"}
+const PROMPT_AUDIO = (mimeType: string) => `Você vai analisar um áudio em português brasileiro.
 
-Campos obrigatórios: tipo (despesa|receita), valor (number), descricao, categoria, data (YYYY-MM-DD).
-Opcionais (null se não informado): hora (HH:MM), metodo_pagamento (pix|credito|debito|dinheiro|nao_informado), parcelas, local, banco.
+Faça DUAS coisas e retorne SOMENTE um JSON (sem markdown, sem texto extra):
+
+1. Transcreva o áudio fielmente
+2. Se a transcrição contiver um gasto ou receita:
+   Retorne: {"transcricao":"...","tipo":"despesa","valor":50.00,"descricao":"iFood pizza","categoria":"Delivery","data":"${HOJE()}","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":null}
+
+3. Se NÃO contiver transação financeira:
+   Retorne: {"transcricao":"...","erro":"sem transação identificada"}
+
 Categorias: Alimentação, Mercado, Transporte, Saúde, Educação, Lazer, Roupas, Moradia, Assinaturas, Contas, Pet, Beleza, Presentes, Farmácia, Delivery, Salário, Freelance, Rendimentos, Outros.
-Data não informada → use hoje. RESPONDA APENAS JSON, sem texto adicional.`;
+metodo_pagamento: "pix" | "credito" | "debito" | "dinheiro" | "nao_informado"
 
-const SYSTEM_CONVERSA = `Você é o assistente financeiro do FinanceiroIA.
+RESPONDA APENAS JSON.`;
+
+const PROMPT_CONVERSA = (transcricao: string) => `Você é o assistente financeiro do FinanceiroIA.
 Responda em português brasileiro de forma amigável e concisa (máx. 3 parágrafos).
-Ajude com finanças pessoais, orçamento e investimentos.`;
+Ajude com finanças pessoais, orçamento e investimentos.
+
+O usuário disse (via áudio): "${transcricao}"`;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let tmpFile: string | null = null;
-
   try {
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -37,26 +53,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'audio obrigatório' }, { status: 400 });
     }
 
-    // Salva em arquivo temporário
-    const ext = audioFile.type.includes('mp4') ? 'mp4'
-               : audioFile.type.includes('ogg') ? 'ogg'
-               : 'webm';
-    tmpFile = join(tmpdir(), `assistente-audio-${Date.now()}.${ext}`);
-    const buffer = Buffer.from(await audioFile.arrayBuffer());
-    writeFileSync(tmpFile, buffer);
+    const mimeType = detectMime(audioFile);
+    const buffer   = Buffer.from(await audioFile.arrayBuffer());
+    const base64   = buffer.toString('base64');
 
-    // 1. Transcreve com Whisper
-    const transcription = await groq.audio.transcriptions.create({
-      file: createReadStream(tmpFile) as unknown as File,
-      model: 'whisper-large-v3',
-      language: 'pt',
-      response_format: 'text',
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0.1, maxOutputTokens: 768 },
     });
-    const transcricao = typeof transcription === 'string'
-      ? transcription
-      : (transcription as { text: string }).text;
 
-    if (!transcricao?.trim()) {
+    // Envia áudio + prompt combinado (transcrição + extração em uma chamada)
+    const result = await model.generateContent([
+      { inlineData: { data: base64, mimeType } },
+      PROMPT_AUDIO(mimeType),
+    ]);
+
+    const raw   = result.response.text().trim();
+    const clean = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      return NextResponse.json({
+        tipo: 'conversa',
+        transcricao: '',
+        resposta: 'Não consegui processar o áudio. Tente falar mais perto do microfone.',
+      } satisfies RespostaAssistente);
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({
+        tipo: 'conversa',
+        transcricao: '',
+        resposta: 'Não consegui interpretar o áudio.',
+      } satisfies RespostaAssistente);
+    }
+
+    const transcricao = String(parsed.transcricao ?? '').trim();
+
+    if (!transcricao) {
       return NextResponse.json({
         tipo: 'conversa',
         transcricao: '',
@@ -64,22 +101,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } satisfies RespostaAssistente);
     }
 
-    // 2. Extrai transação da transcrição
-    const extractRaw = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 512,
-      temperature: 0.1,
-      messages: [
-        { role: 'system', content: SYSTEM_EXTRACAO },
-        { role: 'user',   content: transcricao },
-      ],
-    });
+    // Verifica se tem transação (tem "valor" no JSON)
+    const extractResult = parseTransacaoJSON(JSON.stringify(parsed));
 
-    const extractResult = parseTransacaoJSON(
-      extractRaw.choices[0]?.message?.content?.trim() ?? '',
-    );
-
-    // Usa 'valor' in para checar sucesso (evita falso negativo por erro:null)
     if ('valor' in extractResult) {
       const tx = extractResult;
       const resposta = tx.tipo === 'despesa'
@@ -94,29 +118,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } satisfies RespostaAssistente);
     }
 
-    // 3. Fallback conversacional
-    const chatRaw = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 384,
-      temperature: 0.7,
-      messages: [
-        { role: 'system', content: SYSTEM_CONVERSA },
-        { role: 'user',   content: transcricao },
-      ],
+    // Fallback conversacional
+    const modelConversa = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0.7, maxOutputTokens: 384 },
     });
+    const chatResult = await modelConversa.generateContent(PROMPT_CONVERSA(transcricao));
 
     return NextResponse.json({
       tipo: 'conversa',
       transcricao,
-      resposta: chatRaw.choices[0]?.message?.content?.trim()
-        ?? 'Entendi o áudio mas não identifiquei um gasto. Descreva com valor e o que foi gasto.',
+      resposta: chatResult.response.text().trim()
+        || 'Entendi o áudio mas não identifiquei um gasto. Descreva com valor e o que foi gasto.',
     } satisfies RespostaAssistente);
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
     console.error('[assistente/audio]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
-  } finally {
-    if (tmpFile) try { unlinkSync(tmpFile); } catch { /* ignora */ }
   }
 }

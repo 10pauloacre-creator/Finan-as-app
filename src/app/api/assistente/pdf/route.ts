@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { TransacaoExtraida } from '../texto/route';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];
 
 // ── Tipos de resposta ─────────────────────────────────────────────────────────
@@ -78,7 +78,6 @@ interface FaturaExtraida {
 
 function parseFaturaJSON(raw: string): FaturaExtraida | { erro: string } {
   const clean = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-  // Encontra o JSON (objeto ou objeto com array)
   const match = clean.match(/\{[\s\S]*\}/);
   if (!match) return { erro: 'Resposta inválida da IA.' };
   try {
@@ -102,7 +101,7 @@ function parseFaturaJSON(raw: string): FaturaExtraida | { erro: string } {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const formData = await req.formData();
-    const pdfFile = formData.get('pdf') as File | null;
+    const pdfFile  = formData.get('pdf') as File | null;
 
     if (!pdfFile) {
       return NextResponse.json({ error: 'pdf obrigatório' }, { status: 400 });
@@ -117,66 +116,45 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Converte para base64
     const buffer = Buffer.from(await pdfFile.arrayBuffer());
     const base64 = buffer.toString('base64');
 
-    // Envia para Claude com suporte nativo a PDF
-    const message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 8192,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: base64,
-              },
-              title: pdfFile.name || 'fatura.pdf',
-            },
-            {
-              type: 'text',
-              text: PROMPT_FATURA,
-            },
-          ],
-        },
-      ],
+    // gemini-1.5-pro tem janela maior para PDFs densos; flash para faturas simples
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0, maxOutputTokens: 8192 },
     });
 
-    const raw = message.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('');
+    const result = await model.generateContent([
+      { inlineData: { data: base64, mimeType: 'application/pdf' } },
+      PROMPT_FATURA,
+    ]);
 
-    const result = parseFaturaJSON(raw);
+    const raw    = result.response.text().trim();
+    const parsed = parseFaturaJSON(raw);
 
-    if ('erro' in result) {
+    if ('erro' in parsed) {
       return NextResponse.json({
         tipo: 'conversa',
-        resposta: `❌ ${result.erro} Certifique-se de enviar o PDF da fatura do cartão.`,
+        resposta: `❌ ${parsed.erro} Certifique-se de enviar o PDF da fatura do cartão.`,
       } satisfies RespostaPDF);
     }
 
-    const totalValor = result.transacoes
+    const totalValor    = parsed.transacoes
       .filter(t => t.tipo === 'despesa')
       .reduce((s, t) => s + t.valor, 0);
-
-    const bancaNome     = result.bancaNome ?? 'Cartão';
-    const mesReferencia = result.mesReferencia ?? '';
-    const count         = result.transacoes.length;
-    const despesas      = result.transacoes.filter(t => t.tipo === 'despesa').length;
+    const bancaNome     = parsed.bancaNome ?? 'Cartão';
+    const mesReferencia = parsed.mesReferencia ?? '';
+    const count         = parsed.transacoes.length;
+    const despesas      = parsed.transacoes.filter(t => t.tipo === 'despesa').length;
 
     return NextResponse.json({
       tipo: 'lote',
-      transacoes:    result.transacoes,
+      transacoes:    parsed.transacoes,
       totalValor,
       bancaNome,
       mesReferencia,
-      resposta: `Fatura **${bancaNome}**${mesReferencia ? ` — ${mesReferencia}` : ''} analisada!\n\nEncontrei **${count} lançamento${count > 1 ? 's' : ''}** (${despesas} despesas).\n\nTotal de despesas: **R$ ${totalValor.toFixed(2).replace('.', ',')}**\n\nRevise e confirme cada transação abaixo:`,
+      resposta: `Fatura **${bancaNome}**${mesReferencia ? ` — ${mesReferencia}` : ''} analisada!\n\nEncontrei **${count} lançamento${count !== 1 ? 's' : ''}** (${despesas} despesas).\n\nTotal de despesas: **R$ ${totalValor.toFixed(2).replace('.', ',')}**\n\nRevise e confirme cada transação abaixo:`,
     } satisfies RespostaPDF);
 
   } catch (err) {
