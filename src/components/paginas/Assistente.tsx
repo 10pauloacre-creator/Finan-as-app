@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Mic, MicOff, ImageIcon, Send, Bot, CheckCircle2, XCircle,
+  Mic, MicOff, ImageIcon, Camera, Send, Bot, CheckCircle2, XCircle,
   Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
@@ -350,7 +350,8 @@ export default function Assistente() {
   const [enviando, setEnviando] = useState(false);
 
   const bottomRef        = useRef<HTMLDivElement>(null);
-  const fileInputRef     = useRef<HTMLInputElement>(null);
+  const fileInputRef     = useRef<HTMLInputElement>(null); // galeria
+  const cameraInputRef   = useRef<HTMLInputElement>(null); // câmera
   const pdfInputRef      = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
@@ -674,18 +675,38 @@ export default function Assistente() {
         style={{ background: '#0A0E1A' }}>
         <div className="flex items-end gap-2">
 
-          {/* Botão de imagem */}
+          {/* Botão galeria */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={enviando || gravando}
             className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
-            aria-label="Enviar imagem"
-            title="Foto de comprovante"
+            aria-label="Escolher imagem da galeria"
+            title="Galeria de fotos"
           >
             <ImageIcon size={18} />
           </button>
+          {/* input galeria — sem capture, abre seletor de arquivos/fotos */}
           <input
             ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImagem}
+          />
+
+          {/* Botão câmera */}
+          <button
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={enviando || gravando}
+            className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
+            aria-label="Tirar foto"
+            title="Tirar foto"
+          >
+            <Camera size={18} />
+          </button>
+          {/* input câmera — capture força abertura direta da câmera */}
+          <input
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
