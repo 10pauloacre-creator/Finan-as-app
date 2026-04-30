@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
-  Target, Repeat,
+  Target, Repeat, BrainCircuit,
 } from 'lucide-react';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
@@ -16,17 +16,19 @@ import Assistente     from '@/components/paginas/Assistente';
 import Patrimonio     from '@/components/paginas/Patrimonio';
 import Orcamentos     from '@/components/paginas/Orcamentos';
 import Assinaturas    from '@/components/paginas/Assinaturas';
+import Agentes        from '@/components/paginas/Agentes';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
 
 /** Desktop sidebar — all pages */
 const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
   { id: 'transacoes',   label: 'Gastos',        icone: ArrowLeftRight  },
   { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
+  { id: 'agentes',      label: 'Agentes IA',    icone: BrainCircuit    },
   { id: 'patrimonio',   label: 'Patrimônio',    icone: TrendingUp      },
   { id: 'bancos',       label: 'Bancos',        icone: Building2       },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
@@ -78,6 +80,7 @@ export default function AppPrincipal() {
       case 'patrimonio':    return <Patrimonio />;
       case 'orcamentos':    return <Orcamentos />;
       case 'assinaturas':   return <Assinaturas />;
+      case 'agentes':       return <Agentes />;
       default:              return <Dashboard onNovoPagina={setPagina} />;
     }
   }

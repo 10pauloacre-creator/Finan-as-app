@@ -9,6 +9,8 @@ import {
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug } from '@/types';
+import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
+import { calcularPrevisao } from '@/lib/previsao';
 
 // Deriva sigla do nome do banco
 function bancoSigla(nome: string): string {
@@ -17,7 +19,7 @@ function bancoSigla(nome: string): string {
 import Sparkline from '@/components/ui/Sparkline';
 import { useCountUp } from '@/hooks/useCountUp';
 
-type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
 
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
@@ -395,8 +397,63 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
 }
 
 // ─── Dashboard principal ──────────────────────────────────────────────────────
+// ─── Score Widget ─────────────────────────────────────────────────────────────
+function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: () => void }) {
+  const corScore =
+    score.total >= 80 ? '#10B981' :
+    score.total >= 60 ? '#3B82F6' :
+    score.total >= 40 ? '#F59E0B' : '#EF4444';
+
+  const labelNivel =
+    score.nivel === 'otimo' ? 'Ótimo' :
+    score.nivel === 'bom' ? 'Bom' :
+    score.nivel === 'atencao' ? 'Atenção' : 'Crítico';
+
+  return (
+    <div className="glass-card p-4" style={{ borderColor: `${corScore}33` }}>
+      <div className="flex items-center gap-4">
+        {/* Score circle */}
+        <div className="flex-shrink-0 text-center">
+          <div className="text-3xl font-black tabular-nums" style={{ color: corScore }}>
+            {score.total}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: corScore }}>
+            {labelNivel}
+          </div>
+        </div>
+
+        {/* Middle: label + bar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-300">Score de Saúde Financeira</span>
+          </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${score.total}%`, background: corScore }}
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[10px] text-slate-600">0</span>
+            <span className="text-[10px] text-slate-600">100</span>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={onNavegar}
+          className="flex-shrink-0 flex items-center gap-1 text-xs font-medium transition-colors"
+          style={{ color: corScore }}
+        >
+          Detalhes <ArrowRight size={11} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ onNovoPagina }: Props) {
-  const { transacoes, categorias, contas, cartoes, orcamentos, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
+  const { transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
   const [catFiltro, setCatFiltro] = useState<string | null>(null);
@@ -461,6 +518,18 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }
     setDicasIA(dicas);
   }, [dadosMes, setDicasIA, selicAtual]);
+
+  // Score de saúde financeira
+  const score = useMemo(
+    () => calcularScore({ transacoes, orcamentos, contas, cartoes, metas }),
+    [transacoes, orcamentos, contas, cartoes, metas],
+  );
+
+  // Previsão — próximos 7 dias
+  const proximosGastos = useMemo(
+    () => calcularPrevisao(transacoes, 7),
+    [transacoes],
+  );
 
   // useCountUp para valores animados
   const patrimonioAnimado = useCountUp(patrimonio);
@@ -544,6 +613,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
         </div>
       </div>
+
+      {/* ── Score de Saúde Financeira ───────────────────────────────────── */}
+      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
 
       {/* ── Próximas faturas ─────────────────────────────────────────────── */}
       <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
@@ -770,6 +842,44 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </section>
         );
       })()}
+
+      {/* ── Próximos gastos (7 dias) ────────────────────────────────────── */}
+      {proximosGastos.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-slate-300">
+              🔄 Gastos previstos — 7 dias
+            </span>
+            <button onClick={() => onNovoPagina('agentes')}
+              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+              Ver todos <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {proximosGastos.slice(0, 3).map((g, i) => {
+              const urgente = g.diasRestantes <= 3;
+              const dataFormatada = new Date(g.data + 'T00:00:00').toLocaleDateString('pt-BR', {
+                day: '2-digit', month: 'short',
+              });
+              return (
+                <div key={i} className={`glass-card flex items-center gap-3 p-3 ${urgente ? 'border-amber-500/20' : ''}`}>
+                  <div className="text-lg flex-shrink-0">🔄</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">{g.descricao}</div>
+                    <div className={`text-xs mt-0.5 ${urgente ? 'text-amber-400 font-semibold' : 'text-slate-500'}`}>
+                      {urgente && '⚠ '}
+                      {dataFormatada} • {g.diasRestantes === 0 ? 'Hoje' : g.diasRestantes === 1 ? 'Amanhã' : `Em ${g.diasRestantes} dias`}
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold text-red-400 tabular-nums flex-shrink-0">
+                    -{formatarMoeda(g.valor)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Últimas transações ──────────────────────────────────────────── */}
       <section>
