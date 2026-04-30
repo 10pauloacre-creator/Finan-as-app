@@ -8,7 +8,10 @@ import {
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import type { TransacaoExtraida } from '@/app/api/assistente/texto/route';
 import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
-import type { MetodoPagamento, OrigemTransacao } from '@/types';
+import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Transacao } from '@/types';
+import { BANCO_INFO } from '@/types';
+import { detectarDuplicata } from '@/lib/duplicata';
+import ModalDuplicata from '@/components/modais/ModalDuplicata';
 
 /* ── Tipos ──────────────────────────────────────────────────────────────────── */
 
@@ -18,14 +21,14 @@ interface Mensagem {
   id: string;
   papel: MsgPapel;
   texto: string;
-  imagemPreview?: string;   // object URL da imagem enviada
-  pdfNome?: string;         // nome do PDF anexado
-  pdfInfo?: string;         // ex: "12 lançamentos · R$ 1.234,56"
+  imagemPreview?: string;
+  pdfNome?: string;
+  pdfInfo?: string;
   eAudio?: boolean;
   transcricao?: string;
   transacao?: TransacaoExtraida;
-  transacoes?: TransacaoExtraida[];  // lote de extrato ou fatura
-  confirmadas?: Set<number>;        // índices confirmados no lote
+  transacoes?: TransacaoExtraida[];
+  confirmadas?: Set<number>;
   status?: 'confirmada' | 'cancelada';
   carregando?: boolean;
   ts: number;
@@ -60,10 +63,10 @@ function mapCategoria(nome: string, tipo: 'despesa' | 'receita'): string {
 }
 
 function mapMetodo(m: string): MetodoPagamento {
-  if (m === 'pix')     return 'pix';
-  if (m === 'credito') return 'credito';
-  if (m === 'debito')  return 'debito';
-  if (m === 'dinheiro')return 'dinheiro';
+  if (m === 'pix')      return 'pix';
+  if (m === 'credito')  return 'credito';
+  if (m === 'debito')   return 'debito';
+  if (m === 'dinheiro') return 'dinheiro';
   return 'pix';
 }
 
@@ -94,14 +97,24 @@ const MSG_BOAS_VINDAS: Mensagem = {
 interface CardProps {
   tx: TransacaoExtraida;
   status?: 'confirmada' | 'cancelada';
-  onConfirmar: () => void;
+  contas: ContaBancaria[];
+  cartoes: CartaoCredito[];
+  onConfirmar: (contaId?: string, cartaoId?: string) => void;
   onCancelar: () => void;
 }
 
-function TransacaoCard({ tx, status, onConfirmar, onCancelar }: CardProps) {
+function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }: CardProps) {
   const isDespesa = tx.tipo === 'despesa';
   const confirmed = status === 'confirmada';
   const cancelled = status === 'cancelada';
+
+  const [contaId, setContaId] = useState('');
+  const [cartaoId, setCartaoId] = useState('');
+
+  const mostrarContas = !confirmed && !cancelled &&
+    (tx.metodo_pagamento === 'pix' || tx.metodo_pagamento === 'debito' ||
+     tx.metodo_pagamento === 'nao_informado' || !tx.metodo_pagamento);
+  const mostrarCartoes = !confirmed && !cancelled && tx.metodo_pagamento === 'credito';
 
   return (
     <div className={`mt-3 rounded-xl border overflow-hidden transition-all
@@ -148,11 +161,65 @@ function TransacaoCard({ tx, status, onConfirmar, onCancelar }: CardProps) {
         </div>
       </div>
 
+      {/* Seletor de conta bancária */}
+      {mostrarContas && contas.length > 0 && (
+        <div className="px-4 pb-3 space-y-1.5">
+          <p className="text-[11px] text-slate-500">Conta de origem (opcional)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {contas.map(conta => {
+              const info = BANCO_INFO[conta.banco];
+              const ativo = contaId === conta.id;
+              return (
+                <button
+                  key={conta.id}
+                  type="button"
+                  onClick={() => setContaId(ativo ? '' : conta.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
+                    ativo
+                      ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
+                      : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {info.nome}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Seletor de cartão de crédito */}
+      {mostrarCartoes && cartoes.length > 0 && (
+        <div className="px-4 pb-3 space-y-1.5">
+          <p className="text-[11px] text-slate-500">Cartão de crédito (opcional)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {cartoes.map(cartao => {
+              const info = BANCO_INFO[cartao.banco];
+              const ativo = cartaoId === cartao.id;
+              return (
+                <button
+                  key={cartao.id}
+                  type="button"
+                  onClick={() => setCartaoId(ativo ? '' : cartao.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
+                    ativo
+                      ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
+                      : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {info.nome}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Ações */}
       {!confirmed && !cancelled && (
         <div className="flex gap-2 px-4 pb-3">
           <button
-            onClick={onConfirmar}
+            onClick={() => onConfirmar(contaId || undefined, cartaoId || undefined)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-semibold transition-colors"
           >
             <CheckCircle2 size={14} />
@@ -175,15 +242,16 @@ function TransacaoCard({ tx, status, onConfirmar, onCancelar }: CardProps) {
 
 interface BubbleProps {
   msg: Mensagem;
-  onConfirmar:     (msgId: string) => void;
+  contas: ContaBancaria[];
+  cartoes: CartaoCredito[];
+  onConfirmar:     (msgId: string, contaId?: string, cartaoId?: string) => void;
   onCancelar:      (msgId: string) => void;
-  onConfirmarLote: (msgId: string, idx: number) => void;
+  onConfirmarLote: (msgId: string, idx: number, contaId?: string, cartaoId?: string) => void;
 }
 
-function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) {
+function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) {
   const isUser = msg.papel === 'user';
 
-  // Renderiza texto com markdown básico (**bold**, *italic*, \n)
   function renderTexto(texto: string) {
     return texto.split('\n').map((linha, i) => {
       const parts = linha.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -275,7 +343,9 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
           <TransacaoCard
             tx={msg.transacao}
             status={msg.status}
-            onConfirmar={() => onConfirmar(msg.id)}
+            contas={contas}
+            cartoes={cartoes}
+            onConfirmar={(cId, caId) => onConfirmar(msg.id, cId, caId)}
             onCancelar={() => onCancelar(msg.id)}
           />
         )}
@@ -283,7 +353,6 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
         {/* Cards de lote (extrato / fatura PDF) */}
         {msg.transacoes && msg.transacoes.length > 0 && (
           <div className="mt-2">
-            {/* Barra de progresso do lote */}
             {(() => {
               const total     = msg.transacoes!.length;
               const confirmed = msg.confirmadas?.size ?? 0;
@@ -317,13 +386,15 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
 
             <div className="space-y-2">
               {msg.transacoes.map((tx, i) => {
-                const confirmed = msg.confirmadas?.has(i);
+                const isConfirmed = msg.confirmadas?.has(i);
                 return (
                   <TransacaoCard
                     key={i}
                     tx={tx}
-                    status={confirmed ? 'confirmada' : undefined}
-                    onConfirmar={() => onConfirmarLote(msg.id, i)}
+                    status={isConfirmed ? 'confirmada' : undefined}
+                    contas={contas}
+                    cartoes={cartoes}
+                    onConfirmar={(cId, caId) => onConfirmarLote(msg.id, i, cId, caId)}
                     onCancelar={() => {/* ignorar cancelamento individual no lote */}}
                   />
                 );
@@ -344,27 +415,34 @@ function Bubble({ msg, onConfirmar, onCancelar, onConfirmarLote }: BubbleProps) 
 /* ── Componente Principal ───────────────────────────────────────────────────── */
 
 export default function Assistente() {
-  const [msgs, setMsgs]       = useState<Mensagem[]>([MSG_BOAS_VINDAS]);
-  const [texto, setTexto]     = useState('');
+  const [msgs, setMsgs]         = useState<Mensagem[]>([MSG_BOAS_VINDAS]);
+  const [texto, setTexto]       = useState('');
   const [gravando, setGravando] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   const bottomRef        = useRef<HTMLDivElement>(null);
-  const fileInputRef     = useRef<HTMLInputElement>(null); // galeria
-  const cameraInputRef   = useRef<HTMLInputElement>(null); // câmera
+  const fileInputRef     = useRef<HTMLInputElement>(null);
+  const cameraInputRef   = useRef<HTMLInputElement>(null);
   const pdfInputRef      = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
 
-  const { adicionarTransacao } = useFinanceiroStore();
+  const { adicionarTransacao, contas, cartoes, transacoes } = useFinanceiroStore();
 
-  // Auto-scroll ao último item
+  // State for duplicate modal
+  const [duplicataPendente, setDuplicataPendente] = useState<{
+    tx: TransacaoExtraida;
+    origem: OrigemTransacao;
+    contaId?: string;
+    cartaoId?: string;
+    markConfirmed: () => void;
+  } | null>(null);
+  const [duplicataExistente, setDuplicataExistente] = useState<Transacao | null>(null);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs]);
-
-  // ── Adicionar mensagem ──────────────────────────────────────────────────────
 
   function addMsg(parcial: Omit<Mensagem, 'id' | 'ts'> & { id?: string }): string {
     const id = parcial.id ?? gerarId();
@@ -378,26 +456,63 @@ export default function Assistente() {
 
   // ── Confirmar transação ─────────────────────────────────────────────────────
 
-  const confirmarTransacao = useCallback((tx: TransacaoExtraida, origem: OrigemTransacao) => {
+  const confirmarTransacao = useCallback((
+    tx: TransacaoExtraida,
+    origem: OrigemTransacao,
+    contaId?: string,
+    cartaoId?: string,
+  ) => {
     adicionarTransacao({
-      valor:             tx.valor,
-      descricao:         tx.descricao,
-      categoria_id:      mapCategoria(tx.categoria, tx.tipo),
-      data:              tx.data,
-      horario:           tx.hora ?? undefined,
-      tipo:              tx.tipo,
-      metodo_pagamento:  mapMetodo(tx.metodo_pagamento),
-      parcelas:          tx.parcelas ?? undefined,
-      local:             tx.local ?? undefined,
+      valor:            tx.valor,
+      descricao:        tx.descricao,
+      categoria_id:     mapCategoria(tx.categoria, tx.tipo),
+      data:             tx.data,
+      horario:          tx.hora ?? undefined,
+      tipo:             tx.tipo,
+      metodo_pagamento: mapMetodo(tx.metodo_pagamento),
+      parcelas:         tx.parcelas ?? undefined,
+      local:            tx.local ?? undefined,
       origem,
+      conta_id:         contaId,
+      cartao_id:        cartaoId,
     });
   }, [adicionarTransacao]);
 
-  function onConfirmar(msgId: string) {
+  function tentarConfirmar(
+    tx: TransacaoExtraida,
+    origem: OrigemTransacao,
+    markConfirmed: () => void,
+    contaId?: string,
+    cartaoId?: string,
+  ) {
+    const duplicata = detectarDuplicata(
+      {
+        valor: tx.valor,
+        categoria_id: mapCategoria(tx.categoria, tx.tipo),
+        data: tx.data,
+      },
+      transacoes,
+    );
+
+    if (duplicata) {
+      setDuplicataPendente({ tx, origem, contaId, cartaoId, markConfirmed });
+      setDuplicataExistente(duplicata);
+    } else {
+      confirmarTransacao(tx, origem, contaId, cartaoId);
+      markConfirmed();
+    }
+  }
+
+  function onConfirmar(msgId: string, contaId?: string, cartaoId?: string) {
     setMsgs(prev => prev.map(m => {
       if (m.id !== msgId || !m.transacao) return m;
-      confirmarTransacao(m.transacao, 'assistente');
-      return { ...m, status: 'confirmada' };
+      const tx = m.transacao;
+      tentarConfirmar(tx, 'assistente', () => {
+        setMsgs(prev2 => prev2.map(m2 =>
+          m2.id === msgId ? { ...m2, status: 'confirmada' } : m2,
+        ));
+      }, contaId, cartaoId);
+      return m;
     }));
   }
 
@@ -407,16 +522,21 @@ export default function Assistente() {
     ));
   }
 
-  function onConfirmarLote(msgId: string, idx: number) {
-    if (idx < 0) return; // cancelar item individual: ignorar
+  function onConfirmarLote(msgId: string, idx: number, contaId?: string, cartaoId?: string) {
+    if (idx < 0) return;
     setMsgs(prev => prev.map(m => {
       if (m.id !== msgId || !m.transacoes) return m;
       const tx = m.transacoes[idx];
       if (!tx) return m;
-      confirmarTransacao(tx, 'assistente_imagem');
-      const novasConfirmadas = new Set(m.confirmadas ?? []);
-      novasConfirmadas.add(idx);
-      return { ...m, confirmadas: novasConfirmadas };
+      tentarConfirmar(tx, 'assistente_imagem', () => {
+        setMsgs(prev2 => prev2.map(m2 => {
+          if (m2.id !== msgId) return m2;
+          const novasConfirmadas = new Set(m2.confirmadas ?? []);
+          novasConfirmadas.add(idx);
+          return { ...m2, confirmadas: novasConfirmadas };
+        }));
+      }, contaId, cartaoId);
+      return m;
     }));
   }
 
@@ -526,7 +646,6 @@ export default function Assistente() {
       mr.start();
       setGravando(true);
 
-      // Auto-stop após 60s
       setTimeout(() => {
         if (mr.state === 'recording') {
           mr.stop();
@@ -577,7 +696,6 @@ export default function Assistente() {
     const tamanhoMB = (file.size / 1024 / 1024).toFixed(1);
     setEnviando(true);
 
-    // Mensagem do usuário com preview do PDF
     addMsg({
       papel: 'user',
       texto: '',
@@ -585,11 +703,10 @@ export default function Assistente() {
       pdfInfo: `${tamanhoMB} MB`,
     });
 
-    // Mensagem da IA carregando
     const aiId = addMsg({
       papel: 'assistente',
       texto: '',
-      pdfNome: file.name,  // passa para exibir "Analisando fatura..."
+      pdfNome: file.name,
       carregando: true,
     });
 
@@ -631,158 +748,178 @@ export default function Assistente() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)] lg:h-[calc(100dvh-3rem)] -mx-4 -mt-0 lg:-mx-6 lg:-mt-0">
+    <>
+      <div className="flex flex-col h-[calc(100dvh-8rem)] lg:h-[calc(100dvh-3rem)] -mx-4 -mt-0 lg:-mx-6 lg:-mt-0">
 
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0"
-        style={{ background: '#0A0E1A' }}>
-        <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-          <Sparkles size={17} className="text-purple-400" />
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0"
+          style={{ background: '#0A0E1A' }}>
+          <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+            <Sparkles size={17} className="text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-white">Assistente IA</h2>
+            <p className="text-[11px] text-slate-500">Texto · Voz · Foto · Fatura PDF</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-semibold text-white">Assistente IA</h2>
-          <p className="text-[11px] text-slate-500">Texto · Voz · Foto · Fatura PDF</p>
-        </div>
-      </div>
 
-      {/* Mensagens */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {msgs.map(msg => (
-          <Bubble
-            key={msg.id}
-            msg={msg}
-            onConfirmar={onConfirmar}
-            onCancelar={onCancelar}
-            onConfirmarLote={onConfirmarLote}
-          />
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Indicador de gravação */}
-      {gravando && (
-        <div className="mx-4 mb-2 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-red-400 text-xs font-medium flex-1">Gravando... Toque no microfone para enviar</span>
-          <button onClick={toggleGravacao} className="text-red-400 hover:text-red-300 text-xs font-semibold">
-            Parar
-          </button>
-        </div>
-      )}
-
-      {/* Input bar */}
-      <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/[0.06]"
-        style={{ background: '#0A0E1A' }}>
-        <div className="flex items-end gap-2">
-
-          {/* Botão galeria */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={enviando || gravando}
-            className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
-            aria-label="Escolher imagem da galeria"
-            title="Galeria de fotos"
-          >
-            <ImageIcon size={18} />
-          </button>
-          {/* input galeria — sem capture, abre seletor de arquivos/fotos */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImagem}
-          />
-
-          {/* Botão câmera */}
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={enviando || gravando}
-            className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
-            aria-label="Tirar foto"
-            title="Tirar foto"
-          >
-            <Camera size={18} />
-          </button>
-          {/* input câmera — capture força abertura direta da câmera */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleImagem}
-          />
-
-          {/* Botão de PDF */}
-          <button
-            onClick={() => pdfInputRef.current?.click()}
-            disabled={enviando || gravando}
-            className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-40 shrink-0"
-            aria-label="Enviar fatura PDF"
-            title="Fatura do cartão (PDF)"
-          >
-            <CreditCard size={17} />
-          </button>
-          <input
-            ref={pdfInputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="hidden"
-            onChange={handlePDF}
-          />
-
-          {/* Campo de texto */}
-          <div className="flex-1 relative">
-            <textarea
-              value={texto}
-              onChange={e => setTexto(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  enviarTexto();
-                }
-              }}
-              placeholder='Ex: "Paguei R$ 35 no almoço no crédito"'
-              disabled={enviando || gravando}
-              rows={1}
-              className="w-full bg-[#0F1629] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-purple-500/50 disabled:opacity-40 max-h-24 overflow-auto"
-              style={{ lineHeight: '1.5' }}
+        {/* Mensagens */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {msgs.map(msg => (
+            <Bubble
+              key={msg.id}
+              msg={msg}
+              contas={contas}
+              cartoes={cartoes}
+              onConfirmar={onConfirmar}
+              onCancelar={onCancelar}
+              onConfirmarLote={onConfirmarLote}
             />
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Indicador de gravação */}
+        {gravando && (
+          <div className="mx-4 mb-2 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-red-400 text-xs font-medium flex-1">Gravando... Toque no microfone para enviar</span>
+            <button onClick={toggleGravacao} className="text-red-400 hover:text-red-300 text-xs font-semibold">
+              Parar
+            </button>
+          </div>
+        )}
+
+        {/* Input bar */}
+        <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/[0.06]"
+          style={{ background: '#0A0E1A' }}>
+          <div className="flex items-end gap-2">
+
+            {/* Botão galeria */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={enviando || gravando}
+              className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
+              aria-label="Escolher imagem da galeria"
+              title="Galeria de fotos"
+            >
+              <ImageIcon size={18} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImagem}
+            />
+
+            {/* Botão câmera */}
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={enviando || gravando}
+              className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-white/[0.08] transition-colors disabled:opacity-40 shrink-0"
+              aria-label="Tirar foto"
+              title="Tirar foto"
+            >
+              <Camera size={18} />
+            </button>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleImagem}
+            />
+
+            {/* Botão de PDF */}
+            <button
+              onClick={() => pdfInputRef.current?.click()}
+              disabled={enviando || gravando}
+              className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-40 shrink-0"
+              aria-label="Enviar fatura PDF"
+              title="Fatura do cartão (PDF)"
+            >
+              <CreditCard size={17} />
+            </button>
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={handlePDF}
+            />
+
+            {/* Campo de texto */}
+            <div className="flex-1 relative">
+              <textarea
+                value={texto}
+                onChange={e => setTexto(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    enviarTexto();
+                  }
+                }}
+                placeholder='Ex: "Paguei R$ 35 no almoço no crédito"'
+                disabled={enviando || gravando}
+                rows={1}
+                className="w-full bg-[#0F1629] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-purple-500/50 disabled:opacity-40 max-h-24 overflow-auto"
+                style={{ lineHeight: '1.5' }}
+              />
+            </div>
+
+            {/* Botão mic / enviar */}
+            {texto.trim() ? (
+              <button
+                onClick={enviarTexto}
+                disabled={enviando}
+                className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white hover:bg-purple-500 transition-colors disabled:opacity-40 shrink-0"
+                aria-label="Enviar"
+              >
+                {enviando ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
+              </button>
+            ) : (
+              <button
+                onClick={toggleGravacao}
+                disabled={enviando}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 disabled:opacity-40
+                  ${gravando
+                    ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
+                    : 'bg-white/[0.04] border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
+                  }`}
+                aria-label={gravando ? 'Parar gravação' : 'Gravar áudio'}
+              >
+                {gravando ? <MicOff size={17} /> : <Mic size={17} />}
+              </button>
+            )}
           </div>
 
-          {/* Botão mic / enviar */}
-          {texto.trim() ? (
-            <button
-              onClick={enviarTexto}
-              disabled={enviando}
-              className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white hover:bg-purple-500 transition-colors disabled:opacity-40 shrink-0"
-              aria-label="Enviar"
-            >
-              {enviando ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
-            </button>
-          ) : (
-            <button
-              onClick={toggleGravacao}
-              disabled={enviando}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0 disabled:opacity-40
-                ${gravando
-                  ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
-                  : 'bg-white/[0.04] border border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
-                }`}
-              aria-label={gravando ? 'Parar gravação' : 'Gravar áudio'}
-            >
-              {gravando ? <MicOff size={17} /> : <Mic size={17} />}
-            </button>
-          )}
+          {/* Dica */}
+          <p className="text-[10px] text-slate-700 text-center mt-2">
+            <AlertCircle size={9} className="inline mr-1" />
+            IA pode cometer erros. Confira os dados antes de confirmar.
+          </p>
         </div>
-
-        {/* Dica */}
-        <p className="text-[10px] text-slate-700 text-center mt-2">
-          <AlertCircle size={9} className="inline mr-1" />
-          IA pode cometer erros. Confira os dados antes de confirmar.
-        </p>
       </div>
-    </div>
+
+      {/* Modal de duplicata */}
+      {duplicataExistente && duplicataPendente && (
+        <ModalDuplicata
+          transacaoExistente={duplicataExistente}
+          onConfirmar={() => {
+            const { tx, origem, contaId, cartaoId, markConfirmed } = duplicataPendente;
+            confirmarTransacao(tx, origem, contaId, cartaoId);
+            markConfirmed();
+            setDuplicataPendente(null);
+            setDuplicataExistente(null);
+          }}
+          onCancelar={() => {
+            setDuplicataPendente(null);
+            setDuplicataExistente(null);
+          }}
+        />
+      )}
+    </>
   );
 }

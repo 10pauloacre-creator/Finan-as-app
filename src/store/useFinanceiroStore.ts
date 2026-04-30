@@ -103,8 +103,20 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   adicionarTransacao: (dados) => {
     const nova: Transacao = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
     storageTransacoes.save(nova);
-    set(s => ({ transacoes: [nova, ...s.transacoes] }));
     syncSalvarTransacao(nova);
+    set(s => {
+      let cartoes = s.cartoes;
+      if (nova.cartao_id && nova.tipo === 'despesa') {
+        cartoes = s.cartoes.map(c => {
+          if (c.id !== nova.cartao_id) return c;
+          const updated = { ...c, fatura_atual: +(c.fatura_atual + nova.valor).toFixed(2) };
+          storageCartoes.save(updated);
+          syncSalvarCartao(updated);
+          return updated;
+        });
+      }
+      return { transacoes: [nova, ...s.transacoes], cartoes };
+    });
     return nova;
   },
   editarTransacao: (id, dados) => {
