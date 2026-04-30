@@ -28,7 +28,7 @@ export interface RespostaAssistente {
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
-const PROMPT_EXTRACAO = (texto: string) => `Você é um extrator de transações financeiras. Analise a mensagem e decida:
+const PROMPT_EXTRACAO = (texto: string, contexto?: string) => `Você é um extrator de transações financeiras. Analise a mensagem e decida:
 
 CASO 1 — contém gasto ou receita → responda SOMENTE com JSON (sem texto adicional):
 {"tipo":"despesa","valor":200,"descricao":"Manutenção geladeira","categoria":"Moradia","data":"${HOJE()}","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":"Itaú"}
@@ -48,14 +48,14 @@ Netflix/Spotify → Assinaturas | Farmácia → Farmácia | Aluguel → Moradia 
 Data não informada → ${HOJE()} | Método não informado → "nao_informado"
 
 IMPORTANTE: Responda APENAS com o JSON, sem explicações, sem markdown.
-
+${contexto ? `\nContexto financeiro do usuário:\n${contexto}\n` : ''}
 Mensagem: "${texto}"`;
 
-const PROMPT_CONVERSA = (texto: string) => `Você é o assistente financeiro do FinanceiroIA, app de controle financeiro pessoal.
+const PROMPT_CONVERSA = (texto: string, contexto?: string) => `Você é o assistente financeiro do FinanceiroIA, app de controle financeiro pessoal.
 Responda em português brasileiro de forma amigável, concisa e útil (máx. 3 parágrafos curtos).
 Ajude com dúvidas sobre finanças pessoais, orçamento, investimentos e economia doméstica.
 Se o usuário mencionar um gasto sem detalhes suficientes, oriente-o a informar valor e descrição.
-
+${contexto ? `\nDados financeiros do usuário (use para responder perguntas específicas):\n${contexto}\n` : ''}
 Pergunta: ${texto}`;
 
 // ── Parser JSON ──────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ export function parseTransacaoJSON(raw: string): TransacaoExtraida | { erro: str
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { texto } = await req.json() as { texto: string };
+    const { texto, contexto } = await req.json() as { texto: string; contexto?: string };
     if (!texto?.trim()) {
       return NextResponse.json({ error: 'texto obrigatório' }, { status: 400 });
     }
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     // 1. Tenta extrair transação
-    const extractResult_raw = await model.generateContent(PROMPT_EXTRACAO(texto));
+    const extractResult_raw = await model.generateContent(PROMPT_EXTRACAO(texto, contexto));
     const extractResult = parseTransacaoJSON(
       extractResult_raw.response.text().trim(),
     );
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       model: 'gemini-2.0-flash',
       generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
     });
-    const chatResult = await modelConversa.generateContent(PROMPT_CONVERSA(texto));
+    const chatResult = await modelConversa.generateContent(PROMPT_CONVERSA(texto, contexto));
     const resposta = chatResult.response.text().trim()
       || 'Desculpe, não consegui processar sua mensagem. Tente novamente.';
 

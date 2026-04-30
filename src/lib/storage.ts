@@ -2,7 +2,7 @@
  * STORAGE LOCAL — armazena dados no navegador quando offline
  */
 
-import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito } from '@/types';
+import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
 
 const KEYS = {
@@ -13,6 +13,7 @@ const KEYS = {
   CONFIG:       'fin_config',
   CONTAS:       'fin_contas',
   CARTOES:      'fin_cartoes',
+  ORCAMENTOS:   'fin_orcamentos',
 };
 
 function get<T>(key: string): T[] {
@@ -169,6 +170,21 @@ export const storageMetas = {
     set(KEYS.METAS, lista);
   },
   delete: (id: string): void => set(KEYS.METAS, get<Meta>(KEYS.METAS).filter(x => x.id !== id)),
+};
+
+// ── ORÇAMENTOS ──────────────────────────────────────────
+export const storageOrcamentos = {
+  getAll: (): Orcamento[] => get<Orcamento>(KEYS.ORCAMENTOS),
+  getByMes: (mes: number, ano: number): Orcamento[] =>
+    get<Orcamento>(KEYS.ORCAMENTOS).filter(o => o.mes === mes && o.ano === ano),
+  save: (o: Orcamento): void => {
+    const lista = get<Orcamento>(KEYS.ORCAMENTOS);
+    const idx = lista.findIndex(x => x.id === o.id);
+    if (idx >= 0) lista[idx] = o; else lista.push(o);
+    set(KEYS.ORCAMENTOS, lista);
+  },
+  delete: (id: string): void =>
+    set(KEYS.ORCAMENTOS, get<Orcamento>(KEYS.ORCAMENTOS).filter(x => x.id !== id)),
 };
 
 // ── CONFIGURAÇÕES ───────────────────────────────────────

@@ -17,7 +17,7 @@ function bancoSigla(nome: string): string {
 import Sparkline from '@/components/ui/Sparkline';
 import { useCountUp } from '@/hooks/useCountUp';
 
-type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
 
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
@@ -396,7 +396,7 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
 
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 export default function Dashboard({ onNovoPagina }: Props) {
-  const { transacoes, categorias, contas, cartoes, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
+  const { transacoes, categorias, contas, cartoes, orcamentos, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
   const [catFiltro, setCatFiltro] = useState<string | null>(null);
@@ -699,6 +699,77 @@ export default function Dashboard({ onNovoPagina }: Props) {
           />
         </section>
       )}
+
+      {/* ── Alertas de Orçamento ───────────────────────────────────────── */}
+      {(() => {
+        const alertas = orcamentos
+          .filter(o => o.mes === mes && o.ano === ano && o.valor_limite > 0)
+          .map(o => {
+            const gasto = transacoes
+              .filter(t => {
+                const d = new Date(t.data + 'T00:00:00');
+                return t.tipo === 'despesa'
+                  && t.categoria_id === o.categoria_id
+                  && d.getMonth() + 1 === mes
+                  && d.getFullYear() === ano;
+              })
+              .reduce((s, t) => s + t.valor, 0);
+            const pct = (gasto / o.valor_limite) * 100;
+            return { o, gasto, pct };
+          })
+          .filter(({ pct }) => pct >= 80)
+          .sort((a, b) => b.pct - a.pct)
+          .slice(0, 3);
+
+        if (alertas.length === 0) return null;
+
+        return (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-300">⚠ Alertas de Orçamento</span>
+              </div>
+              <button onClick={() => onNovoPagina('orcamentos')}
+                className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                Ver orçamentos <ArrowRight size={12} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {alertas.map(({ o, gasto, pct }) => {
+                const cat = categorias.find(c => c.id === o.categoria_id);
+                const corBarra = pct >= 100 ? '#EF4444' : pct >= 90 ? '#F97316' : '#F59E0B';
+                return (
+                  <div key={o.id} className="glass-card p-3" style={{ borderColor: `${corBarra}33` }}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
+                      >
+                        {cat?.icone || '💳'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-white truncate">{cat?.nome || 'Outros'}</p>
+                        <p className="text-[10px] text-slate-500 tabular-nums">
+                          {formatarMoeda(gasto)} / {formatarMoeda(o.valor_limite)}
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold tabular-nums" style={{ color: corBarra }}>
+                        {pct.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${Math.min(pct, 100)}%`, background: corBarra }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ── Últimas transações ──────────────────────────────────────────── */}
       <section>

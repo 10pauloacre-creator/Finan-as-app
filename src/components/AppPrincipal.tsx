@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
+  Target, Repeat,
 } from 'lucide-react';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
@@ -13,11 +14,13 @@ import Bancos         from '@/components/paginas/Bancos';
 import Cartoes        from '@/components/paginas/Cartoes';
 import Assistente     from '@/components/paginas/Assistente';
 import Patrimonio     from '@/components/paginas/Patrimonio';
+import Orcamentos     from '@/components/paginas/Orcamentos';
+import Assinaturas    from '@/components/paginas/Assinaturas';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'configuracoes';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes';
 
 /** Desktop sidebar — all pages */
 const navDesktop = [
@@ -28,6 +31,8 @@ const navDesktop = [
   { id: 'bancos',       label: 'Bancos',        icone: Building2       },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
+  { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
+  { id: 'assinaturas',  label: 'Assinaturas',   icone: Repeat          },
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
 
@@ -71,6 +76,8 @@ export default function AppPrincipal() {
       case 'relatorios':    return <Relatorios />;
       case 'investimentos': return <Investimentos />;
       case 'patrimonio':    return <Patrimonio />;
+      case 'orcamentos':    return <Orcamentos />;
+      case 'assinaturas':   return <Assinaturas />;
       default:              return <Dashboard onNovoPagina={setPagina} />;
     }
   }

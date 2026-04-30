@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import {
   Transacao, Categoria, Investimento, Meta, ConfiguracaoApp,
-  DicaIA, ContaBancaria, CartaoCredito
+  DicaIA, ContaBancaria, CartaoCredito, Orcamento
 } from '@/types';
 import {
   storageTransacoes, storageCategoriass, storageInvestimentos,
-  storageMetas, storageConfig, storageContas, storageCartoes, gerarId,
+  storageMetas, storageConfig, storageContas, storageCartoes, storageOrcamentos, gerarId,
 } from '@/lib/storage';
 import {
   syncSalvarTransacao, syncExcluirTransacao,
@@ -23,6 +23,7 @@ interface FinanceiroState {
   metas:         Meta[];
   contas:        ContaBancaria[];
   cartoes:       CartaoCredito[];
+  orcamentos:    Orcamento[];
   config:        ConfiguracaoApp;
   dicasIA:       DicaIA[];
   autenticado:   boolean;
@@ -62,6 +63,11 @@ interface FinanceiroState {
   atualizarMeta:  (id: string, valor_atual: number) => void;
   excluirMeta:    (id: string) => void;
 
+  // Orçamentos
+  adicionarOrcamento: (o: Omit<Orcamento, 'id' | 'criado_em'>) => void;
+  editarOrcamento:    (id: string, dados: Partial<Orcamento>) => void;
+  excluirOrcamento:   (id: string) => void;
+
   // Config / IA
   atualizarConfig: (c: Partial<ConfiguracaoApp>) => void;
   setTaxas:        (selic: number, cdi: number, ipca: number) => void;
@@ -76,7 +82,7 @@ const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notifica
 
 export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   transacoes: [], categorias: [], investimentos: [], metas: [],
-  contas: [], cartoes: [], config: CONFIG_DEFAULT, dicasIA: [],
+  contas: [], cartoes: [], orcamentos: [], config: CONFIG_DEFAULT, dicasIA: [],
   autenticado: false, selicAtual: null, cdiAtual: null, ipcaAtual: null,
 
   autenticar: (pin) => {
@@ -95,6 +101,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
       metas:         storageMetas.getAll(),
       contas:        storageContas.getAll(),
       cartoes:       storageCartoes.getAll(),
+      orcamentos:    storageOrcamentos.getAll(),
       config:        storageConfig.get(),
     });
   },
@@ -204,6 +211,23 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   excluirMeta: (id) => {
     storageMetas.delete(id);
     set(s => ({ metas: s.metas.filter(m => m.id !== id) }));
+  },
+
+  // ── Orçamentos ──────────────────────────────────────
+  adicionarOrcamento: (dados) => {
+    const novo: Orcamento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+    storageOrcamentos.save(novo);
+    set(s => ({ orcamentos: [...s.orcamentos, novo] }));
+  },
+  editarOrcamento: (id, dados) => {
+    const lista = get().orcamentos.map(o => o.id === id ? { ...o, ...dados } : o);
+    const item = lista.find(o => o.id === id);
+    if (item) storageOrcamentos.save(item);
+    set({ orcamentos: lista });
+  },
+  excluirOrcamento: (id) => {
+    storageOrcamentos.delete(id);
+    set(s => ({ orcamentos: s.orcamentos.filter(o => o.id !== id) }));
   },
 
   // ── Config / IA ─────────────────────────────────────

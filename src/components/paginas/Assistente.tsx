@@ -6,6 +6,7 @@ import {
   Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
+import { construirContexto } from '@/lib/contexto-financeiro';
 import type { TransacaoExtraida } from '@/app/api/assistente/texto/route';
 import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
 import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Transacao } from '@/types';
@@ -428,7 +429,7 @@ export default function Assistente() {
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
 
-  const { adicionarTransacao, contas, cartoes, transacoes } = useFinanceiroStore();
+  const { adicionarTransacao, contas, cartoes, transacoes, categorias } = useFinanceiroStore();
 
   // State for duplicate modal
   const [duplicataPendente, setDuplicataPendente] = useState<{
@@ -588,10 +589,11 @@ export default function Assistente() {
     const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
 
     try {
+      const contexto = construirContexto({ transacoes, categorias, contas, cartoes });
       const res = await fetch('/api/assistente/texto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: t }),
+        body: JSON.stringify({ texto: t, contexto }),
       });
       await processarResposta(aiId, res);
     } catch {
