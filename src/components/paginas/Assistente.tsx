@@ -13,6 +13,7 @@ import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Tr
 import { BANCO_INFO } from '@/types';
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from '@/components/modais/ModalDuplicata';
+import BankLogo from '@/components/ui/BankLogo';
 
 /* ── Tipos ──────────────────────────────────────────────────────────────────── */
 
@@ -175,12 +176,13 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
                   key={conta.id}
                   type="button"
                   onClick={() => setContaId(ativo ? '' : conta.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
                     ativo
                       ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
                       : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                   }`}
                 >
+                  <BankLogo banco={conta.banco} size={18} className="h-[18px] w-[18px] rounded-md border border-white/10 p-0.5" />
                   {info.nome}
                 </button>
               );
@@ -202,12 +204,13 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
                   key={cartao.id}
                   type="button"
                   onClick={() => setCartaoId(ativo ? '' : cartao.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border ${
                     ativo
                       ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
                       : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                   }`}
                 >
+                  <BankLogo banco={cartao.banco} size={18} className="h-[18px] w-[18px] rounded-md border border-white/10 p-0.5" />
                   {info.nome}
                 </button>
               );

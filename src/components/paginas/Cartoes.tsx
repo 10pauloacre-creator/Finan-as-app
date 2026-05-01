@@ -5,9 +5,10 @@ import { Plus, Trash2, Pencil, CreditCard, Check, X, AlertCircle } from 'lucide-
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, BandeirCartao } from '@/types';
+import BankLogo from '@/components/ui/BankLogo';
+import BankSelector from '@/components/ui/BankSelector';
 
 const BANDEIRAS: BandeirCartao[] = ['visa', 'mastercard', 'elo', 'amex', 'hipercard'];
-const BANCOS_LISTA = Object.entries(BANCO_INFO) as [BancoSlug, typeof BANCO_INFO[BancoSlug]][];
 
 export default function Cartoes() {
   const { cartoes, adicionarCartao, excluirCartao, atualizarFaturaCartao } = useFinanceiroStore();
@@ -110,10 +111,10 @@ export default function Cartoes() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Banco *</label>
-              <select value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value as BancoSlug }))}
-                className="w-full bg-white/5 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500">
-                {BANCOS_LISTA.map(([slug, info]) => <option key={slug} value={slug}>{info.nome}</option>)}
-              </select>
+              <BankSelector
+                selected={form.banco}
+                onChange={(banco) => setForm(f => ({ ...f, banco }))}
+              />
             </div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Bandeira</label>
@@ -193,10 +194,7 @@ export default function Cartoes() {
                 {/* Top */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm"
-                      style={{ background: info.cor }}>
-                      {info.nome.slice(0,2).toUpperCase()}
-                    </div>
+                    <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
                       <div className="text-xs text-slate-500">{info.nome} • {cartao.bandeira}</div>
@@ -282,7 +280,7 @@ export default function Cartoes() {
           <div className="glass-card flex flex-col items-center justify-center py-14 text-slate-600">
             <CreditCard size={40} className="mb-3 opacity-30" />
             <p className="text-sm font-medium text-slate-500">Nenhum cartão cadastrado</p>
-            <p className="text-xs mt-1">Clique em "Novo Cartão" para começar</p>
+            <p className="text-xs mt-1">Clique em &quot;Novo Cartão&quot; para começar</p>
           </div>
         )}
       </div>

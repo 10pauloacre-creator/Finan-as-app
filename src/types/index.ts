@@ -8,7 +8,7 @@ export type TipoTransacao = 'despesa' | 'receita' | 'transferencia';
 export type TipoInvestimento = 'tesouro_selic' | 'tesouro_ipca' | 'tesouro_prefixado' | 'cdb' | 'lci_lca' | 'acoes' | 'fundos_di' | 'poupanca' | 'cripto' | 'outro';
 export type BandeirCartao = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard';
 export type TipoConta = 'corrente' | 'poupanca' | 'digital' | 'investimento';
-export type BancoSlug = 'nubank' | 'itau' | 'bradesco' | 'bb' | 'caixa' | 'inter' | 'c6' | 'santander' | 'outro';
+export type BancoSlug = 'nubank' | 'itau' | 'bradesco' | 'bb' | 'caixa' | 'inter' | 'c6' | 'santander' | 'mercadopago' | 'outro';
 
 // ─── Contas Bancárias ─────────────────────────────────
 export interface ContaBancaria {
@@ -163,14 +163,15 @@ export interface ConfiguracaoApp {
 }
 
 // ─── Helpers ─────────────────────────────────────────
-export const BANCO_INFO: Record<BancoSlug, { nome: string; cor: string; corTexto: string }> = {
-  nubank:    { nome: 'Nubank',         cor: '#820AD1', corTexto: '#FFFFFF' },
-  itau:      { nome: 'Itaú',           cor: '#F08300', corTexto: '#FFFFFF' },
-  bradesco:  { nome: 'Bradesco',       cor: '#CC092F', corTexto: '#FFFFFF' },
-  bb:        { nome: 'Banco do Brasil',cor: '#F7D000', corTexto: '#003087' },
-  caixa:     { nome: 'Caixa',          cor: '#005CA9', corTexto: '#FFFFFF' },
-  inter:     { nome: 'Banco Inter',    cor: '#FF7A00', corTexto: '#FFFFFF' },
-  c6:        { nome: 'C6 Bank',        cor: '#242424', corTexto: '#FFFFFF' },
-  santander: { nome: 'Santander',      cor: '#EC0000', corTexto: '#FFFFFF' },
+export const BANCO_INFO: Record<BancoSlug, { nome: string; cor: string; corTexto: string; logoUrl?: string }> = {
+  nubank:    { nome: 'Nubank',         cor: '#820AD1', corTexto: '#FFFFFF', logoUrl: 'https://nubank.com.br/favicon.ico' },
+  itau:      { nome: 'Itaú',           cor: '#F08300', corTexto: '#FFFFFF', logoUrl: 'https://www.itau.com.br/favicon.ico' },
+  bradesco:  { nome: 'Bradesco',       cor: '#CC092F', corTexto: '#FFFFFF', logoUrl: 'https://banco.bradesco/favicon.ico' },
+  bb:        { nome: 'Banco do Brasil',cor: '#F7D000', corTexto: '#003087', logoUrl: 'https://www.bb.com.br/favicon.ico' },
+  caixa:     { nome: 'Caixa',          cor: '#005CA9', corTexto: '#FFFFFF', logoUrl: 'https://www.caixa.gov.br/favicon.ico' },
+  inter:     { nome: 'Banco Inter',    cor: '#FF7A00', corTexto: '#FFFFFF', logoUrl: 'https://inter.co/favicon.ico' },
+  c6:        { nome: 'C6 Bank',        cor: '#242424', corTexto: '#FFFFFF', logoUrl: 'https://www.c6bank.com.br/favicon.ico' },
+  santander: { nome: 'Santander',      cor: '#EC0000', corTexto: '#FFFFFF', logoUrl: 'https://www.santander.com.br/favicon.ico' },
+  mercadopago: { nome: 'Mercado Pago', cor: '#00B1EA', corTexto: '#FFFFFF', logoUrl: 'https://www.mercadopago.com.br/favicon.ico' },
   outro:     { nome: 'Outro Banco',    cor: '#6B7280', corTexto: '#FFFFFF' },
 };

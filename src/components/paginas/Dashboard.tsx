@@ -11,12 +11,8 @@ import { BANCO_INFO, BancoSlug } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
-
-// Deriva sigla do nome do banco
-function bancoSigla(nome: string): string {
-  return nome.slice(0, 2).toUpperCase();
-}
 import Sparkline from '@/components/ui/Sparkline';
+import BankLogo from '@/components/ui/BankLogo';
 import { useCountUp } from '@/hooks/useCountUp';
 
 type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
@@ -24,7 +20,6 @@ interface Props { onNovoPagina: (p: Pagina) => void; }
 
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 // ─── Donut SVG interativo ──────────────────────────────────────────────────────
 interface DonutItem { nome: string; valor: number; cor: string; icone?: string }
@@ -377,7 +372,6 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
       </div>
       <div className="space-y-2">
         {proximos.map(c => {
-          const info = BANCO_INFO[c.banco as BancoSlug] || BANCO_INFO.outro;
           const urgente = c.diasRestantes < 5;
           return (
             <button
@@ -386,12 +380,7 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
               onClick={onNavegar}
               className="glass-card flex items-center gap-3 p-3 w-full text-left"
             >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ background: info.cor }}
-              >
-                {bancoSigla(info.nome)}
-              </div>
+              <BankLogo banco={c.banco as BancoSlug} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white truncate">{c.nome}</div>
                 <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
@@ -662,10 +651,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: info.cor, color: info.corTexto }}>
-                      {bancoSigla(info.nome)}
-                    </div>
+                    <BankLogo banco={conta.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-white truncate">{info.nome}</div>
                       <div className="text-[11px] text-slate-500 capitalize">{conta.tipo}</div>
@@ -713,10 +699,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: info.cor, color: info.corTexto }}>
-                      {bancoSigla(info.nome)}
-                    </div>
+                    <BankLogo banco={cartao.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1 flex-shrink-0" />
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
                       <div className="text-[11px] text-slate-500 capitalize">{cartao.bandeira}</div>

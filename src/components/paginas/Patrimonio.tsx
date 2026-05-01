@@ -10,10 +10,8 @@ import { FINANCEIRO_STORAGE_EVENT, formatarMoeda, gerarId, storageReservas } fro
 import { formatFinancialDate } from '@/lib/date';
 import { BANCO_INFO, BancoSlug, MovimentoReserva, Reserva } from '@/types';
 import { syncExcluirReserva, syncSalvarReserva } from '@/lib/sync';
-
-function bancoSigla(nome: string): string {
-  return nome.slice(0, 2).toUpperCase();
-}
+import BankLogo from '@/components/ui/BankLogo';
+import BankSelector from '@/components/ui/BankSelector';
 
 function lerListaPersistida<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
@@ -205,9 +203,9 @@ interface ModalReservaProps {
 
 function ModalReserva({ reserva, onSalvar, onFechar }: ModalReservaProps) {
   const bancoInicial = reserva?.banco || 'nubank';
-  const corBanco = BANCO_INFO[bancoInicial]?.cor || '#10B981';
   const [nome, setNome] = useState(reserva?.nome || '');
   const [banco, setBanco] = useState<BancoSlug>(bancoInicial);
+  const corBanco = BANCO_INFO[banco]?.cor || '#10B981';
   const [percentualSelic, setPercentualSelic] = useState(String(reserva?.percentual_selic ?? 100));
   const [temMeta, setTemMeta] = useState(reserva?.tem_meta || false);
   const [valorMeta, setValorMeta] = useState(reserva?.valor_meta?.toString() || '');
@@ -288,15 +286,7 @@ function ModalReserva({ reserva, onSalvar, onFechar }: ModalReservaProps) {
 
           <div>
             <label className="text-xs text-slate-500 mb-1.5 block">Banco</label>
-            <select
-              value={banco}
-              onChange={(event) => setBanco(event.target.value as BancoSlug)}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500"
-            >
-              {Object.entries(BANCO_INFO).map(([slug, info]) => (
-                <option key={slug} value={slug}>{info.nome}</option>
-              ))}
-            </select>
+            <BankSelector selected={banco} onChange={setBanco} />
           </div>
         </div>
 
@@ -371,7 +361,10 @@ function ModalReserva({ reserva, onSalvar, onFechar }: ModalReservaProps) {
 
         <div className="rounded-2xl p-3 border border-white/10" style={{ background: `${corBanco}14` }}>
           <p className="text-xs text-slate-400 mb-1">Banco selecionado</p>
-          <p className="text-sm font-semibold" style={{ color: corBanco }}>{BANCO_INFO[banco].nome}</p>
+          <div className="flex items-center gap-3">
+            <BankLogo banco={banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
+            <p className="text-sm font-semibold" style={{ color: corBanco }}>{BANCO_INFO[banco].nome}</p>
+          </div>
         </div>
 
         <button
@@ -723,12 +716,7 @@ export default function Patrimonio() {
               return (
                 <div key={conta.id}>
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ background: info.cor, color: info.corTexto }}
-                    >
-                      {bancoSigla(info.nome)}
-                    </div>
+                    <BankLogo banco={conta.banco} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{conta.nome}</span>
@@ -862,9 +850,10 @@ export default function Patrimonio() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-semibold text-white">{reserva.nome}</h3>
                             <span
-                              className="text-[11px] px-2 py-0.5 rounded-full border"
+                              className="text-[11px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5"
                               style={{ color: bancoInfo.cor, borderColor: `${bancoInfo.cor}55`, background: `${bancoInfo.cor}14` }}
                             >
+                              <BankLogo banco={reserva.banco} size={16} className="h-4 w-4 rounded-md border border-white/10 p-0.5" />
                               {bancoInfo.nome}
                             </span>
                           </div>
@@ -1020,12 +1009,7 @@ export default function Patrimonio() {
               return (
                 <div key={cartao.id}>
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ background: info.cor, color: info.corTexto }}
-                    >
-                      {bancoSigla(info.nome)}
-                    </div>
+                    <BankLogo banco={cartao.banco} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{cartao.nome}</span>

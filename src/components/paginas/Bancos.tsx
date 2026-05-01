@@ -9,10 +9,11 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, TipoConta, ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalPluggyConnect from '@/components/modais/ModalPluggyConnect';
+import BankLogo from '@/components/ui/BankLogo';
+import BankSelector from '@/components/ui/BankSelector';
 import type { SyncResult } from '@/app/api/pluggy/sync/route';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
-const BANCOS_LISTA = Object.entries(BANCO_INFO) as [BancoSlug, typeof BANCO_INFO[BancoSlug]][];
 const TIPOS_CONTA: TipoConta[] = ['corrente', 'poupanca', 'digital', 'investimento'];
 
 export default function Bancos() {
@@ -195,8 +196,6 @@ export default function Bancos() {
   }
 
   const totalContas  = contas.reduce((s, c) => s + c.saldo, 0);
-  const contaDetalhes = contaSel ? contas.find(c => c.id === contaSel) : null;
-
   return (
     <div className="space-y-5 animate-fade-up">
 
@@ -291,12 +290,10 @@ export default function Bancos() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Banco *</label>
-              <select value={form.banco} onChange={e => setForm(f => ({ ...f, banco: e.target.value as BancoSlug }))}
-                className="w-full bg-white/5 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500">
-                {BANCOS_LISTA.map(([slug, info]) => (
-                  <option key={slug} value={slug}>{info.nome}</option>
-                ))}
-              </select>
+              <BankSelector
+                selected={form.banco}
+                onChange={(banco) => setForm(f => ({ ...f, banco }))}
+              />
             </div>
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Tipo</label>
@@ -355,10 +352,7 @@ export default function Bancos() {
                 {/* Linha principal */}
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                      style={{ background: info.cor }}>
-                      {info.nome.slice(0, 2).toUpperCase()}
-                    </div>
+                    <BankLogo banco={conta.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5 flex-shrink-0" />
                     {conectado && (
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-[#0F1629]">
                         <Wifi size={8} className="text-white" />

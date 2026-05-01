@@ -8,6 +8,7 @@ import { MetodoPagamento, TipoTransacao, Transacao, BANCO_INFO } from '@/types';
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from './ModalDuplicata';
 import { formatFinancialDate } from '@/lib/date';
+import BankLogo from '@/components/ui/BankLogo';
 
 interface Props {
   aberto: boolean;
@@ -363,12 +364,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                         key={conta.id}
                         type="button"
                         onClick={() => setForm(f => ({ ...f, conta_id: ativo ? '' : conta.id }))}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                           ativo
                             ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
                             : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                         }`}
                       >
+                        <BankLogo banco={conta.banco} size={20} className="h-5 w-5 rounded-md border border-white/10 p-0.5" />
                         {info.nome} · {conta.tipo}
                       </button>
                     );
@@ -394,15 +396,18 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                         key={cartao.id}
                         type="button"
                         onClick={() => setForm(f => ({ ...f, cartao_id: ativo ? '' : cartao.id }))}
-                        className={`flex flex-col items-start px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                        className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
                           ativo
                             ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
                             : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                         }`}
                       >
-                        <span>{info.nome} ···{ultimos4}</span>
-                        <span className={`text-[10px] mt-0.5 ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
-                          Fatura: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartao.fatura_atual)}
+                        <BankLogo banco={cartao.banco} size={20} className="h-5 w-5 rounded-md border border-white/10 p-0.5 mt-0.5" />
+                        <span className="flex flex-col items-start">
+                          <span>{info.nome} ···{ultimos4}</span>
+                          <span className={`text-[10px] mt-0.5 ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
+                            Fatura: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartao.fatura_atual)}
+                          </span>
                         </span>
                       </button>
                     );

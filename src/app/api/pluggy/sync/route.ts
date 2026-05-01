@@ -18,6 +18,7 @@ function mapBanco(name?: string): BancoSlug {
   if (n.includes('inter'))     return 'inter';
   if (n.includes('c6'))        return 'c6';
   if (n.includes('santander')) return 'santander';
+  if (n.includes('mercado pago') || n.includes('mercadopago')) return 'mercadopago';
   return 'outro';
 }
 
