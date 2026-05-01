@@ -3,17 +3,18 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
-  ArrowUpRight, ArrowDownLeft,
+  ArrowUpRight, ArrowDownLeft, Brain, ChevronDown, FileText, ImageIcon, Loader2,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
-import { BANCO_INFO, BancoSlug } from '@/types';
+import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
-import Sparkline from '@/components/ui/Sparkline';
 import BankLogo from '@/components/ui/BankLogo';
+import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import { useCountUp } from '@/hooks/useCountUp';
+import type { TransacaoExtraida } from '@/lib/assistente-types';
 
 type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
@@ -456,11 +457,99 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
   );
 }
 
+interface RespostaIAArquivo {
+  tipo: 'transacao' | 'lote' | 'conversa';
+  resposta: string;
+  transacao?: TransacaoExtraida;
+  transacoes?: TransacaoExtraida[];
+  totalValor?: number;
+}
+
+function normalizarTexto(valor: string | null | undefined) {
+  return (valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function ordenarTransacoesPorData(lista: Transacao[]) {
+  return [...lista].sort((a, b) => {
+    const chaveA = `${a.data}T${a.horario || '00:00'}:${a.id}`;
+    const chaveB = `${b.data}T${b.horario || '00:00'}:${b.id}`;
+    return chaveA < chaveB ? 1 : -1;
+  });
+}
+
+function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
+  const nomeTx = normalizarTexto(tx.categoria);
+  const exata = categorias.find((categoria) => (
+    categoria.tipo === tx.tipo && normalizarTexto(categoria.nome) === nomeTx
+  ));
+  if (exata) return exata.id;
+
+  const mapaFallback: Record<string, string[]> = {
+    alimentacao: ['alimentacao', 'almoço', 'almoco', 'restaurante'],
+    mercado: ['mercado', 'supermercado', 'atacadao'],
+    transporte: ['transporte', 'uber', 'combustivel', 'posto'],
+    saude: ['saude', 'hospital', 'clinica'],
+    educacao: ['educacao', 'curso', 'faculdade'],
+    lazer: ['lazer', 'cinema', 'show'],
+    roupas: ['roupas', 'vestuario', 'moda'],
+    moradia: ['moradia', 'aluguel', 'casa'],
+    assinaturas: ['assinaturas', 'streaming', 'netflix', 'spotify'],
+    contas: ['contas', 'energia', 'agua', 'internet'],
+    pet: ['pet', 'veterinario'],
+    beleza: ['beleza', 'salão', 'salao'],
+    presentes: ['presentes', 'presente'],
+    farmacia: ['farmacia', 'drogaria'],
+    delivery: ['delivery', 'ifood', 'rappi'],
+    salario: ['salario'],
+    freelance: ['freelance'],
+    rendimentos: ['rendimentos', 'investimento'],
+    outros: ['outros'],
+  };
+
+  const fallback = categorias.find((categoria) => {
+    if (categoria.tipo !== tx.tipo) return false;
+    const nomeCategoria = normalizarTexto(categoria.nome);
+    return Object.values(mapaFallback).some((termos) => (
+      termos.some((termo) => nomeTx.includes(termo) && nomeCategoria.includes(termo))
+    ));
+  });
+
+  if (fallback) return fallback.id;
+
+  return categorias.find((categoria) => (
+    categoria.tipo === tx.tipo && normalizarTexto(categoria.nome).includes('outros')
+  ))?.id || categorias.find((categoria) => categoria.tipo === tx.tipo)?.id || '';
+}
+
+function calcularTotalFatura(transacoesExtraidas: TransacaoExtraida[]) {
+  return transacoesExtraidas.reduce((soma, tx) => (
+    soma + (tx.tipo === 'despesa' ? tx.valor : -tx.valor)
+  ), 0);
+}
+
+function diasAte(dia: number) {
+  const hoje = new Date().getDate();
+  return dia >= hoje ? dia - hoje : 30 - hoje + dia;
+}
+
 export default function Dashboard({ onNovoPagina }: Props) {
-  const { transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual } = useFinanceiroStore();
+  const {
+    transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual,
+    adicionarTransacao, atualizarFaturaCartao,
+  } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
   const [catFiltro, setCatFiltro] = useState<string | null>(null);
+  const [contaExpandidaId, setContaExpandidaId] = useState<string | null>(null);
+  const [cartaoExpandidoId, setCartaoExpandidoId] = useState<string | null>(null);
+  const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
+  const [statusImportacao, setStatusImportacao] = useState<{ cartaoId: string; tipo: 'sucesso' | 'erro' | 'info'; mensagem: string } | null>(null);
+  const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const dadosMes = useMemo(() => {
     const doMes = transacoes.filter(t => {
@@ -538,15 +627,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const ocultar = (v: string) => saldoOculto ? '••••••' : v;
 
-  // Gera sparkline fictícia baseada no saldo (variação cosmética)
-  function gerarSparkline(saldo: number): number[] {
-    const base = saldo > 0 ? saldo : 100;
-    return [
-      base * 0.82, base * 0.78, base * 0.85, base * 0.91,
-      base * 0.88, base * 0.93, base * 0.97, base * 1.0,
-    ];
-  }
-
   // Transações filtradas por categoria selecionada no donut
   const transacoesFiltradas = useMemo(() => {
     const doMes = dadosMes.doMes;
@@ -557,8 +637,131 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }).slice(0, 8);
   }, [dadosMes.doMes, catFiltro, categorias]);
 
+  const transacoesPorConta = useMemo(() => {
+    const mapa: Record<string, Transacao[]> = {};
+    transacoes.forEach((transacao) => {
+      if (!transacao.conta_id) return;
+      mapa[transacao.conta_id] = [...(mapa[transacao.conta_id] || []), transacao];
+    });
+    return mapa;
+  }, [transacoes]);
+
+  const transacoesPorCartao = useMemo(() => {
+    const mapa: Record<string, Transacao[]> = {};
+    transacoes.forEach((transacao) => {
+      if (!transacao.cartao_id) return;
+      mapa[transacao.cartao_id] = [...(mapa[transacao.cartao_id] || []), transacao];
+    });
+    return mapa;
+  }, [transacoes]);
+
+  const contaExpandida = contas.find((conta) => conta.id === contaExpandidaId) || null;
+  const cartaoExpandido = cartoes.find((cartao) => cartao.id === cartaoExpandidoId) || null;
+
+  async function handleImportarArquivoCartao(event: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!arquivo || !cartaoImportandoId) return;
+
+    const cartao = cartoes.find((item) => item.id === cartaoImportandoId);
+    if (!cartao) return;
+
+    setStatusImportacao({
+      cartaoId: cartao.id,
+      tipo: 'info',
+      mensagem: 'IA lendo o arquivo e cruzando com a fatura...',
+    });
+
+    try {
+      const isPdf = arquivo.type === 'application/pdf' || arquivo.name.toLowerCase().endsWith('.pdf');
+      const formData = new FormData();
+
+      if (isPdf) {
+        formData.append('pdf', arquivo);
+      } else {
+        formData.append('imagem', arquivo);
+        formData.append('legenda', `Fatura ou histórico do cartão ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
+      }
+
+      const resposta = await fetch(isPdf ? '/api/assistente/pdf' : '/api/assistente/imagem', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await resposta.json() as RespostaIAArquivo | { error?: string };
+      if (!resposta.ok) {
+        throw new Error('error' in data ? (data.error || 'Erro ao analisar o arquivo.') : 'Erro ao analisar o arquivo.');
+      }
+
+      const payload = data as RespostaIAArquivo;
+      const extraidas = payload.transacoes || (payload.transacao ? [payload.transacao] : []);
+      if (!extraidas.length) {
+        throw new Error('A IA não encontrou compras válidas nesse arquivo.');
+      }
+
+      const existentes = transacoes.filter((transacao) => transacao.cartao_id === cartao.id);
+      let importadas = 0;
+
+      extraidas.forEach((tx) => {
+        const duplicada = existentes.some((existente) => (
+          existente.data === tx.data &&
+          existente.tipo === tx.tipo &&
+          Math.abs(existente.valor - tx.valor) < 0.01 &&
+          normalizarTexto(existente.descricao) === normalizarTexto(tx.descricao)
+        ));
+
+        if (duplicada) return;
+
+        adicionarTransacao({
+          valor: tx.valor,
+          descricao: tx.descricao,
+          categoria_id: resolverCategoriaId(tx, categorias),
+          data: tx.data,
+          horario: tx.hora || undefined,
+          tipo: tx.tipo,
+          metodo_pagamento: 'credito',
+          parcelas: tx.parcelas || undefined,
+          local: tx.local || undefined,
+          origem: 'assistente_imagem',
+          cartao_id: cartao.id,
+        });
+        importadas += 1;
+      });
+
+      const totalFatura = typeof payload.totalValor === 'number'
+        ? payload.totalValor
+        : Math.max(0, calcularTotalFatura(extraidas));
+
+      atualizarFaturaCartao(cartao.id, totalFatura);
+      setCartaoExpandidoId(cartao.id);
+      setStatusImportacao({
+        cartaoId: cartao.id,
+        tipo: 'sucesso',
+        mensagem: importadas > 0
+          ? `Fatura atualizada para ${formatarMoeda(totalFatura)} e ${importadas} compra${importadas > 1 ? 's foram' : ' foi'} importada${importadas > 1 ? 's' : ''}.`
+          : `Fatura atualizada para ${formatarMoeda(totalFatura)}. As compras já estavam no app.`,
+      });
+    } catch (error) {
+      setStatusImportacao({
+        cartaoId: cartao.id,
+        tipo: 'erro',
+        mensagem: error instanceof Error ? error.message : 'Não foi possível atualizar esse cartão com IA.',
+      });
+    } finally {
+      setCartaoImportandoId(null);
+    }
+  }
+
   return (
     <div className="space-y-5 animate-fade-up">
+      <input
+        ref={arquivoCartaoRef}
+        type="file"
+        accept="application/pdf,.pdf,image/*"
+        className="hidden"
+        onChange={handleImportarArquivoCartao}
+      />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">
@@ -641,34 +844,124 @@ export default function Dashboard({ onNovoPagina }: Props) {
             Ver tudo <ArrowRight size={12} />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {contas.map(conta => {
-            const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
-            const sparkData = gerarSparkline(conta.saldo);
-            return (
-              <button key={conta.id} onClick={() => onNovoPagina('bancos')}
-                className="glass-card p-4 text-left w-full group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <BankLogo banco={conta.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-white truncate">{info.nome}</div>
-                      <div className="text-[11px] text-slate-500 capitalize">{conta.tipo}</div>
+        {contas.length > 0 ? (
+          <>
+            <div className="overflow-x-auto pb-1">
+              <div className="flex gap-3 min-w-max">
+                {contas.map((conta) => {
+                  const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
+                  const ativa = contaExpandidaId === conta.id;
+                  return (
+                    <button
+                      key={conta.id}
+                      type="button"
+                      onClick={() => setContaExpandidaId((atual) => atual === conta.id ? null : conta.id)}
+                      className={`min-w-[210px] rounded-[28px] border px-4 py-3 text-left transition-all ${
+                        ativa
+                          ? 'bg-white text-slate-950 border-white shadow-lg shadow-black/20'
+                          : 'bg-slate-50/95 text-slate-950 border-white/70 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <BankLogo banco={conta.banco} size={44} className="h-11 w-11 rounded-full border border-slate-200 p-1.5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{info.nome}</div>
+                          <div className="text-3xl font-semibold leading-none tabular-nums mt-1">{ocultar(formatarMoeda(conta.saldo))}</div>
+                        </div>
+                        <ChevronDown size={18} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {contaExpandida && (() => {
+              const info = BANCO_INFO[contaExpandida.banco] || BANCO_INFO.outro;
+              const lista = ordenarTransacoesPorData(transacoesPorConta[contaExpandida.id] || []);
+              const entradasMes = lista.filter((transacao) => (
+                transacao.tipo === 'receita' && isSameFinancialMonth(transacao.data, mes, ano)
+              )).reduce((soma, transacao) => soma + transacao.valor, 0);
+              const saidasMes = lista.filter((transacao) => (
+                transacao.tipo === 'despesa' && isSameFinancialMonth(transacao.data, mes, ano)
+              )).reduce((soma, transacao) => soma + transacao.valor, 0);
+
+              return (
+                <div className="glass-card mt-3 p-4" style={{ borderColor: `${info.cor}33` }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <BankLogo banco={contaExpandida.banco} size={42} className="h-10.5 w-10.5 rounded-2xl border border-white/10 p-1.5" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">{info.nome}</h3>
+                        <p className="text-xs text-slate-500">{contaExpandida.nome} • {contaExpandida.tipo}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNovoPagina('bancos')}
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      Abrir conta completa
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <div className="text-[11px] text-slate-500">Saldo</div>
+                      <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(contaExpandida.saldo))}</div>
+                    </div>
+                    <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
+                      <div className="text-[11px] text-slate-500">Entradas no mês</div>
+                      <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(entradasMes))}</div>
+                    </div>
+                    <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
+                      <div className="text-[11px] text-slate-500">Saídas no mês</div>
+                      <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(saidasMes))}</div>
                     </div>
                   </div>
-                  <div className="opacity-80">
-                    <Sparkline data={sparkData} color={info.cor} width={72} height={26} />
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-400">Movimentações recentes</span>
+                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
+                    </div>
+                    <div className="space-y-2">
+                      {lista.slice(0, 5).map((transacao) => {
+                        const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                        return (
+                          <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
+                              {categoria?.icone || '💳'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-white truncate">{transacao.descricao}</div>
+                              <div className="text-[11px] text-slate-500">
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              </div>
+                            </div>
+                            <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {lista.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
+                          Nenhuma movimentação vinculada a essa conta ainda.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="text-xl font-bold tabular-nums text-white">
-                  {ocultar(formatarMoeda(conta.saldo))}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">{conta.nome}</div>
-              </button>
-            );
-          })}
-        </div>
+              );
+            })()}
+          </>
+        ) : (
+          <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
+            <Building2 size={36} className="mb-2 opacity-30" />
+            <p className="text-sm text-slate-500">Nenhuma conta cadastrada</p>
+          </div>
+        )}
       </section>
 
       {/* ── Cartões de crédito ──────────────────────────────────────────── */}
@@ -683,7 +976,211 @@ export default function Dashboard({ onNovoPagina }: Props) {
             Ver tudo <ArrowRight size={12} />
           </button>
         </div>
-        <div className="space-y-3">
+        {cartoes.length > 0 ? (
+          <>
+            <div className="overflow-x-auto pb-1">
+              <div className="flex gap-3 min-w-max">
+                {cartoes.map((cartao) => {
+                  const ativa = cartaoExpandidoId === cartao.id;
+                  return (
+                    <button
+                      key={cartao.id}
+                      type="button"
+                      onClick={() => setCartaoExpandidoId((atual) => atual === cartao.id ? null : cartao.id)}
+                      className={`min-w-[220px] rounded-[28px] border px-4 py-3 text-left transition-all ${
+                        ativa
+                          ? 'bg-white text-slate-950 border-white shadow-lg shadow-black/20'
+                          : 'bg-slate-50/95 text-slate-950 border-white/70 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-full border border-slate-200 p-1.5" />
+                          <CardBrandLogo bandeira={cartao.bandeira} size={20} className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border border-white p-0.5 shadow-sm" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
+                          <div className="text-3xl font-semibold leading-none tabular-nums mt-1">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
+                        </div>
+                        <ChevronDown size={18} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {cartaoExpandido && (() => {
+              const info = BANCO_INFO[cartaoExpandido.banco] || BANCO_INFO.outro;
+              const lista = ordenarTransacoesPorData(transacoesPorCartao[cartaoExpandido.id] || []);
+              const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
+              const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
+              const totalCompras = compras.reduce((soma, transacao) => soma + transacao.valor, 0);
+              const maiorCompra = compras.reduce((maior, transacao) => Math.max(maior, transacao.valor), 0);
+              const ticketMedio = compras.length > 0 ? totalCompras / compras.length : 0;
+              const limiteDisponivel = cartaoExpandido.limite - cartaoExpandido.fatura_atual;
+              const usoLimite = cartaoExpandido.limite > 0 ? (cartaoExpandido.fatura_atual / cartaoExpandido.limite) * 100 : 0;
+              const statusAtual = statusImportacao?.cartaoId === cartaoExpandido.id ? statusImportacao : null;
+
+              return (
+                <div className="glass-card mt-3 p-4" style={{ borderColor: `${info.cor}33` }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <BankLogo banco={cartaoExpandido.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
+                        <CardBrandLogo bandeira={cartaoExpandido.bandeira} size={22} className="absolute -bottom-1 -right-1 h-[22px] w-[22px] rounded-full border border-white p-0.5 shadow-sm" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">{cartaoExpandido.nome}</h3>
+                        <p className="text-xs text-slate-500">{info.nome} • {cartaoExpandido.bandeira}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNovoPagina('cartoes')}
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      Abrir cartão completo
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-4">
+                    <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
+                      <div className="text-[11px] text-slate-500">Fatura atual</div>
+                      <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.fatura_atual))}</div>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <div className="text-[11px] text-slate-500">Limite total</div>
+                      <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.limite))}</div>
+                    </div>
+                    <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
+                      <div className="text-[11px] text-slate-500">Disponível</div>
+                      <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(limiteDisponivel))}</div>
+                    </div>
+                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+                      <div className="text-[11px] text-slate-500">Fecha / paga</div>
+                      <div className="text-sm font-semibold text-white mt-1">Dia {cartaoExpandido.dia_fechamento} / {cartaoExpandido.dia_vencimento}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium text-slate-400">Relatório individual do cartão</p>
+                        <p className="text-[11px] text-slate-600 mt-1">Uso do limite: {usoLimite.toFixed(1)}% • vencimento em {diasAte(cartaoExpandido.dia_vencimento)} dia(s)</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-500">Média por compra</div>
+                        <div className="text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(ticketMedio))}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-3">
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Compras no app</div>
+                        <div className="text-sm font-semibold text-white mt-1">{compras.length}</div>
+                      </div>
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Maior compra</div>
+                        <div className="text-sm font-semibold text-white mt-1 tabular-nums">{ocultar(formatarMoeda(maiorCompra))}</div>
+                      </div>
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Estornos / créditos</div>
+                        <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">{ocultar(formatarMoeda(estornos.reduce((soma, transacao) => soma + transacao.valor, 0)))}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCartaoImportandoId(cartaoExpandido.id);
+                        arquivoCartaoRef.current?.click();
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-medium bg-purple-600/15 border border-purple-500/25 text-purple-300 hover:bg-purple-600/25 transition-all flex items-center gap-1.5"
+                    >
+                      {cartaoImportandoId === cartaoExpandido.id ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+                      I.A
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCartaoImportandoId(cartaoExpandido.id);
+                        arquivoCartaoRef.current?.click();
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
+                    >
+                      <FileText size={14} />
+                      Ler fatura PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCartaoImportandoId(cartaoExpandido.id);
+                        arquivoCartaoRef.current?.click();
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
+                    >
+                      <ImageIcon size={14} />
+                      Ler imagem / histórico
+                    </button>
+                  </div>
+
+                  {statusAtual && (
+                    <div className={`mt-3 rounded-2xl px-3 py-2 text-xs border ${
+                      statusAtual.tipo === 'sucesso'
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                        : statusAtual.tipo === 'erro'
+                        ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                        : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
+                    }`}>
+                      {statusAtual.mensagem}
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-400">Compras lançadas nesse cartão</span>
+                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
+                    </div>
+                    <div className="space-y-2">
+                      {lista.slice(0, 8).map((transacao) => {
+                        const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                        return (
+                          <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
+                              {categoria?.icone || '💳'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-white truncate">{transacao.descricao}</div>
+                              <div className="text-[11px] text-slate-500">
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              </div>
+                            </div>
+                            <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {lista.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
+                          Nenhuma compra vinculada a esse cartão ainda. Use o botão I.A para importar uma fatura ou histórico.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        ) : (
+          <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
+            <CreditCard size={36} className="mb-2 opacity-30" />
+            <p className="text-sm text-slate-500">Nenhum cartão cadastrado</p>
+          </div>
+        )}
+        <div className="hidden space-y-3">
           {cartoes.map(cartao => {
             const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
             const pct = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;

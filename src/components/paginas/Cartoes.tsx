@@ -7,6 +7,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, BandeirCartao } from '@/types';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
+import CardBrandLogo from '@/components/ui/CardBrandLogo';
 
 const BANDEIRAS: BandeirCartao[] = ['visa', 'mastercard', 'elo', 'amex', 'hipercard'];
 
@@ -194,7 +195,10 @@ export default function Cartoes() {
                 {/* Top */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
+                    <div className="relative">
+                      <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
+                      <CardBrandLogo bandeira={cartao.bandeira} size={20} className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border border-white p-0.5 shadow-sm" />
+                    </div>
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
                       <div className="text-xs text-slate-500">{info.nome} • {cartao.bandeira}</div>
