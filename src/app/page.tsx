@@ -11,7 +11,8 @@ export default function Home() {
 
   useEffect(() => {
     carregarDados();
-    setMontado(true);
+    const timeout = window.setTimeout(() => setMontado(true), 0);
+    return () => window.clearTimeout(timeout);
   }, [carregarDados]);
 
   // Evita flash de conteúdo antes de hidratar

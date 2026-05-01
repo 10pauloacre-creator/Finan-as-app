@@ -15,6 +15,7 @@ import {
   syncSalvarInvestimento, syncExcluirInvestimento,
   baixarTudoDoSupabase, enviarTudoParaSupabase,
 } from '@/lib/sync';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface FinanceiroState {
   transacoes:    Transacao[];
@@ -80,6 +81,16 @@ interface FinanceiroState {
 
 const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notificacoes_ativas: true };
 
+function temDadosNaNuvem(dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) {
+  return (
+    dados.transacoes.length > 0 ||
+    dados.categorias.length > 0 ||
+    dados.contas.length > 0 ||
+    dados.cartoes.length > 0 ||
+    dados.investimentos.length > 0
+  );
+}
+
 export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   transacoes: [], categorias: [], investimentos: [], metas: [],
   contas: [], cartoes: [], orcamentos: [], config: CONFIG_DEFAULT, dicasIA: [],
@@ -94,7 +105,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   desautenticar: () => set({ autenticado: false }),
 
   carregarDados: () => {
-    set({
+    const dadosLocais = {
       transacoes:    storageTransacoes.getAll(),
       categorias:    storageCategoriass.getAll(),
       investimentos: storageInvestimentos.getAll(),
@@ -103,7 +114,34 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
       cartoes:       storageCartoes.getAll(),
       orcamentos:    storageOrcamentos.getAll(),
       config:        storageConfig.get(),
-    });
+    };
+
+    set(dadosLocais);
+
+    if (!isSupabaseConfigured()) return;
+
+    void (async () => {
+      try {
+        const dadosNuvem = await baixarTudoDoSupabase();
+        if (!temDadosNaNuvem(dadosNuvem)) return;
+
+        storageTransacoes.replaceAll(dadosNuvem.transacoes);
+        storageCategoriass.replaceAll(dadosNuvem.categorias);
+        storageContas.replaceAll(dadosNuvem.contas);
+        storageCartoes.replaceAll(dadosNuvem.cartoes);
+        storageInvestimentos.replaceAll(dadosNuvem.investimentos);
+
+        set({
+          transacoes: dadosNuvem.transacoes,
+          categorias: dadosNuvem.categorias,
+          contas: dadosNuvem.contas,
+          cartoes: dadosNuvem.cartoes,
+          investimentos: dadosNuvem.investimentos,
+        });
+      } catch {
+        // Mantem os dados locais se a sincronizacao falhar.
+      }
+    })();
   },
 
   // ── Transações ──────────────────────────────────────
@@ -242,24 +280,26 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => ({
   sincronizarDoSupabase: async () => {
     try {
       const dados = await baixarTudoDoSupabase();
-      if (!dados.transacoes.length && !dados.contas.length) {
+      if (!temDadosNaNuvem(dados)) {
         return { ok: false, msg: 'Nenhum dado encontrado na nuvem.' };
       }
-      // Salva no localStorage
-      dados.transacoes.forEach(t => storageTransacoes.save(t));
-      dados.categorias.forEach(c => storageCategoriass.save(c));
-      dados.contas.forEach(c => storageContas.save(c));
-      dados.cartoes.forEach(c => storageCartoes.save(c));
-      dados.investimentos.forEach(i => storageInvestimentos.save(i));
+
+      storageTransacoes.replaceAll(dados.transacoes);
+      storageCategoriass.replaceAll(dados.categorias);
+      storageContas.replaceAll(dados.contas);
+      storageCartoes.replaceAll(dados.cartoes);
+      storageInvestimentos.replaceAll(dados.investimentos);
+
       // Atualiza store
       set({
-        transacoes:    dados.transacoes.length    ? dados.transacoes    : get().transacoes,
-        categorias:    dados.categorias.length    ? dados.categorias    : get().categorias,
-        contas:        dados.contas.length        ? dados.contas        : get().contas,
-        cartoes:       dados.cartoes.length       ? dados.cartoes       : get().cartoes,
-        investimentos: dados.investimentos.length ? dados.investimentos : get().investimentos,
+        transacoes: dados.transacoes,
+        categorias: dados.categorias,
+        contas: dados.contas,
+        cartoes: dados.cartoes,
+        investimentos: dados.investimentos,
       });
-      const total = dados.transacoes.length + dados.contas.length + dados.cartoes.length;
+
+      const total = dados.transacoes.length + dados.categorias.length + dados.contas.length + dados.cartoes.length + dados.investimentos.length;
       return { ok: true, msg: `${total} registros sincronizados da nuvem!` };
     } catch {
       return { ok: false, msg: 'Erro ao conectar com a nuvem.' };

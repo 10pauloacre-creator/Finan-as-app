@@ -83,6 +83,7 @@ const CARTOES_PADRAO: CartaoCredito[] = [
 // ── TRANSAÇÕES ──────────────────────────────────────────
 export const storageTransacoes = {
   getAll: (): Transacao[] => get<Transacao>(KEYS.TRANSACOES),
+  replaceAll: (lista: Transacao[]): void => set(KEYS.TRANSACOES, lista),
   save: (t: Transacao): void => {
     const lista = get<Transacao>(KEYS.TRANSACOES);
     const idx = lista.findIndex(x => x.id === t.id);
@@ -108,6 +109,7 @@ export const storageCategoriass = {
     }
     return salvas;
   },
+  replaceAll: (lista: Categoria[]): void => set(KEYS.CATEGORIAS, lista),
   save: (c: Categoria): void => {
     const lista = get<Categoria>(KEYS.CATEGORIAS);
     const idx = lista.findIndex(x => x.id === c.id);
@@ -123,6 +125,7 @@ export const storageContas = {
     if (salvas.length === 0) { set(KEYS.CONTAS, CONTAS_PADRAO); return CONTAS_PADRAO; }
     return salvas;
   },
+  replaceAll: (lista: ContaBancaria[]): void => set(KEYS.CONTAS, lista),
   save: (c: ContaBancaria): void => {
     const lista = get<ContaBancaria>(KEYS.CONTAS);
     const idx = lista.findIndex(x => x.id === c.id);
@@ -139,6 +142,7 @@ export const storageCartoes = {
     if (salvas.length === 0) { set(KEYS.CARTOES, CARTOES_PADRAO); return CARTOES_PADRAO; }
     return salvas;
   },
+  replaceAll: (lista: CartaoCredito[]): void => set(KEYS.CARTOES, lista),
   save: (c: CartaoCredito): void => {
     const lista = get<CartaoCredito>(KEYS.CARTOES);
     const idx = lista.findIndex(x => x.id === c.id);
@@ -151,6 +155,7 @@ export const storageCartoes = {
 // ── INVESTIMENTOS ───────────────────────────────────────
 export const storageInvestimentos = {
   getAll: (): Investimento[] => get<Investimento>(KEYS.INVESTIMENTOS),
+  replaceAll: (lista: Investimento[]): void => set(KEYS.INVESTIMENTOS, lista),
   save: (inv: Investimento): void => {
     const lista = get<Investimento>(KEYS.INVESTIMENTOS);
     const idx = lista.findIndex(x => x.id === inv.id);

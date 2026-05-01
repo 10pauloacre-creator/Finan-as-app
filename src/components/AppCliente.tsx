@@ -11,7 +11,8 @@ export default function AppCliente() {
 
   useEffect(() => {
     carregarDados();
-    setMontado(true);
+    const timeout = window.setTimeout(() => setMontado(true), 0);
+    return () => window.clearTimeout(timeout);
   }, [carregarDados]);
 
   if (!montado) {
