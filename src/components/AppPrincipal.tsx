@@ -18,6 +18,7 @@ import Orcamentos     from '@/components/paginas/Orcamentos';
 import Assinaturas    from '@/components/paginas/Assinaturas';
 import Agentes        from '@/components/paginas/Agentes';
 import Calendario     from '@/components/paginas/Calendario';
+import Configuracoes  from '@/components/paginas/Configuracoes';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -84,6 +85,7 @@ export default function AppPrincipal() {
       case 'assinaturas':   return <Assinaturas />;
       case 'agentes':       return <Agentes />;
       case 'calendario':    return <Calendario />;
+      case 'configuracoes': return <Configuracoes />;
       default:              return <Dashboard onNovoPagina={setPagina} />;
     }
   }
