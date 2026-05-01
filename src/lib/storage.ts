@@ -168,6 +168,7 @@ export const storageInvestimentos = {
 // ── METAS ───────────────────────────────────────────────
 export const storageMetas = {
   getAll: (): Meta[] => get<Meta>(KEYS.METAS),
+  replaceAll: (lista: Meta[]): void => set(KEYS.METAS, lista),
   save: (m: Meta): void => {
     const lista = get<Meta>(KEYS.METAS);
     const idx = lista.findIndex(x => x.id === m.id);
@@ -180,6 +181,7 @@ export const storageMetas = {
 // ── ORÇAMENTOS ──────────────────────────────────────────
 export const storageOrcamentos = {
   getAll: (): Orcamento[] => get<Orcamento>(KEYS.ORCAMENTOS),
+  replaceAll: (lista: Orcamento[]): void => set(KEYS.ORCAMENTOS, lista),
   getByMes: (mes: number, ano: number): Orcamento[] =>
     get<Orcamento>(KEYS.ORCAMENTOS).filter(o => o.mes === mes && o.ano === ano),
   save: (o: Orcamento): void => {
@@ -196,6 +198,7 @@ export const storageOrcamentos = {
 const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notificacoes_ativas: true };
 export const storageConfig = {
   get: (): ConfiguracaoApp => getObj<ConfiguracaoApp>(KEYS.CONFIG, CONFIG_DEFAULT),
+  replace: (config: ConfiguracaoApp): void => setObj(KEYS.CONFIG, config),
   set: (c: Partial<ConfiguracaoApp>): void =>
     setObj(KEYS.CONFIG, { ...getObj<ConfiguracaoApp>(KEYS.CONFIG, CONFIG_DEFAULT), ...c }),
 };

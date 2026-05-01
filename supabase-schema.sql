@@ -76,6 +76,42 @@ create table if not exists investimentos (
   criado_em        timestamptz default now()
 );
 
+-- ── Metas ───────────────────────────────────────────────────────────────
+create table if not exists metas (
+  id           text primary key,
+  descricao    text not null,
+  valor_alvo   numeric default 0,
+  valor_atual  numeric default 0,
+  prazo        text,
+  icone        text,
+  cor          text,
+  criado_em    timestamptz default now()
+);
+
+-- ── Orçamentos ──────────────────────────────────────────────────────────
+create table if not exists orcamentos (
+  id            text primary key,
+  categoria_id  text references categorias(id),
+  valor_limite  numeric default 0,
+  mes           int not null,
+  ano           int not null,
+  criado_em     timestamptz default now()
+);
+
+-- ── Configuração do app ─────────────────────────────────────────────────
+create table if not exists configuracoes_app (
+  id                           text primary key default 'default',
+  pin                          text,
+  tema                         text default 'escuro',
+  moeda                        text default 'BRL',
+  selic_atual                  numeric,
+  cdi_atual                    numeric,
+  ipca_atual                   numeric,
+  selic_atualizado_em          timestamptz,
+  whatsapp_numero_autorizado   text,
+  notificacoes_ativas          boolean default true
+);
+
 -- ── Eventos de webhook (notificações Pluggy) ─────────────────────────────────
 create table if not exists webhook_events (
   id          text primary key default gen_random_uuid()::text,
@@ -123,3 +159,4 @@ create index if not exists idx_transacoes_pluggy       on transacoes(pluggy_id);
 create index if not exists idx_contas_pluggy_item      on contas(pluggy_item_id);
 create index if not exists idx_cartoes_pluggy_item     on cartoes(pluggy_item_id);
 create index if not exists idx_investimentos_pluggy    on investimentos(pluggy_id);
+create index if not exists idx_orcamentos_mes_ano      on orcamentos(mes, ano);
