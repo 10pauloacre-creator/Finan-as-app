@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
+import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell
@@ -62,8 +63,7 @@ function contextoMes(
   ano: number,
 ): string {
   const txMes = transacoes.filter(t => {
-    const d = new Date(t.data + 'T00:00:00');
-    return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+    return isSameFinancialMonth(t.data, mes, ano);
   });
 
   const despesasMes = txMes.filter(t => t.tipo === 'despesa');
@@ -359,8 +359,7 @@ export default function Relatorios() {
     return MESES.map((nome, i) => {
       const mes = i + 1;
       const doMes = transacoes.filter(t => {
-        const d = new Date(t.data);
-        return d.getMonth() + 1 === mes && d.getFullYear() === anoSel;
+        return isSameFinancialMonth(t.data, mes, anoSel);
       });
       const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
       const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
@@ -371,8 +370,7 @@ export default function Relatorios() {
   const mesAtualNum = new Date().getMonth() + 1;
   const dadosMesAtual = useMemo(() => {
     return transacoes.filter(t => {
-      const d = new Date(t.data);
-      return d.getMonth() + 1 === mesAtualNum && d.getFullYear() === anoSel;
+      return isSameFinancialMonth(t.data, mesAtualNum, anoSel);
     });
   }, [transacoes, mesAtualNum, anoSel]);
 
@@ -489,7 +487,7 @@ export default function Relatorios() {
             .map(t => {
               const cat = categorias.find(c => c.id === t.categoria_id);
               return [
-                new Date(t.data + 'T12:00:00').toLocaleDateString('pt-BR'),
+                parseFinancialDate(t.data).toLocaleDateString('pt-BR'),
                 t.descricao,
                 cat?.nome || 'Outros',
                 t.tipo === 'receita' ? 'Receita' : 'Despesa',

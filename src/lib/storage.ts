@@ -4,6 +4,7 @@
 
 import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
+import { isSameFinancialMonth, parseFinancialDate } from './date';
 
 const KEYS = {
   TRANSACOES:   'fin_transacoes',
@@ -92,10 +93,7 @@ export const storageTransacoes = {
   },
   delete: (id: string): void => set(KEYS.TRANSACOES, get<Transacao>(KEYS.TRANSACOES).filter(x => x.id !== id)),
   getByMes: (mes: number, ano: number): Transacao[] =>
-    get<Transacao>(KEYS.TRANSACOES).filter(t => {
-      const d = new Date(t.data);
-      return d.getMonth() + 1 === mes && d.getFullYear() === ano;
-    }),
+    get<Transacao>(KEYS.TRANSACOES).filter(t => isSameFinancialMonth(t.data, mes, ano)),
 };
 
 // ── CATEGORIAS ──────────────────────────────────────────
@@ -211,7 +209,7 @@ export function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 }
 export function formatarData(data: string): string {
-  return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
+  return parseFinancialDate(data).toLocaleDateString('pt-BR');
 }
 export function mesAtual(): { mes: number; ano: number } {
   const hoje = new Date();

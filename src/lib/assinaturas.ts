@@ -1,4 +1,5 @@
 import type { Transacao } from '@/types';
+import { diffDaysBetween, formatFinancialDate, parseFinancialDate } from './date';
 
 export interface AssinaturaDetectada {
   descricaoNormalizada: string;
@@ -29,9 +30,9 @@ function mediana(nums: number[]): number {
 }
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = parseFinancialDate(dateStr);
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return formatFinancialDate(d);
 }
 
 export function detectarAssinaturas(transacoes: Transacao[]): AssinaturaDetectada[] {
@@ -59,9 +60,9 @@ export function detectarAssinaturas(transacoes: Transacao[]): AssinaturaDetectad
     // Calculate intervals between consecutive occurrences (in days)
     const intervalos: number[] = [];
     for (let i = 1; i < sorted.length; i++) {
-      const a = new Date(sorted[i - 1].data + 'T00:00:00');
-      const b = new Date(sorted[i].data + 'T00:00:00');
-      intervalos.push(Math.round((b.getTime() - a.getTime()) / 86400000));
+      const a = parseFinancialDate(sorted[i - 1].data);
+      const b = parseFinancialDate(sorted[i].data);
+      intervalos.push(diffDaysBetween(b, a));
     }
 
     // Detect frequency

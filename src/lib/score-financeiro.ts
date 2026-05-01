@@ -1,4 +1,5 @@
 import type { Transacao, Orcamento, ContaBancaria, CartaoCredito, Meta } from '@/types';
+import { isSameFinancialMonth } from './date';
 
 export interface FatorScore {
   nome: string;
@@ -27,8 +28,7 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
   const ano = hoje.getFullYear();
 
   const txMes = dados.transacoes.filter(t => {
-    const d = new Date(t.data + 'T00:00:00');
-    return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+    return isSameFinancialMonth(t.data, mes, ano);
   });
 
   const totalReceitas  = txMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);

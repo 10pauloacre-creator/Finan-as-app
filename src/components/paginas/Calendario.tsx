@@ -6,6 +6,7 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { calcularPrevisao } from '@/lib/previsao';
 import { formatarMoeda } from '@/lib/storage';
 import type { Transacao } from '@/types';
+import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_NOMES = [
@@ -51,8 +52,7 @@ export default function Calendario() {
 
   const previstasDoMes = useMemo(() => {
     return previsoes.filter(p => {
-      const d = new Date(p.data + 'T00:00:00');
-      return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
+      return isSameFinancialMonth(p.data, mesSel, anoSel);
     });
   }, [previsoes, mesSel, anoSel]);
 
@@ -67,7 +67,7 @@ export default function Calendario() {
     // Dias do mes anterior para completar a primeira semana
     for (let i = 0; i < diaSemanaInicio; i++) {
       const d = new Date(anoSel, mesSel - 1, -diaSemanaInicio + 1 + i);
-      const dataStr = d.toISOString().split('T')[0];
+      const dataStr = formatFinancialDate(d);
       dias.push({
         dia: d.getDate(),
         data: dataStr,
@@ -111,7 +111,7 @@ export default function Calendario() {
     if (restante < 7) {
       for (let i = 1; i <= restante; i++) {
         const d = new Date(anoSel, mesSel, i);
-        const dataStr = d.toISOString().split('T')[0];
+        const dataStr = formatFinancialDate(d);
         dias.push({
           dia: i,
           data: dataStr,
@@ -131,8 +131,7 @@ export default function Calendario() {
   // Resumo do mes
   const resumoMes = useMemo(() => {
     const txMes = transacoes.filter(t => {
-      const d = new Date(t.data + 'T00:00:00');
-      return d.getMonth() + 1 === mesSel && d.getFullYear() === anoSel;
+      return isSameFinancialMonth(t.data, mesSel, anoSel);
     });
     const receitas = txMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
     const despesas = txMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
@@ -265,8 +264,8 @@ export default function Calendario() {
       {diaDetalhe && !diaDetalhe.foraDoMes && (
         <div className="bg-[#0F1629] border border-purple-500/20 rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-white">
-              Transacoes de {new Date(diaDetalhe.data + 'T12:00:00').toLocaleDateString('pt-BR', {
+              <h4 className="text-sm font-semibold text-white">
+              Transacoes de {parseFinancialDate(diaDetalhe.data).toLocaleDateString('pt-BR', {
                 day: '2-digit', month: 'long',
               })}
             </h4>

@@ -7,6 +7,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { MetodoPagamento, TipoTransacao, Transacao, BANCO_INFO } from '@/types';
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from './ModalDuplicata';
+import { formatFinancialDate } from '@/lib/date';
 
 interface Props {
   aberto: boolean;
@@ -23,24 +24,26 @@ const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
   { valor: 'outro', label: 'Outro', icone: '📋' },
 ];
 
-const FORM_VAZIO = {
-  descricao: '',
-  valor: '',
-  tipo: 'despesa' as TipoTransacao,
-  categoria_id: '',
-  data: new Date().toISOString().split('T')[0],
-  horario: '',
-  metodo_pagamento: 'pix' as MetodoPagamento,
-  parcelas: '1',
-  local: '',
-  observacoes: '',
-  conta_id: '',
-  cartao_id: '',
-};
+function getFormVazio() {
+  return {
+    descricao: '',
+    valor: '',
+    tipo: 'despesa' as TipoTransacao,
+    categoria_id: '',
+    data: formatFinancialDate(new Date()),
+    horario: '',
+    metodo_pagamento: 'pix' as MetodoPagamento,
+    parcelas: '1',
+    local: '',
+    observacoes: '',
+    conta_id: '',
+    cartao_id: '',
+  };
+}
 
 export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar }: Props) {
   const { categorias, contas, cartoes, transacoes, adicionarTransacao, editarTransacao } = useFinanceiroStore();
-  const [form, setForm] = useState(FORM_VAZIO);
+  const [form, setForm] = useState(getFormVazio);
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroIA, setErroIA] = useState('');
@@ -66,7 +69,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar }
         cartao_id: transacaoEditar.cartao_id || '',
       });
     } else {
-      setForm(FORM_VAZIO);
+      setForm(getFormVazio());
       setFotoPreview(null);
     }
   }, [transacaoEditar, aberto]);

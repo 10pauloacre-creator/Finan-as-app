@@ -77,6 +77,63 @@ const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notifica
 let listenersDeSyncRegistrados = false;
 let syncEmAndamento: Promise<void> | null = null;
 
+function arredondarMoeda(valor: number) {
+  return Number(valor.toFixed(2));
+}
+
+function aplicarDeltaConta(contas: ContaBancaria[], contaId: string | undefined, delta: number) {
+  if (!contaId || delta === 0) return contas;
+
+  return contas.map((conta) => {
+    if (conta.id !== contaId) return conta;
+    const atualizada = { ...conta, saldo: arredondarMoeda(conta.saldo + delta) };
+    storageContas.save(atualizada);
+    void syncSalvarConta(atualizada);
+    return atualizada;
+  });
+}
+
+function aplicarDeltaCartao(cartoes: CartaoCredito[], cartaoId: string | undefined, delta: number) {
+  if (!cartaoId || delta === 0) return cartoes;
+
+  return cartoes.map((cartao) => {
+    if (cartao.id !== cartaoId) return cartao;
+    const atualizado = { ...cartao, fatura_atual: arredondarMoeda(cartao.fatura_atual + delta) };
+    storageCartoes.save(atualizado);
+    void syncSalvarCartao(atualizado);
+    return atualizado;
+  });
+}
+
+function aplicarImpactoFinanceiro(
+  contas: ContaBancaria[],
+  cartoes: CartaoCredito[],
+  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id'>,
+  direcao: 1 | -1,
+) {
+  let proximasContas = contas;
+  let proximosCartoes = cartoes;
+
+  if (transacao.cartao_id && transacao.tipo === 'despesa') {
+    proximosCartoes = aplicarDeltaCartao(proximosCartoes, transacao.cartao_id, transacao.valor * direcao);
+    return { contas: proximasContas, cartoes: proximosCartoes };
+  }
+
+  if (!transacao.conta_id) {
+    return { contas: proximasContas, cartoes: proximosCartoes };
+  }
+
+  if (transacao.tipo === 'receita') {
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, transacao.valor * direcao);
+  } else if (transacao.tipo === 'despesa') {
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -transacao.valor * direcao);
+  } else if (transacao.tipo === 'transferencia') {
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -transacao.valor * direcao);
+  }
+
+  return { contas: proximasContas, cartoes: proximosCartoes };
+}
+
 function contarRegistrosRemotos(dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) {
   return (
     dados.transacoes.length +
@@ -267,38 +324,47 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       void syncSalvarTransacao(nova);
 
       set((s) => {
-        let cartoes = s.cartoes;
+        const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
 
-        if (nova.cartao_id && nova.tipo === 'despesa') {
-          cartoes = s.cartoes.map((c) => {
-            if (c.id !== nova.cartao_id) return c;
-            const updated = { ...c, fatura_atual: +(c.fatura_atual + nova.valor).toFixed(2) };
-            storageCartoes.save(updated);
-            void syncSalvarCartao(updated);
-            return updated;
-          });
-        }
-
-        return { transacoes: [nova, ...s.transacoes], cartoes };
+        return { transacoes: [nova, ...s.transacoes], contas: impacto.contas, cartoes: impacto.cartoes };
       });
 
       return nova;
     },
 
     editarTransacao: (id, dados) => {
-      const lista = get().transacoes.map((t) => (t.id === id ? { ...t, ...dados } : t));
-      const transacao = lista.find((t) => t.id === id);
-      if (transacao) {
-        storageTransacoes.save(transacao);
-        void syncSalvarTransacao(transacao);
-      }
-      set({ transacoes: lista });
+      const atual = get().transacoes.find((t) => t.id === id);
+      if (!atual) return;
+
+      const atualizada = { ...atual, ...dados };
+      storageTransacoes.save(atualizada);
+      void syncSalvarTransacao(atualizada);
+
+      set((s) => {
+        const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
+        const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
+        return {
+          transacoes: s.transacoes.map((t) => (t.id === id ? atualizada : t)),
+          contas: reaplicado.contas,
+          cartoes: reaplicado.cartoes,
+        };
+      });
     },
 
     excluirTransacao: (id) => {
+      const atual = get().transacoes.find((t) => t.id === id);
+      if (!atual) return;
+
       storageTransacoes.delete(id);
       void syncExcluirTransacao(id);
-      set((s) => ({ transacoes: s.transacoes.filter((t) => t.id !== id) }));
+      set((s) => {
+        const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
+        return {
+          transacoes: s.transacoes.filter((t) => t.id !== id),
+          contas: revertido.contas,
+          cartoes: revertido.cartoes,
+        };
+      });
     },
 
     adicionarCategoria: (dados) => {

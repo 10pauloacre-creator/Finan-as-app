@@ -7,6 +7,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { BotTransacao } from '@/lib/data-store';
+import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 const FILTROS_TIPO = [
   { valor: 'todos',   label: 'Todos'     },
@@ -53,9 +54,12 @@ export default function Transacoes() {
   }, []);
 
   useEffect(() => {
-    verificarFila();
+    const timeout = setTimeout(verificarFila, 0);
     const interval = setInterval(verificarFila, 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, [verificarFila]);
 
   async function importarDoBot() {
@@ -104,15 +108,14 @@ export default function Transacoes() {
   const transacoesPorPeriodo = useMemo(() => {
     const agora = new Date();
     return transacoes.filter(t => {
-      const d = new Date(t.data);
       if (periodo === 'mes') {
-        return d.getMonth() + 1 === filtroMes && d.getFullYear() === filtroAno;
+        return isSameFinancialMonth(t.data, filtroMes, filtroAno);
       }
       if (periodo === '3meses') {
         const tresMesesAtras = new Date(agora);
         tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
         tresMesesAtras.setDate(1);
-        return d >= tresMesesAtras;
+        return parseFinancialDate(t.data) >= tresMesesAtras;
       }
       return true; // tudo
     });

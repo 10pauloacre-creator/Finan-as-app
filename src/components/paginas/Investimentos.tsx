@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, TrendingUp, Calculator, RefreshCw, Info, X, ShieldCheck, BarChart2 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
+import { formatFinancialDate } from '@/lib/date';
 import { TipoInvestimento } from '@/types';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -268,11 +269,11 @@ export default function Investimentos() {
   const [ordenarPor, setOrdenarPor]       = useState<'dy' | 'seguranca' | 'variacao12m'>('dy');
 
   // Formulário
-  const [form, setForm] = useState({
-    nome: '', tipo: 'cdb' as TipoInvestimento,
-    valor_investido: '', data_inicio: new Date().toISOString().split('T')[0],
-    banco: '', taxa_rendimento: '', indice: 'cdi' as 'prefixado' | 'cdi' | 'selic' | 'ipca' | 'poupanca',
-    isento_ir: false,
+    const [form, setForm] = useState({
+      nome: '', tipo: 'cdb' as TipoInvestimento,
+      valor_investido: '', data_inicio: formatFinancialDate(new Date()),
+      banco: '', taxa_rendimento: '', indice: 'cdi' as 'prefixado' | 'cdi' | 'selic' | 'ipca' | 'poupanca',
+      isento_ir: false,
   });
 
   async function buscarTaxas() {
@@ -341,7 +342,7 @@ export default function Investimentos() {
       taxa_rendimento: parseFloat(form.taxa_rendimento) || undefined,
       indice: form.indice, isento_ir: form.isento_ir,
     });
-    setForm({ nome:'', tipo:'cdb', valor_investido:'', data_inicio: new Date().toISOString().split('T')[0], banco:'', taxa_rendimento:'', indice:'cdi', isento_ir:false });
+    setForm({ nome:'', tipo:'cdb', valor_investido:'', data_inicio: formatFinancialDate(new Date()), banco:'', taxa_rendimento:'', indice:'cdi', isento_ir:false });
     setMostrarForm(false);
   }
 

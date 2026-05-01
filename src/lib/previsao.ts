@@ -1,5 +1,6 @@
 import type { Transacao } from '@/types';
 import { detectarAssinaturas } from './assinaturas';
+import { diffDaysBetween, parseFinancialDate, startOfTodayLocal } from './date';
 
 export interface GastoPrevisto {
   data: string;           // YYYY-MM-DD
@@ -11,7 +12,7 @@ export interface GastoPrevisto {
 }
 
 export function calcularPrevisao(transacoes: Transacao[], diasFuturos = 30): GastoPrevisto[] {
-  const hoje = new Date();
+  const hoje = startOfTodayLocal();
   const limite = new Date(hoje);
   limite.setDate(limite.getDate() + diasFuturos);
 
@@ -19,9 +20,9 @@ export function calcularPrevisao(transacoes: Transacao[], diasFuturos = 30): Gas
   const previsoes: GastoPrevisto[] = [];
 
   for (const ass of assinaturas) {
-    const proxData = new Date(ass.proximaEstimada + 'T00:00:00');
+    const proxData = parseFinancialDate(ass.proximaEstimada);
     if (proxData >= hoje && proxData <= limite) {
-      const diff = Math.round((proxData.getTime() - hoje.getTime()) / 86400000);
+      const diff = diffDaysBetween(proxData, hoje);
       previsoes.push({
         data: ass.proximaEstimada,
         descricao: ass.descricaoOriginal,

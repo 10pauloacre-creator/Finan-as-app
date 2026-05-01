@@ -7,6 +7,7 @@ import { construirContexto } from '@/lib/contexto-financeiro';
 import { calcularPrevisao, GastoPrevisto } from '@/lib/previsao';
 import { calcularScore } from '@/lib/score-financeiro';
 import { formatarMoeda } from '@/lib/storage';
+import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -169,8 +170,11 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
   useEffect(() => {
     const cached = lerCache(config.id);
     if (cached) {
-      setInsights(cached.insights);
-      setCacheTs(cached.ts);
+      const timeout = setTimeout(() => {
+        setInsights(cached.insights);
+        setCacheTs(cached.ts);
+      }, 0);
+      return () => clearTimeout(timeout);
     }
   }, [config.id]);
 
@@ -251,7 +255,7 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
       ) : !loading && !erro ? (
         <div className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-6 text-center">
           <p className="text-xs text-slate-600">Nenhuma análise ainda</p>
-          <p className="text-[11px] text-slate-700 mt-1">Clique em "Analisar agora" para começar</p>
+          <p className="text-[11px] text-slate-700 mt-1">Clique em &quot;Analisar agora&quot; para começar</p>
         </div>
       ) : null}
     </div>
@@ -275,7 +279,7 @@ function ProximosGastos({ previsoes }: { previsoes: GastoPrevisto[] }) {
     <div className="space-y-2">
       {previsoes.map((g, i) => {
         const urgente = g.diasRestantes <= 3;
-        const dataFormatada = new Date(g.data + 'T00:00:00').toLocaleDateString('pt-BR', {
+        const dataFormatada = parseFinancialDate(g.data).toLocaleDateString('pt-BR', {
           day: '2-digit', month: 'short',
         });
 
@@ -327,8 +331,7 @@ function EvolucaoScore() {
       const anoNum = data.getFullYear();
 
       const txMes = transacoes.filter(t => {
-        const d = new Date(t.data + 'T00:00:00');
-        return d.getMonth() + 1 === mesNum && d.getFullYear() === anoNum;
+        return isSameFinancialMonth(t.data, mesNum, anoNum);
       });
 
       const orcMes = orcamentos.filter(o => o.mes === mesNum && o.ano === anoNum);
@@ -358,14 +361,12 @@ function EvolucaoScore() {
     const mes = hoje.getMonth() + 1;
     const ano = hoje.getFullYear();
     const txMes = transacoes.filter(t => {
-      const d = new Date(t.data + 'T00:00:00');
-      return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+      return isSameFinancialMonth(t.data, mes, ano);
     });
     const orcMes = orcamentos.filter(o => o.mes === mes && o.ano === ano);
     return calcularScore({ transacoes: txMes, orcamentos: orcMes, contas, cartoes, metas });
   }, [transacoes, orcamentos, contas, cartoes, metas]);
 
-  const maxScore = Math.max(...historicoScore.map(h => h.score), 1);
   const penultimo = historicoScore[historicoScore.length - 2];
   const atual = historicoScore[historicoScore.length - 1];
 

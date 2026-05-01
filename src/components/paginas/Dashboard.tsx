@@ -11,6 +11,7 @@ import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
+import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 // Deriva sigla do nome do banco
 function bancoSigla(nome: string): string {
@@ -42,13 +43,12 @@ function CategoryDonut({
   const cx = 80, cy = 80, r = 58, ri = 38;
 
   const slices = useMemo(() => {
-    let angle = -Math.PI / 2;
-    return items.map((item) => {
+    return items.reduce<Array<DonutItem & { start: number; sweep: number }>>((acc, item) => {
+      const start = acc.length ? acc[acc.length - 1].start + acc[acc.length - 1].sweep : -Math.PI / 2;
       const sweep = total > 0 ? (item.valor / total) * 2 * Math.PI : 0;
-      const start = angle;
-      angle += sweep;
-      return { ...item, start, sweep };
-    });
+      acc.push({ ...item, start, sweep });
+      return acc;
+    }, []);
   }, [items, total]);
 
   function polarToCart(cx: number, cy: number, r: number, angle: number) {
@@ -272,20 +272,27 @@ function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssis
 
   useEffect(() => {
     if (!dica) return;
-    setText('');
-    setTyping(true);
-    let i = 0;
     const msg = dica.mensagem;
-    const run = () => {
-      if (i <= msg.length) {
-        setText(msg.slice(0, i));
-        i++;
-        timerRef.current = setTimeout(run, 18);
-      } else {
-        setTyping(false);
-      }
+    let i = 0;
+
+    const iniciar = () => {
+      setText('');
+      setTyping(true);
+
+      const run = () => {
+        if (i <= msg.length) {
+          setText(msg.slice(0, i));
+          i++;
+          timerRef.current = setTimeout(run, 18);
+        } else {
+          setTyping(false);
+        }
+      };
+
+      timerRef.current = setTimeout(run, 120);
     };
-    timerRef.current = setTimeout(run, 120);
+
+    timerRef.current = setTimeout(iniciar, 0);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [idx, dica]);
 
@@ -460,8 +467,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const dadosMes = useMemo(() => {
     const doMes = transacoes.filter(t => {
-      const d = new Date(t.data);
-      return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+      return isSameFinancialMonth(t.data, mes, ano);
     });
     const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
     const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
@@ -484,8 +490,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
       const m = d.getMonth() + 1; const a = d.getFullYear();
       const filtrado = transacoes.filter(t => {
-        const td = new Date(t.data);
-        return td.getMonth() + 1 === m && td.getFullYear() === a;
+        return isSameFinancialMonth(t.data, m, a);
       });
       return {
         mes: MESES_ABREV[m - 1],
@@ -779,11 +784,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
           .map(o => {
             const gasto = transacoes
               .filter(t => {
-                const d = new Date(t.data + 'T00:00:00');
                 return t.tipo === 'despesa'
                   && t.categoria_id === o.categoria_id
-                  && d.getMonth() + 1 === mes
-                  && d.getFullYear() === ano;
+                  && isSameFinancialMonth(t.data, mes, ano);
               })
               .reduce((s, t) => s + t.valor, 0);
             const pct = (gasto / o.valor_limite) * 100;
@@ -858,7 +861,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <div className="space-y-2">
             {proximosGastos.slice(0, 3).map((g, i) => {
               const urgente = g.diasRestantes <= 3;
-              const dataFormatada = new Date(g.data + 'T00:00:00').toLocaleDateString('pt-BR', {
+              const dataFormatada = parseFinancialDate(g.data).toLocaleDateString('pt-BR', {
                 day: '2-digit', month: 'short',
               });
               return (
@@ -906,7 +909,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="text-xs text-slate-500">
                     {cat?.nome || 'Outros'}
                     {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
-                    {' • '}{new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    {' • '}{parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
                 </div>
                 <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>

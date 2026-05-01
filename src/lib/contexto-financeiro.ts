@@ -1,5 +1,6 @@
 import type { Transacao, Categoria, ContaBancaria, CartaoCredito } from '@/types';
 import { formatarMoeda } from './storage';
+import { isSameFinancialMonth } from './date';
 
 interface DadosContexto {
   transacoes: Transacao[];
@@ -14,8 +15,7 @@ export function construirContexto(dados: DadosContexto): string {
   const anoAtual = hoje.getFullYear();
 
   const txMes = dados.transacoes.filter(t => {
-    const d = new Date(t.data + 'T00:00:00');
-    return d.getMonth() + 1 === mesAtual && d.getFullYear() === anoAtual;
+    return isSameFinancialMonth(t.data, mesAtual, anoAtual);
   });
 
   const despesasMes = txMes.filter(t => t.tipo === 'despesa');

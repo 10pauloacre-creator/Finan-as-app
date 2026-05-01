@@ -2,14 +2,15 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Plus, Pencil, Trash2, Building2, ArrowUpRight, ArrowDownLeft,
+  Plus, Pencil, Trash2, Building2,
   Check, X, Wifi, WifiOff, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { formatarMoeda, mesAtual, gerarId } from '@/lib/storage';
+import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, TipoConta, ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalPluggyConnect from '@/components/modais/ModalPluggyConnect';
 import type { SyncResult } from '@/app/api/pluggy/sync/route';
+import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 const BANCOS_LISTA = Object.entries(BANCO_INFO) as [BancoSlug, typeof BANCO_INFO[BancoSlug]][];
 const TIPOS_CONTA: TipoConta[] = ['corrente', 'poupanca', 'digital', 'investimento'];
@@ -40,8 +41,7 @@ export default function Bancos() {
   // Transações do mês por conta
   const transacoesPorConta = useMemo(() => {
     const doMes = transacoes.filter(t => {
-      const d = new Date(t.data);
-      return d.getMonth() + 1 === mes && d.getFullYear() === ano;
+      return isSameFinancialMonth(t.data, mes, ano);
     });
     const mapa: Record<string, typeof doMes> = {};
     doMes.forEach(t => {
@@ -147,10 +147,13 @@ export default function Bancos() {
   }, []);
 
   useEffect(() => {
-    verificarEventosPendentes();
+    const timeout = setTimeout(verificarEventosPendentes, 0);
     // Recheck a cada 2 minutos
     const interval = setInterval(verificarEventosPendentes, 2 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, [verificarEventosPendentes]);
 
   // Re-sincroniza um item Pluggy já conectado
@@ -448,7 +451,7 @@ export default function Bancos() {
                           style={{ background: t.tipo === 'receita' ? '#10B981' : '#EF4444' }} />
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-slate-300 truncate">{t.descricao}</div>
-                          <div className="text-[11px] text-slate-600">{cat?.nome} • {new Date(t.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</div>
+                          <div className="text-[11px] text-slate-600">{cat?.nome} • {parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</div>
                         </div>
                         <div className={`text-xs font-semibold tabular-nums ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                           {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}

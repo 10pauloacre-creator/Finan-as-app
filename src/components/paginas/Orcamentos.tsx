@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { Plus, Target, X, AlertTriangle, CheckCircle, TrendingUp, Palette, Smile } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { formatarMoeda, gerarId } from '@/lib/storage';
+import { formatarMoeda } from '@/lib/storage';
+import { isSameFinancialMonth } from '@/lib/date';
 
 // Paleta de cores para novas categorias
 const CORES_PRESET = [
@@ -57,8 +58,7 @@ export default function Orcamentos() {
     const map = new Map<string, number>();
     transacoes
       .filter(t => {
-        const d = new Date(t.data + 'T00:00:00');
-        return t.tipo === 'despesa' && d.getMonth() + 1 === mes && d.getFullYear() === ano;
+        return t.tipo === 'despesa' && isSameFinancialMonth(t.data, mes, ano);
       })
       .forEach(t => map.set(t.categoria_id, (map.get(t.categoria_id) ?? 0) + t.valor));
     return map;

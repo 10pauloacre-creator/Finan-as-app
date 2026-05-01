@@ -1,4 +1,5 @@
 import type { Transacao } from '@/types';
+import { parseFinancialDate } from './date';
 
 export interface CandidatoDuplicata {
   valor: number;
@@ -11,12 +12,12 @@ export function detectarDuplicata(
   nova: CandidatoDuplicata,
   existentes: Transacao[],
 ): Transacao | null {
-  const novaMs = new Date(nova.data).getTime();
+  const novaMs = parseFinancialDate(nova.data).getTime();
   const DOIS_DIAS = 2 * 24 * 60 * 60 * 1000;
   return existentes.find(t => {
     if (t.valor !== nova.valor) return false;
     if (t.categoria_id !== nova.categoria_id) return false;
-    const diff = Math.abs(new Date(t.data).getTime() - novaMs);
+    const diff = Math.abs(parseFinancialDate(t.data).getTime() - novaMs);
     return diff <= DOIS_DIAS;
   }) ?? null;
 }
