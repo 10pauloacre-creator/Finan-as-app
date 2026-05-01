@@ -3,7 +3,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
   Transacao, Categoria, ContaBancaria, CartaoCredito,
-  Investimento, Meta, Orcamento, ConfiguracaoApp,
+  Investimento, Meta, Orcamento, ConfiguracaoApp, Reserva,
 } from '@/types';
 
 type SyncEntity =
@@ -14,6 +14,7 @@ type SyncEntity =
   | 'investimentos'
   | 'metas'
   | 'orcamentos'
+  | 'reservas'
   | 'configuracoes_app';
 
 type PendingSyncOp = {
@@ -32,6 +33,7 @@ type DadosSincronizaveis = {
   investimentos: Investimento[];
   metas: Meta[];
   orcamentos: Orcamento[];
+  reservas: Reserva[];
   config: ConfiguracaoApp | null;
 };
 
@@ -227,6 +229,22 @@ function mapOrcamento(orcamento: Orcamento) {
   };
 }
 
+function mapReserva(reserva: Reserva) {
+  return {
+    id: reserva.id,
+    nome: reserva.nome,
+    banco: reserva.banco,
+    percentual_selic: reserva.percentual_selic,
+    tem_meta: reserva.tem_meta,
+    valor_meta: reserva.valor_meta,
+    descricao: reserva.descricao,
+    icone: reserva.icone,
+    cor: reserva.cor,
+    historico: reserva.historico,
+    criado_em: reserva.criado_em,
+  };
+}
+
 function mapConfig(config: ConfiguracaoApp) {
   return {
     id: 'default',
@@ -357,6 +375,23 @@ export async function syncCarregarOrcamentos(): Promise<Orcamento[]> {
   return (data || []) as Orcamento[];
 }
 
+// ── Reservas ────────────────────────────────────────
+
+export async function syncSalvarReserva(reserva: Reserva) {
+  await sincronizarOperacao('reservas', 'upsert', mapReserva(reserva));
+}
+
+export async function syncExcluirReserva(id: string) {
+  await sincronizarOperacao('reservas', 'delete', { id });
+}
+
+export async function syncCarregarReservas(): Promise<Reserva[]> {
+  if (!ok()) return [];
+  const { data, error } = await supabase.from('reservas').select('*');
+  if (error) throw error;
+  return (data || []) as Reserva[];
+}
+
 // ── Configuracao ──────────────────────────────────────
 
 export async function syncSalvarConfig(config: ConfiguracaoApp) {
@@ -382,7 +417,7 @@ export async function syncCarregarConfig(): Promise<ConfiguracaoApp | null> {
 // ── Sync completo ─────────────────────────────────────
 
 export async function baixarTudoDoSupabase(): Promise<DadosSincronizaveis> {
-  const [transacoes, categorias, contas, cartoes, investimentos, metas, orcamentos, config] = await Promise.all([
+  const [transacoes, categorias, contas, cartoes, investimentos, metas, orcamentos, reservas, config] = await Promise.all([
     syncCarregarTransacoes(),
     syncCarregarCategorias(),
     syncCarregarContas(),
@@ -390,10 +425,11 @@ export async function baixarTudoDoSupabase(): Promise<DadosSincronizaveis> {
     syncCarregarInvestimentos(),
     syncCarregarMetas(),
     syncCarregarOrcamentos(),
+    syncCarregarReservas(),
     syncCarregarConfig(),
   ]);
 
-  return { transacoes, categorias, contas, cartoes, investimentos, metas, orcamentos, config };
+  return { transacoes, categorias, contas, cartoes, investimentos, metas, orcamentos, reservas, config };
 }
 
 export async function enviarTudoParaSupabase(dados: DadosSincronizaveis) {
@@ -407,6 +443,7 @@ export async function enviarTudoParaSupabase(dados: DadosSincronizaveis) {
     ...dados.investimentos.map(syncSalvarInvestimento),
     ...dados.metas.map(syncSalvarMeta),
     ...dados.orcamentos.map(syncSalvarOrcamento),
+    ...dados.reservas.map(syncSalvarReserva),
     ...(dados.config ? [syncSalvarConfig(dados.config)] : []),
   ]);
 

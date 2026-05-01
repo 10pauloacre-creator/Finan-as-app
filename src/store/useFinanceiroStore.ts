@@ -5,7 +5,7 @@ import {
 } from '@/types';
 import {
   storageTransacoes, storageCategoriass, storageInvestimentos,
-  storageMetas, storageConfig, storageContas, storageCartoes, storageOrcamentos,
+  storageMetas, storageConfig, storageContas, storageCartoes, storageOrcamentos, storageReservas,
   FINANCEIRO_STORAGE_EVENT, gerarId,
 } from '@/lib/storage';
 import {
@@ -145,6 +145,7 @@ function contarRegistrosRemotos(dados: Awaited<ReturnType<typeof baixarTudoDoSup
     dados.investimentos.length +
     dados.metas.length +
     dados.orcamentos.length +
+    dados.reservas.length +
     (dados.config ? 1 : 0)
   );
 }
@@ -157,6 +158,7 @@ function contarRegistrosLocais(dados: {
   investimentos: Investimento[];
   metas: Meta[];
   orcamentos: Orcamento[];
+  reservas: ReturnType<typeof storageReservas.getAll>;
   config: ConfiguracaoApp;
 }) {
   return (
@@ -167,6 +169,7 @@ function contarRegistrosLocais(dados: {
     dados.investimentos.length +
     dados.metas.length +
     dados.orcamentos.length +
+    dados.reservas.length +
     1
   );
 }
@@ -204,6 +207,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     storageInvestimentos.replaceAll(dados.investimentos);
     storageMetas.replaceAll(dados.metas);
     storageOrcamentos.replaceAll(dados.orcamentos);
+    storageReservas.replaceAll(dados.reservas);
 
     const configFinal = dados.config ?? storageConfig.get();
     if (dados.config) storageConfig.replace(dados.config);
@@ -238,6 +242,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           investimentos: estadoLocal.investimentos,
           metas: estadoLocal.metas,
           orcamentos: estadoLocal.orcamentos,
+          reservas: storageReservas.getAll(),
           config: estadoLocal.config,
         });
 
@@ -250,6 +255,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
             investimentos: estadoLocal.investimentos,
             metas: estadoLocal.metas,
             orcamentos: estadoLocal.orcamentos,
+            reservas: storageReservas.getAll(),
             config: estadoLocal.config,
           });
           dados = await baixarTudoDoSupabase();
@@ -543,6 +549,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           investimentos: s.investimentos,
           metas: s.metas,
           orcamentos: s.orcamentos,
+          reservas: storageReservas.getAll(),
           config: s.config,
         });
 
@@ -554,6 +561,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           s.investimentos.length +
           s.metas.length +
           s.orcamentos.length +
+          storageReservas.getAll().length +
           1;
 
         return { ok: true, msg: `${total} registros enviados para a nuvem!` };

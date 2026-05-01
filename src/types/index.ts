@@ -105,6 +105,28 @@ export interface Meta {
   criado_em: string;
 }
 
+export interface MovimentoReserva {
+  id: string;
+  tipo: 'deposito' | 'retirada';
+  valor: number;
+  data: string;
+  descricao?: string;
+}
+
+export interface Reserva {
+  id: string;
+  nome: string;
+  banco: BancoSlug;
+  percentual_selic: number;
+  tem_meta: boolean;
+  valor_meta?: number;
+  descricao?: string;
+  icone: string;
+  cor: string;
+  historico: MovimentoReserva[];
+  criado_em: string;
+}
+
 // ─── Orçamento ────────────────────────────────────────
 export interface Orcamento {
   id: string;

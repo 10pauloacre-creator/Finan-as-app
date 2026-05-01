@@ -98,6 +98,21 @@ create table if not exists orcamentos (
   criado_em     timestamptz default now()
 );
 
+-- ── Reservas ───────────────────────────────────────────────
+create table if not exists reservas (
+  id                 text primary key,
+  nome               text not null,
+  banco              text not null,
+  percentual_selic   numeric not null default 100,
+  tem_meta           boolean not null default false,
+  valor_meta         numeric,
+  descricao          text,
+  icone              text,
+  cor                text,
+  historico          jsonb not null default '[]'::jsonb,
+  criado_em          timestamptz default now()
+);
+
 -- ── Configuração do app ─────────────────────────────────────────────────
 create table if not exists configuracoes_app (
   id                           text primary key default 'default',

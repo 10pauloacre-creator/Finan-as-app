@@ -510,12 +510,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
     return { receitas, despesas, saldo, graficoPizza, areaData, doMes };
   }, [transacoes, categorias, mes, ano]);
 
-  const patrimonio = useMemo(() => {
-    const saldoContas = contas.reduce((s, c) => s + c.saldo, 0);
-    const faturaTotal = cartoes.reduce((s, c) => s + c.fatura_atual, 0);
-    return saldoContas - faturaTotal;
-  }, [contas, cartoes]);
-
   useEffect(() => {
     if (dadosMes.doMes.length === 0) return;
     const dicas: typeof dicasIA = [];
@@ -545,9 +539,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
   );
 
   // useCountUp para valores animados
-  const patrimonioAnimado = useCountUp(patrimonio);
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
+  const saldoMesAnimado = useCountUp(dadosMes.saldo);
 
   const ocultar = (v: string) => saldoOculto ? '••••••' : v;
 
@@ -577,13 +571,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-400 text-sm font-medium mb-0.5">Olá, Paulo! 👋</p>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Patrimônio Líquido</p>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo do mês</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tabular-nums" style={{
               background: 'linear-gradient(135deg, #F1F5F9 0%, #A78BFA 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>
-              {saldoOculto ? 'R$ ••••••' : formatarMoeda(patrimonioAnimado)}
+              {saldoOculto ? 'R$ ••••••' : formatarMoeda(saldoMesAnimado)}
             </h1>
             <button
               onClick={() => setSaldoOculto(v => !v)}
@@ -598,10 +592,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </p>
         </div>
         <div className="text-right">
-          <div className={`text-sm font-semibold tabular-nums ${dadosMes.saldo >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {dadosMes.saldo >= 0 ? '+' : ''}{ocultar(formatarMoeda(dadosMes.saldo))}
+          <div className="text-sm font-semibold tabular-nums text-slate-400">
+            {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} • ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
           </div>
-          <div className="text-slate-600 text-xs">saldo do mês</div>
+          <div className="text-slate-600 text-xs">visão geral</div>
         </div>
       </div>
 

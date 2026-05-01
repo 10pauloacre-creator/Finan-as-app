@@ -2,7 +2,7 @@
  * STORAGE LOCAL — armazena dados no navegador quando offline
  */
 
-import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento } from '@/types';
+import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
 import { isSameFinancialMonth, parseFinancialDate } from './date';
 
@@ -15,6 +15,7 @@ const KEYS = {
   CONTAS:       'fin_contas',
   CARTOES:      'fin_cartoes',
   ORCAMENTOS:   'fin_orcamentos',
+  RESERVAS:     'fin_reservas',
 };
 
 export const FINANCEIRO_STORAGE_EVENT = 'financeiroia:storage-changed';
@@ -203,6 +204,19 @@ export const storageOrcamentos = {
   },
   delete: (id: string): void =>
     set(KEYS.ORCAMENTOS, get<Orcamento>(KEYS.ORCAMENTOS).filter(x => x.id !== id)),
+};
+
+// ── RESERVAS ─────────────────────────────────────────
+export const storageReservas = {
+  getAll: (): Reserva[] => get<Reserva>(KEYS.RESERVAS),
+  replaceAll: (lista: Reserva[]): void => set(KEYS.RESERVAS, lista),
+  save: (reserva: Reserva): void => {
+    const lista = get<Reserva>(KEYS.RESERVAS);
+    const idx = lista.findIndex((item) => item.id === reserva.id);
+    if (idx >= 0) lista[idx] = reserva; else lista.unshift(reserva);
+    set(KEYS.RESERVAS, lista);
+  },
+  delete: (id: string): void => set(KEYS.RESERVAS, get<Reserva>(KEYS.RESERVAS).filter((item) => item.id !== id)),
 };
 
 // ── CONFIGURAÇÕES ───────────────────────────────────────
