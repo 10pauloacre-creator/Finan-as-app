@@ -542,6 +542,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
   const saldoMesAnimado = useCountUp(dadosMes.saldo);
+  const corSaldoMes =
+    dadosMes.saldo > 0 ? '#10B981' :
+    dadosMes.saldo < 0 ? '#EF4444' :
+    '#F1F5F9';
 
   const ocultar = (v: string) => saldoOculto ? '••••••' : v;
 
@@ -574,8 +578,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo do mês</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tabular-nums" style={{
-              background: 'linear-gradient(135deg, #F1F5F9 0%, #A78BFA 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              color: corSaldoMes,
             }}>
               {saldoOculto ? 'R$ ••••••' : formatarMoeda(saldoMesAnimado)}
             </h1>
