@@ -1,30 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseTransacaoJSON } from '@/lib/assistente-types';
+import type { TransacaoExtraida, RespostaAssistente } from '@/lib/assistente-types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];
-
-// ── Tipos exportados ─────────────────────────────────────────────────────────
-
-export interface TransacaoExtraida {
-  tipo: 'despesa' | 'receita';
-  valor: number;
-  descricao: string;
-  categoria: string;
-  data: string;         // YYYY-MM-DD
-  hora?: string | null; // HH:MM
-  metodo_pagamento: 'pix' | 'credito' | 'debito' | 'dinheiro' | 'nao_informado';
-  parcelas?: number | null;
-  local?: string | null;
-  banco?: string | null;
-}
-
-export interface RespostaAssistente {
-  tipo: 'transacao' | 'conversa';
-  transacao?: TransacaoExtraida;
-  transcricao?: string;
-  resposta: string;
-}
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -57,27 +37,6 @@ Ajude com dúvidas sobre finanças pessoais, orçamento, investimentos e economi
 Se o usuário mencionar um gasto sem detalhes suficientes, oriente-o a informar valor e descrição.
 ${contexto ? `\nDados financeiros do usuário (use para responder perguntas específicas):\n${contexto}\n` : ''}
 Pergunta: ${texto}`;
-
-// ── Parser JSON ──────────────────────────────────────────────────────────────
-
-export function parseTransacaoJSON(raw: string): TransacaoExtraida | { erro: string } {
-  const clean = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) return { erro: 'Resposta inválida da IA' };
-  try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    if (parsed.erro && typeof parsed.erro === 'string' && parsed.erro.length > 0) {
-      return { erro: parsed.erro };
-    }
-    if (!parsed.valor || !parsed.descricao || !parsed.tipo) {
-      return { erro: 'Dados insuficientes na resposta.' };
-    }
-    delete parsed.erro;
-    return parsed as unknown as TransacaoExtraida;
-  } catch {
-    return { erro: 'Não consegui interpretar a resposta.' };
-  }
-}
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 

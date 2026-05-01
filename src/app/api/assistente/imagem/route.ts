@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { TransacaoExtraida, RespostaAssistente } from '../texto/route';
+import type { TransacaoExtraida, RespostaAssistente } from '@/lib/assistente-types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];

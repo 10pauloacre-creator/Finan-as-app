@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto } from '@/lib/contexto-financeiro';
-import type { TransacaoExtraida } from '@/app/api/assistente/texto/route';
+import type { TransacaoExtraida } from '@/lib/assistente-types';
 import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
 import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import { BANCO_INFO } from '@/types';

@@ -47,12 +47,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
-      <head>
-        <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48x48.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
-      </head>
       <body className={`${ibmPlexSans.variable} font-[family-name:var(--font-ibm)] min-h-screen antialiased`}
             style={{ color: '#F1F5F9' }}>
         <div
