@@ -54,7 +54,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
       </head>
       <body className={`${ibmPlexSans.variable} font-[family-name:var(--font-ibm)] min-h-screen antialiased`}
-            style={{ background: '#080B14', color: '#F1F5F9' }}>
+            style={{ color: '#F1F5F9' }}>
+        <div
+          className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/bg.png')" }}
+        />
+        <div className="fixed inset-0 -z-10 bg-[#080B14]/80" />
         {children}
       </body>
     </html>

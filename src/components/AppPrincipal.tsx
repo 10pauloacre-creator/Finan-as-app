@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
-  Target, Repeat, BrainCircuit, CalendarDays,
+  Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X,
 } from 'lucide-react';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
@@ -41,19 +41,32 @@ const navDesktop = [
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
 
-/** Mobile bottom nav — max 5 items (UX guideline) */
+/** Mobile bottom nav — 4 primary + "Mais" button */
 const navMobile = [
-  { id: 'dashboard',  label: 'Início',  icone: LayoutDashboard },
-  { id: 'transacoes', label: 'Gastos',  icone: ArrowLeftRight  },
-  { id: 'assistente', label: 'IA',      icone: Sparkles        },
-  { id: 'bancos',     label: 'Bancos',  icone: Building2       },
-  { id: 'cartoes',    label: 'Cartões', icone: CreditCard      },
+  { id: 'dashboard',  label: 'Início', icone: LayoutDashboard },
+  { id: 'transacoes', label: 'Gastos', icone: ArrowLeftRight  },
+  { id: 'assistente', label: 'IA',     icone: Sparkles        },
+  { id: 'bancos',     label: 'Bancos', icone: Building2       },
+] as const;
+
+/** Extra pages shown in the "Mais" bottom sheet */
+const navMais = [
+  { id: 'cartoes',      label: 'Cartões',    icone: CreditCard      },
+  { id: 'patrimonio',   label: 'Patrimônio', icone: TrendingUp      },
+  { id: 'relatorios',   label: 'Relatórios', icone: BarChart3       },
+  { id: 'orcamentos',   label: 'Orçamentos', icone: Target          },
+  { id: 'assinaturas',  label: 'Assinaturas',icone: Repeat          },
+  { id: 'calendario',   label: 'Calendário', icone: CalendarDays    },
+  { id: 'agentes',      label: 'Agentes IA', icone: BrainCircuit    },
+  { id: 'investimentos',label: 'Investir',   icone: TrendingUp      },
+  { id: 'configuracoes',label: 'Config.',    icone: Settings        },
 ] as const;
 
 export default function AppPrincipal() {
   const [pagina, setPagina]           = useState<Pagina>('dashboard');
   const [modalAberto, setModalAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [maisAberto, setMaisAberto]   = useState(false);
   const { sincronizarDoSupabase, enviarParaNuvem } = useFinanceiroStore();
   const supabaseAtivo = isSupabaseConfigured();
 
@@ -91,14 +104,14 @@ export default function AppPrincipal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080B14] flex flex-col">
+    <div className="min-h-screen flex flex-col">
 
       {/* ===== DESKTOP LAYOUT (sidebar) ===== */}
       <div className="hidden lg:flex min-h-screen">
 
         {/* Sidebar */}
-        <aside className="w-64 border-r border-white/[0.06] flex flex-col py-6 px-4 fixed h-full z-10"
-          style={{ background: '#0A0E1A' }}>
+        <aside className="w-64 border-r border-white/[0.06] flex flex-col py-6 px-4 fixed h-full z-10 backdrop-blur-xl"
+          style={{ background: 'rgba(10,14,26,0.85)' }}>
 
           {/* Logo */}
           <div className="flex items-center gap-3 px-2 mb-8">
@@ -213,9 +226,9 @@ export default function AppPrincipal() {
           </div>
         </main>
 
-        {/* Bottom Navigation (max 5 items) */}
-        <nav className="fixed bottom-0 left-0 right-0 border-t border-white/[0.06] px-2 pt-2 pb-safe z-10 backdrop-blur-md"
-          style={{ background: 'rgba(10,14,26,0.97)' }}>
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 border-t border-white/[0.06] px-2 pt-2 pb-safe z-10 backdrop-blur-xl"
+          style={{ background: 'rgba(10,14,26,0.92)' }}>
           <div className="flex justify-around max-w-md mx-auto">
             {navMobile.map(item => {
               const Icon = item.icone;
@@ -238,8 +251,58 @@ export default function AppPrincipal() {
                 </button>
               );
             })}
+            {/* Mais button */}
+            <button
+              onClick={() => setMaisAberto(true)}
+              className={`
+                flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl
+                transition-all duration-150 min-w-[52px]
+                ${maisAberto || navMais.some(i => i.id === pagina) ? 'text-purple-400' : 'text-slate-600 hover:text-slate-400'}
+              `}
+              aria-label="Mais páginas"
+            >
+              <MoreHorizontal size={21} strokeWidth={1.7} />
+              <span className="text-[10px] font-medium">Mais</span>
+            </button>
           </div>
         </nav>
+
+        {/* "Mais" bottom sheet */}
+        {maisAberto && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMaisAberto(false)} />
+            <div className="relative rounded-t-2xl border-t border-white/[0.08] px-4 pt-4 pb-8 backdrop-blur-xl"
+              style={{ background: 'rgba(10,14,26,0.97)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold text-slate-300">Todas as páginas</span>
+                <button onClick={() => setMaisAberto(false)} className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-all">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {navMais.map(item => {
+                  const Icon = item.icone;
+                  const ativo = pagina === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { setPagina(item.id as Pagina); setMaisAberto(false); }}
+                      className={`
+                        flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-150
+                        ${ativo
+                          ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
+                          : 'text-slate-400 border-white/[0.06] hover:bg-white/[0.06] hover:text-slate-200'}
+                      `}
+                    >
+                      <Icon size={22} strokeWidth={ativo ? 2.2 : 1.7} />
+                      <span className="text-[11px] font-medium leading-tight text-center">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
