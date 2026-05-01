@@ -90,6 +90,28 @@ function contarRegistrosRemotos(dados: Awaited<ReturnType<typeof baixarTudoDoSup
   );
 }
 
+function contarRegistrosLocais(dados: {
+  transacoes: Transacao[];
+  categorias: Categoria[];
+  contas: ContaBancaria[];
+  cartoes: CartaoCredito[];
+  investimentos: Investimento[];
+  metas: Meta[];
+  orcamentos: Orcamento[];
+  config: ConfiguracaoApp;
+}) {
+  return (
+    dados.transacoes.length +
+    dados.categorias.length +
+    dados.contas.length +
+    dados.cartoes.length +
+    dados.investimentos.length +
+    dados.metas.length +
+    dados.orcamentos.length +
+    1
+  );
+}
+
 function getEstadoConfig(config: ConfiguracaoApp) {
   return {
     config,
@@ -145,7 +167,36 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     syncEmAndamento = (async () => {
       await processarFilaDeSincronizacao();
-      const dados = await baixarTudoDoSupabase();
+      let dados = await baixarTudoDoSupabase();
+
+      if (!contarRegistrosRemotos(dados)) {
+        const estadoLocal = get();
+        const totalLocal = contarRegistrosLocais({
+          transacoes: estadoLocal.transacoes,
+          categorias: estadoLocal.categorias,
+          contas: estadoLocal.contas,
+          cartoes: estadoLocal.cartoes,
+          investimentos: estadoLocal.investimentos,
+          metas: estadoLocal.metas,
+          orcamentos: estadoLocal.orcamentos,
+          config: estadoLocal.config,
+        });
+
+        if (totalLocal > 1) {
+          await enviarTudoParaSupabase({
+            transacoes: estadoLocal.transacoes,
+            categorias: estadoLocal.categorias,
+            contas: estadoLocal.contas,
+            cartoes: estadoLocal.cartoes,
+            investimentos: estadoLocal.investimentos,
+            metas: estadoLocal.metas,
+            orcamentos: estadoLocal.orcamentos,
+            config: estadoLocal.config,
+          });
+          dados = await baixarTudoDoSupabase();
+        }
+      }
+
       if (!contarRegistrosRemotos(dados)) return;
       aplicarDadosRemotos(dados);
     })();
