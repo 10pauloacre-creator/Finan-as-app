@@ -754,7 +754,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   }
 
   return (
-    <div className="space-y-5 animate-fade-up">
+    <div className="flex flex-col gap-5 animate-fade-up">
       <input
         ref={arquivoCartaoRef}
         type="file"
@@ -795,7 +795,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </div>
 
       {/* ── Cards resumo ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="order-4 grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => onNovoPagina('transacoes')}
@@ -827,13 +827,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </div>
 
       {/* ── Score de Saúde Financeira ───────────────────────────────────── */}
-      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
+      <div className="order-5">
+        <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
+      </div>
 
       {/* ── Próximas faturas ─────────────────────────────────────────────── */}
-      <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
+      <div className="order-6">
+        <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
+      </div>
 
       {/* ── Contas bancárias com sparkline ──────────────────────────────── */}
-      <section>
+      <section className="order-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Building2 size={15} className="text-slate-500" />
@@ -847,7 +851,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {contas.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex gap-3 min-w-max">
+              <div className="flex gap-2 min-w-max">
                 {contas.map((conta) => {
                   const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
                   const ativa = contaExpandidaId === conta.id;
@@ -856,19 +860,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       key={conta.id}
                       type="button"
                       onClick={() => setContaExpandidaId((atual) => atual === conta.id ? null : conta.id)}
-                      className={`min-w-[210px] rounded-[28px] border px-4 py-3 text-left transition-all ${
+                      className={`min-w-[120px] rounded-xl border px-2.5 py-2 text-left transition-all ${
                         ativa
-                          ? 'bg-white text-slate-950 border-white shadow-lg shadow-black/20'
-                          : 'bg-slate-50/95 text-slate-950 border-white/70 hover:bg-white'
+                          ? 'bg-white/[0.07] text-white border-purple-500/35 shadow-lg shadow-black/20'
+                          : 'bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <BankLogo banco={conta.banco} size={44} className="h-11 w-11 rounded-full border border-slate-200 p-1.5 flex-shrink-0" />
+                      <div className="flex items-center gap-2">
+                        <BankLogo banco={conta.banco} size={24} className="h-6 w-6 rounded-full border border-white/10 p-0.5 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{info.nome}</div>
-                          <div className="text-3xl font-semibold leading-none tabular-nums mt-1">{ocultar(formatarMoeda(conta.saldo))}</div>
+                          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{info.nome}</div>
+                          <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(conta.saldo))}</div>
                         </div>
-                        <ChevronDown size={18} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={12} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
                   );
@@ -887,10 +891,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
               )).reduce((soma, transacao) => soma + transacao.valor, 0);
 
               return (
-                <div className="glass-card mt-3 p-4" style={{ borderColor: `${info.cor}33` }}>
+                <div className="glass-card mt-2 p-3.5" style={{ borderColor: `${info.cor}33` }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <BankLogo banco={contaExpandida.banco} size={42} className="h-10.5 w-10.5 rounded-2xl border border-white/10 p-1.5" />
+                      <BankLogo banco={contaExpandida.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
                       <div>
                         <h3 className="text-sm font-semibold text-white">{info.nome}</h3>
                         <p className="text-xs text-slate-500">{contaExpandida.nome} • {contaExpandida.tipo}</p>
@@ -905,7 +909,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mt-4">
+                  <div className="grid grid-cols-3 gap-2 mt-3">
                     <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
                       <div className="text-[11px] text-slate-500">Saldo</div>
                       <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(contaExpandida.saldo))}</div>
@@ -920,7 +924,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </div>
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-slate-400">Movimentações recentes</span>
                       <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
@@ -965,7 +969,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </section>
 
       {/* ── Cartões de crédito ──────────────────────────────────────────── */}
-      <section>
+      <section className="order-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <CreditCard size={15} className="text-slate-500" />
@@ -979,7 +983,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {cartoes.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex gap-3 min-w-max">
+              <div className="flex gap-2 min-w-max">
                 {cartoes.map((cartao) => {
                   const ativa = cartaoExpandidoId === cartao.id;
                   return (
@@ -987,22 +991,22 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       key={cartao.id}
                       type="button"
                       onClick={() => setCartaoExpandidoId((atual) => atual === cartao.id ? null : cartao.id)}
-                      className={`min-w-[220px] rounded-[28px] border px-4 py-3 text-left transition-all ${
+                      className={`min-w-[128px] rounded-xl border px-2.5 py-2 text-left transition-all ${
                         ativa
-                          ? 'bg-white text-slate-950 border-white shadow-lg shadow-black/20'
-                          : 'bg-slate-50/95 text-slate-950 border-white/70 hover:bg-white'
+                          ? 'bg-white/[0.07] text-white border-purple-500/35 shadow-lg shadow-black/20'
+                          : 'bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="relative flex-shrink-0">
-                          <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-full border border-slate-200 p-1.5" />
-                          <CardBrandLogo bandeira={cartao.bandeira} size={20} className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border border-white p-0.5 shadow-sm" />
+                          <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 rounded-full border border-white/10 p-0.5" />
+                          <CardBrandLogo bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white p-0.5 shadow-sm" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
-                          <div className="text-3xl font-semibold leading-none tabular-nums mt-1">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
+                          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{BANCO_INFO[cartao.banco].nome}</div>
+                          <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
                         </div>
-                        <ChevronDown size={18} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={12} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
                   );
@@ -1023,12 +1027,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
               const statusAtual = statusImportacao?.cartaoId === cartaoExpandido.id ? statusImportacao : null;
 
               return (
-                <div className="glass-card mt-3 p-4" style={{ borderColor: `${info.cor}33` }}>
+                <div className="glass-card mt-2 p-3.5" style={{ borderColor: `${info.cor}33` }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <BankLogo banco={cartaoExpandido.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
-                        <CardBrandLogo bandeira={cartaoExpandido.bandeira} size={22} className="absolute -bottom-1 -right-1 h-[22px] w-[22px] rounded-full border border-white p-0.5 shadow-sm" />
+                        <BankLogo banco={cartaoExpandido.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
+                        <CardBrandLogo bandeira={cartaoExpandido.bandeira} size={18} className="absolute -bottom-1 -right-1 h-[18px] w-[18px] rounded-full border border-white p-0.5 shadow-sm" />
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-white">{cartaoExpandido.nome}</h3>
@@ -1044,7 +1048,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
                     <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
                       <div className="text-[11px] text-slate-500">Fatura atual</div>
                       <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.fatura_atual))}</div>
@@ -1090,7 +1094,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -1138,7 +1142,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     </div>
                   )}
 
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-slate-400">Compras lançadas nesse cartão</span>
                       <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
