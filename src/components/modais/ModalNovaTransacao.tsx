@@ -13,6 +13,7 @@ interface Props {
   aberto: boolean;
   onFechar: () => void;
   transacaoEditar?: Transacao;
+  tipoInicial?: TipoTransacao;
 }
 
 const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
@@ -24,11 +25,11 @@ const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
   { valor: 'outro', label: 'Outro', icone: '📋' },
 ];
 
-function getFormVazio() {
+function getFormVazio(tipo: TipoTransacao = 'despesa') {
   return {
     descricao: '',
     valor: '',
-    tipo: 'despesa' as TipoTransacao,
+    tipo,
     categoria_id: '',
     data: formatFinancialDate(new Date()),
     horario: '',
@@ -41,9 +42,9 @@ function getFormVazio() {
   };
 }
 
-export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar }: Props) {
+export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa' }: Props) {
   const { categorias, contas, cartoes, transacoes, adicionarTransacao, editarTransacao } = useFinanceiroStore();
-  const [form, setForm] = useState(getFormVazio);
+  const [form, setForm] = useState(() => getFormVazio(tipoInicial));
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroIA, setErroIA] = useState('');
@@ -53,26 +54,30 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar }
 
   // Preenche form ao editar
   useEffect(() => {
-    if (transacaoEditar) {
-      setForm({
-        descricao: transacaoEditar.descricao,
-        valor: transacaoEditar.valor.toString(),
-        tipo: transacaoEditar.tipo,
-        categoria_id: transacaoEditar.categoria_id,
-        data: transacaoEditar.data,
-        horario: transacaoEditar.horario || '',
-        metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
-        parcelas: transacaoEditar.parcelas?.toString() || '1',
-        local: transacaoEditar.local || '',
-        observacoes: transacaoEditar.observacoes || '',
-        conta_id: transacaoEditar.conta_id || '',
-        cartao_id: transacaoEditar.cartao_id || '',
-      });
-    } else {
-      setForm(getFormVazio());
-      setFotoPreview(null);
-    }
-  }, [transacaoEditar, aberto]);
+    const timeout = window.setTimeout(() => {
+      if (transacaoEditar) {
+        setForm({
+          descricao: transacaoEditar.descricao,
+          valor: transacaoEditar.valor.toString(),
+          tipo: transacaoEditar.tipo,
+          categoria_id: transacaoEditar.categoria_id,
+          data: transacaoEditar.data,
+          horario: transacaoEditar.horario || '',
+          metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
+          parcelas: transacaoEditar.parcelas?.toString() || '1',
+          local: transacaoEditar.local || '',
+          observacoes: transacaoEditar.observacoes || '',
+          conta_id: transacaoEditar.conta_id || '',
+          cartao_id: transacaoEditar.cartao_id || '',
+        });
+      } else {
+        setForm(getFormVazio(tipoInicial));
+        setFotoPreview(null);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [transacaoEditar, aberto, tipoInicial]);
 
   // Categorias filtradas pelo tipo
   const categoriasFiltradas = categorias.filter(c => c.tipo === form.tipo || c.tipo === 'transferencia');

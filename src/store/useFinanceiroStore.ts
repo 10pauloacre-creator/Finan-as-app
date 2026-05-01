@@ -5,7 +5,8 @@ import {
 } from '@/types';
 import {
   storageTransacoes, storageCategoriass, storageInvestimentos,
-  storageMetas, storageConfig, storageContas, storageCartoes, storageOrcamentos, gerarId,
+  storageMetas, storageConfig, storageContas, storageCartoes, storageOrcamentos,
+  FINANCEIRO_STORAGE_EVENT, gerarId,
 } from '@/lib/storage';
 import {
   syncSalvarTransacao, syncExcluirTransacao,
@@ -76,6 +77,7 @@ const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notifica
 
 let listenersDeSyncRegistrados = false;
 let syncEmAndamento: Promise<void> | null = null;
+let intervaloDeSync: ReturnType<typeof setInterval> | null = null;
 
 function arredondarMoeda(valor: number) {
   return Number(valor.toFixed(2));
@@ -275,11 +277,32 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       });
     };
 
+    const recarregarDoLocal = () => {
+      carregarDoLocal();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || !event.key.startsWith('fin_')) return;
+      recarregarDoLocal();
+    };
+
     window.addEventListener('online', sincronizarSilenciosamente);
     window.addEventListener('focus', sincronizarSilenciosamente);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(FINANCEIRO_STORAGE_EVENT, recarregarDoLocal as EventListener);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') sincronizarSilenciosamente();
+      if (document.visibilityState === 'visible') {
+        recarregarDoLocal();
+        sincronizarSilenciosamente();
+      }
     });
+
+    if (intervaloDeSync) clearInterval(intervaloDeSync);
+    intervaloDeSync = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      carregarDoLocal();
+      sincronizarSilenciosamente();
+    }, 45_000);
   };
 
   return {

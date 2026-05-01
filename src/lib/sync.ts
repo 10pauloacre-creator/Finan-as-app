@@ -376,7 +376,7 @@ export async function syncCarregarConfig(): Promise<ConfiguracaoApp | null> {
 
   const config = { ...data } as Record<string, unknown>;
   delete config.id;
-  return config as ConfiguracaoApp;
+  return config as unknown as ConfiguracaoApp;
 }
 
 // ── Sync completo ─────────────────────────────────────

@@ -1,10 +1,9 @@
 'use client';
 
-import { useMemo, useEffect, useState, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import {
-  TrendingUp, TrendingDown, Wallet, Brain, ArrowRight,
-  Eye, EyeOff, Plus, CreditCard, Building2, Sparkles,
-  ArrowUpRight, ArrowDownLeft, RefreshCw,
+  Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
+  ArrowUpRight, ArrowDownLeft,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
@@ -381,7 +380,12 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
           const info = BANCO_INFO[c.banco as BancoSlug] || BANCO_INFO.outro;
           const urgente = c.diasRestantes < 5;
           return (
-            <div key={c.id} className="glass-card flex items-center gap-3 p-3">
+            <button
+              key={c.id}
+              type="button"
+              onClick={onNavegar}
+              className="glass-card flex items-center gap-3 p-3 w-full text-left"
+            >
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                 style={{ background: info.cor }}
@@ -395,7 +399,7 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
                 </div>
               </div>
               <div className="text-sm font-bold text-red-400 tabular-nums">{formatarMoeda(c.fatura_atual)}</div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -417,7 +421,12 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
     score.nivel === 'atencao' ? 'Atenção' : 'Crítico';
 
   return (
-    <div className="glass-card p-4" style={{ borderColor: `${corScore}33` }}>
+    <button
+      type="button"
+      onClick={onNavegar}
+      className="glass-card p-4 w-full text-left"
+      style={{ borderColor: `${corScore}33` }}
+    >
       <div className="flex items-center gap-4">
         {/* Score circle */}
         <div className="flex-shrink-0 text-center">
@@ -447,15 +456,14 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
         </div>
 
         {/* CTA */}
-        <button
-          onClick={onNavegar}
+        <div
           className="flex-shrink-0 flex items-center gap-1 text-xs font-medium transition-colors"
           style={{ color: corScore }}
         >
           Detalhes <ArrowRight size={11} />
-        </button>
+        </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -599,7 +607,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
       {/* ── Cards resumo ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
+        <button
+          type="button"
+          onClick={() => onNovoPagina('transacoes')}
+          className="glass-card p-4 text-left"
+          style={{ borderColor: 'rgba(16,185,129,0.2)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">Entradas</span>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
@@ -607,8 +620,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
             </div>
           </div>
           <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
-        </div>
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNovoPagina('transacoes')}
+          className="glass-card p-4 text-left"
+          style={{ borderColor: 'rgba(239,68,68,0.2)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">Saídas</span>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
@@ -616,7 +634,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             </div>
           </div>
           <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
-        </div>
+        </button>
       </div>
 
       {/* ── Score de Saúde Financeira ───────────────────────────────────── */}
@@ -814,7 +832,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 const cat = categorias.find(c => c.id === o.categoria_id);
                 const corBarra = pct >= 100 ? '#EF4444' : pct >= 90 ? '#F97316' : '#F59E0B';
                 return (
-                  <div key={o.id} className="glass-card p-3" style={{ borderColor: `${corBarra}33` }}>
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => onNovoPagina('orcamentos')}
+                    className="glass-card p-3 w-full text-left"
+                    style={{ borderColor: `${corBarra}33` }}
+                  >
                     <div className="flex items-center gap-3 mb-2">
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
@@ -838,7 +862,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         style={{ width: `${Math.min(pct, 100)}%`, background: corBarra }}
                       />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -865,7 +889,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 day: '2-digit', month: 'short',
               });
               return (
-                <div key={i} className={`glass-card flex items-center gap-3 p-3 ${urgente ? 'border-amber-500/20' : ''}`}>
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onNovoPagina('agentes')}
+                  className={`glass-card flex items-center gap-3 p-3 w-full text-left ${urgente ? 'border-amber-500/20' : ''}`}
+                >
                   <div className="text-lg flex-shrink-0">🔄</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">{g.descricao}</div>
@@ -877,7 +906,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="text-sm font-bold text-red-400 tabular-nums flex-shrink-0">
                     -{formatarMoeda(g.valor)}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -899,7 +928,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
           {transacoesFiltradas.map(t => {
             const cat = categorias.find(c => c.id === t.categoria_id);
             return (
-              <div key={t.id} className="glass-card flex items-center gap-3 p-3">
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onNovoPagina('transacoes')}
+                className="glass-card flex items-center gap-3 p-3 w-full text-left"
+              >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
                   style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
                   {cat?.icone || '💳'}
@@ -915,7 +949,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                   {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
                 </div>
-              </div>
+              </button>
             );
           })}
           {dadosMes.doMes.length === 0 && (

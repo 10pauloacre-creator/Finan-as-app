@@ -17,6 +17,17 @@ const KEYS = {
   ORCAMENTOS:   'fin_orcamentos',
 };
 
+export const FINANCEIRO_STORAGE_EVENT = 'financeiroia:storage-changed';
+const STORAGE_SYNC_KEY = 'fin_storage_last_change';
+
+function notifyStorageChange(changedKey: string): void {
+  if (typeof window === 'undefined') return;
+
+  const detail = { key: changedKey, ts: Date.now() };
+  localStorage.setItem(STORAGE_SYNC_KEY, JSON.stringify(detail));
+  window.dispatchEvent(new CustomEvent(FINANCEIRO_STORAGE_EVENT, { detail }));
+}
+
 function get<T>(key: string): T[] {
   if (typeof window === 'undefined') return [];
   try { return JSON.parse(localStorage.getItem(key) || '[]'); }
@@ -25,6 +36,7 @@ function get<T>(key: string): T[] {
 function set<T>(key: string, data: T[]): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
+  notifyStorageChange(key);
 }
 function getObj<T>(key: string, def: T): T {
   if (typeof window === 'undefined') return def;
@@ -34,6 +46,7 @@ function getObj<T>(key: string, def: T): T {
 function setObj<T>(key: string, data: T): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(data));
+  notifyStorageChange(key);
 }
 
 // Contas bancárias pré-cadastradas (Nubank e Itaú)

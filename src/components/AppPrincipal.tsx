@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
@@ -22,6 +22,7 @@ import Configuracoes  from '@/components/paginas/Configuracoes';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { TipoTransacao } from '@/types';
 
 type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes' | 'calendario';
 
@@ -65,10 +66,53 @@ const navMais = [
 export default function AppPrincipal() {
   const [pagina, setPagina]           = useState<Pagina>('dashboard');
   const [modalAberto, setModalAberto] = useState(false);
+  const [tipoInicialModal, setTipoInicialModal] = useState<TipoTransacao>('despesa');
   const [sincronizando, setSincronizando] = useState(false);
   const [maisAberto, setMaisAberto]   = useState(false);
   const { sincronizarDoSupabase, enviarParaNuvem } = useFinanceiroStore();
   const supabaseAtivo = isSupabaseConfigured();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      const page = params.get('page');
+      const paginasValidas: Pagina[] = [
+        'dashboard', 'transacoes', 'relatorios', 'investimentos', 'bancos', 'cartoes',
+        'assistente', 'patrimonio', 'orcamentos', 'assinaturas', 'configuracoes', 'agentes', 'calendario',
+      ];
+
+      if (page && paginasValidas.includes(page as Pagina)) {
+        setPagina(page as Pagina);
+      }
+
+      if (action === 'nova-despesa') {
+        setTipoInicialModal('despesa');
+        setModalAberto(true);
+      } else if (action === 'nova-receita') {
+        setTipoInicialModal('receita');
+        setModalAberto(true);
+      } else if (action === 'ver-gastos') {
+        setPagina('transacoes');
+      } else if (action === 'ver-cartoes') {
+        setPagina('cartoes');
+      }
+
+      if (action || page) {
+        const urlLimpa = `${window.location.pathname}${window.location.hash}`;
+        window.history.replaceState({}, '', urlLimpa);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  function abrirModalNovaTransacao(tipo: TipoTransacao = 'despesa') {
+    setTipoInicialModal(tipo);
+    setModalAberto(true);
+  }
 
   async function handleSync() {
     setSincronizando(true);
@@ -152,7 +196,7 @@ export default function AppPrincipal() {
 
           {/* Nova Transação CTA */}
           <button
-            onClick={() => setModalAberto(true)}
+            onClick={() => abrirModalNovaTransacao('despesa')}
             className="btn-primary flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold mb-2"
           >
             <Plus size={16} />
@@ -211,7 +255,7 @@ export default function AppPrincipal() {
             <h1 className="text-sm font-bold text-white">FinanceiroIA</h1>
           </div>
           <button
-            onClick={() => setModalAberto(true)}
+            onClick={() => abrirModalNovaTransacao('despesa')}
             className="btn-primary text-white p-2 rounded-xl"
             aria-label="Novo lançamento"
           >
@@ -309,6 +353,7 @@ export default function AppPrincipal() {
       <ModalNovaTransacao
         aberto={modalAberto}
         onFechar={() => setModalAberto(false)}
+        tipoInicial={tipoInicialModal}
       />
     </div>
   );
