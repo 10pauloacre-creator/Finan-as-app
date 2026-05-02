@@ -1,7 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BandeirCartao } from '@/types';
+import { BandeirCartao, BancoSlug } from '@/types';
+import cartaoAmazon from '@/app/icons/cartãoamazon.png';
+import cartaoItau from '@/app/icons/cartãoitaú.png';
+import cartaoMercadoPago from '@/app/icons/cartãomercadopago.png';
+import cartaoNubank from '@/app/icons/cartãonubank.png';
 
 const BANDEIRA_INFO: Record<BandeirCartao, { nome: string; logoUrl?: string; cor: string; texto: string }> = {
   visa: {
@@ -47,14 +51,31 @@ function siglaBandeira(nome: string) {
 
 interface CardBrandLogoProps {
   bandeira: BandeirCartao;
+  banco?: BancoSlug;
+  nomeCartao?: string;
   className?: string;
   size?: number;
 }
 
-export default function CardBrandLogo({ bandeira, className = '', size = 24 }: CardBrandLogoProps) {
+function normalizar(valor: string) {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+export default function CardBrandLogo({ bandeira, banco, nomeCartao, className = '', size = 24 }: CardBrandLogoProps) {
   const [erro, setErro] = useState(false);
   const info = BANDEIRA_INFO[bandeira];
-  const logoUrl = useMemo(() => info.logoUrl, [info.logoUrl]);
+  const logoUrl = useMemo(() => {
+    const nome = normalizar(nomeCartao || '');
+    if (nome.includes('amazon')) return cartaoAmazon.src;
+    if (banco === 'nubank') return cartaoNubank.src;
+    if (banco === 'itau') return cartaoItau.src;
+    if (banco === 'mercadopago') return cartaoMercadoPago.src;
+    return info.logoUrl;
+  }, [banco, info.logoUrl, nomeCartao]);
 
   if (!logoUrl || erro) {
     return (
@@ -71,7 +92,7 @@ export default function CardBrandLogo({ bandeira, className = '', size = 24 }: C
 
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden bg-white ${className}`}
+      className={`flex items-center justify-center overflow-hidden ${className}`}
       style={{ width: size, height: size }}
       title={info.nome}
       aria-label={info.nome}

@@ -182,7 +182,7 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
                       : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                   }`}
                 >
-                  <BankLogo banco={conta.banco} size={18} className="h-[18px] w-[18px] rounded-md border border-white/10 p-0.5" />
+                  <BankLogo banco={conta.banco} size={18} className="h-[18px] w-[18px] object-contain" />
                   {info.nome}
                 </button>
               );
@@ -210,7 +210,7 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
                       : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
                   }`}
                 >
-                  <BankLogo banco={cartao.banco} size={18} className="h-[18px] w-[18px] rounded-md border border-white/10 p-0.5" />
+                  <BankLogo banco={cartao.banco} size={18} className="h-[18px] w-[18px] object-contain" />
                   {info.nome}
                 </button>
               );

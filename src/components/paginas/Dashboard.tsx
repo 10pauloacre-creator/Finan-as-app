@@ -381,7 +381,7 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
               onClick={onNavegar}
               className="glass-card flex items-center gap-3 p-3 w-full text-left"
             >
-              <BankLogo banco={c.banco as BancoSlug} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
+              <BankLogo banco={c.banco as BancoSlug} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white truncate">{c.nome}</div>
                 <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
@@ -867,7 +867,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <BankLogo banco={conta.banco} size={24} className="h-6 w-6 rounded-full border border-white/10 p-0.5 flex-shrink-0" />
+                        <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{info.nome}</div>
                           <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(conta.saldo))}</div>
@@ -894,7 +894,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 <div className="glass-card mt-2 p-3.5" style={{ borderColor: `${info.cor}33` }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <BankLogo banco={contaExpandida.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
+                      <BankLogo banco={contaExpandida.banco} size={36} className="h-9 w-9 object-contain" />
                       <div>
                         <h3 className="text-sm font-semibold text-white">{info.nome}</h3>
                         <p className="text-xs text-slate-500">{contaExpandida.nome} • {contaExpandida.tipo}</p>
@@ -999,8 +999,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     >
                       <div className="flex items-center gap-2">
                         <div className="relative flex-shrink-0">
-                          <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 rounded-full border border-white/10 p-0.5" />
-                          <CardBrandLogo bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border border-white p-0.5 shadow-sm" />
+                          <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 object-contain" />
+                          <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{BANCO_INFO[cartao.banco].nome}</div>
@@ -1031,8 +1031,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <BankLogo banco={cartaoExpandido.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
-                        <CardBrandLogo bandeira={cartaoExpandido.bandeira} size={18} className="absolute -bottom-1 -right-1 h-[18px] w-[18px] rounded-full border border-white p-0.5 shadow-sm" />
+                        <BankLogo banco={cartaoExpandido.banco} size={36} className="h-9 w-9 object-contain" />
+                        <CardBrandLogo banco={cartaoExpandido.banco} nomeCartao={cartaoExpandido.nome} bandeira={cartaoExpandido.bandeira} size={18} className="absolute -bottom-1 -right-1 h-[18px] w-[18px] object-contain shadow-sm" />
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-white">{cartaoExpandido.nome}</h3>

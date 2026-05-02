@@ -27,7 +27,7 @@ export default function BankSelector({ selected, onChange, className = '' }: Ban
                 : 'border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
             }`}
           >
-            <BankLogo banco={slug} size={28} className="h-7 w-7 rounded-lg border border-white/10 p-1" />
+            <BankLogo banco={slug} size={28} className="h-7 w-7 object-contain" />
             <span className="text-xs font-medium leading-tight">{info.nome}</span>
           </button>
         );

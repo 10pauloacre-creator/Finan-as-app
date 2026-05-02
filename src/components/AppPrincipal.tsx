@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import iconV2 from '@/app/icons/Iconv2.png';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
@@ -159,7 +160,7 @@ export default function AppPrincipal() {
 
           {/* Logo */}
           <div className="flex items-center gap-3 px-2 mb-8">
-            <img src="/icons/icon-96x96.png" alt="FinanceiroIA" className="w-9 h-9 rounded-xl shadow-lg shadow-purple-900/50" />
+            <img src={iconV2.src} alt="FinanceiroIA" className="w-9 h-9 rounded-xl shadow-lg shadow-purple-900/50" />
             <div>
               <h1 className="text-base font-bold text-white leading-tight">FinanceiroIA</h1>
               <p className="text-[11px] text-slate-500">Controle inteligente</p>
@@ -251,7 +252,7 @@ export default function AppPrincipal() {
         <header className="border-b border-white/[0.06] px-4 py-3 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md"
           style={{ background: 'rgba(10,14,26,0.95)' }}>
           <div className="flex items-center gap-2.5">
-            <img src="/icons/icon-96x96.png" alt="FinanceiroIA" className="w-8 h-8 rounded-lg shadow-lg shadow-purple-900/40" />
+            <img src={iconV2.src} alt="FinanceiroIA" className="w-8 h-8 rounded-lg shadow-lg shadow-purple-900/40" />
             <h1 className="text-sm font-bold text-white">FinanceiroIA</h1>
           </div>
           <button

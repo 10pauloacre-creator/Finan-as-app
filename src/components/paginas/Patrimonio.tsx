@@ -362,7 +362,7 @@ function ModalReserva({ reserva, onSalvar, onFechar }: ModalReservaProps) {
         <div className="rounded-2xl p-3 border border-white/10" style={{ background: `${corBanco}14` }}>
           <p className="text-xs text-slate-400 mb-1">Banco selecionado</p>
           <div className="flex items-center gap-3">
-            <BankLogo banco={banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1" />
+            <BankLogo banco={banco} size={36} className="h-9 w-9 object-contain" />
             <p className="text-sm font-semibold" style={{ color: corBanco }}>{BANCO_INFO[banco].nome}</p>
           </div>
         </div>
@@ -716,7 +716,7 @@ export default function Patrimonio() {
               return (
                 <div key={conta.id}>
                   <div className="flex items-center gap-3">
-                    <BankLogo banco={conta.banco} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
+                    <BankLogo banco={conta.banco} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{conta.nome}</span>
@@ -853,7 +853,7 @@ export default function Patrimonio() {
                               className="text-[11px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5"
                               style={{ color: bancoInfo.cor, borderColor: `${bancoInfo.cor}55`, background: `${bancoInfo.cor}14` }}
                             >
-                              <BankLogo banco={reserva.banco} size={16} className="h-4 w-4 rounded-md border border-white/10 p-0.5" />
+                              <BankLogo banco={reserva.banco} size={16} className="h-4 w-4 object-contain" />
                               {bancoInfo.nome}
                             </span>
                           </div>
@@ -1009,7 +1009,7 @@ export default function Patrimonio() {
               return (
                 <div key={cartao.id}>
                   <div className="flex items-center gap-3">
-                    <BankLogo banco={cartao.banco} size={32} className="h-8 w-8 rounded-lg border border-white/10 p-1 flex-shrink-0" />
+                    <BankLogo banco={cartao.banco} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{cartao.nome}</span>

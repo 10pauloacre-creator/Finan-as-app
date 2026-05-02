@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { BANCO_INFO, BancoSlug } from '@/types';
+import iconNubank from '@/app/icons/iconnubank.png';
+import iconItau from '@/app/icons/iconitaú.png';
+import iconMercadoPago from '@/app/icons/iconmercadopago.png';
 
 const DOMINIOS_OFICIAIS: Partial<Record<BancoSlug, string>> = {
   nubank: 'https://nubank.com.br/favicon.ico',
@@ -13,6 +16,12 @@ const DOMINIOS_OFICIAIS: Partial<Record<BancoSlug, string>> = {
   c6: 'https://www.c6bank.com.br/favicon.ico',
   santander: 'https://www.santander.com.br/favicon.ico',
   mercadopago: 'https://www.mercadopago.com.br/favicon.ico',
+};
+
+const LOGOS_LOCAIS: Partial<Record<BancoSlug, string>> = {
+  nubank: iconNubank.src,
+  itau: iconItau.src,
+  mercadopago: iconMercadoPago.src,
 };
 
 function bancoSigla(nome: string) {
@@ -33,7 +42,10 @@ interface BankLogoProps {
 export default function BankLogo({ banco, className = '', size = 32 }: BankLogoProps) {
   const [erro, setErro] = useState(false);
   const info = BANCO_INFO[banco] || BANCO_INFO.outro;
-  const logoUrl = useMemo(() => info.logoUrl || DOMINIOS_OFICIAIS[banco], [banco, info.logoUrl]);
+  const logoUrl = useMemo(
+    () => LOGOS_LOCAIS[banco] || info.logoUrl || DOMINIOS_OFICIAIS[banco],
+    [banco, info.logoUrl],
+  );
 
   if (!logoUrl || erro) {
     return (
@@ -50,7 +62,7 @@ export default function BankLogo({ banco, className = '', size = 32 }: BankLogoP
 
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden bg-white ${className}`}
+      className={`flex items-center justify-center overflow-hidden ${className}`}
       style={{ width: size, height: size }}
       aria-label={info.nome}
       title={info.nome}

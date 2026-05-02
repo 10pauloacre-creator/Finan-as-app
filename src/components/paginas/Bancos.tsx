@@ -352,7 +352,7 @@ export default function Bancos() {
                 {/* Linha principal */}
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <BankLogo banco={conta.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5 flex-shrink-0" />
+                    <BankLogo banco={conta.banco} size={44} className="h-11 w-11 object-contain flex-shrink-0" />
                     {conectado && (
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-[#0F1629]">
                         <Wifi size={8} className="text-white" />

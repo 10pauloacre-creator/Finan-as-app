@@ -196,8 +196,8 @@ export default function Cartoes() {
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 rounded-2xl border border-white/10 p-1.5" />
-                      <CardBrandLogo bandeira={cartao.bandeira} size={20} className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border border-white p-0.5 shadow-sm" />
+                      <BankLogo banco={cartao.banco} size={44} className="h-11 w-11 object-contain" />
+                      <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={20} className="absolute -bottom-1 -right-1 h-5 w-5 object-contain shadow-sm" />
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
