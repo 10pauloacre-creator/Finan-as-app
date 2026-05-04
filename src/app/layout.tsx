@@ -13,15 +13,10 @@ export const metadata: Metadata = {
   title: 'FinanceiroIA',
   description: 'Controle financeiro pessoal com Inteligência Artificial',
   manifest: '/manifest.json',
-  icons: {
-    icon: '/icon.png',
-    apple: '/apple-icon.png',
-    shortcut: '/icon.png',
-  },
   openGraph: {
     title: 'FinanceiroIA',
     description: 'Controle financeiro pessoal com Inteligência Artificial',
-    images: [{ url: '/icon.png', width: 1688, height: 1688 }],
+    images: [{ url: '/icons/iconv2.png', width: 1688, height: 1688 }],
   },
   appleWebApp: {
     capable: true,
