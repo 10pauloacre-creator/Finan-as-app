@@ -14,21 +14,14 @@ export const metadata: Metadata = {
   description: 'Controle financeiro pessoal com Inteligência Artificial',
   manifest: '/manifest.json',
   icons: {
-    icon: [
-      { url: '/icons/icon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/icon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/icon-48x48.png', sizes: '48x48', type: 'image/png' },
-      { url: '/icons/icon-96x96.png', sizes: '96x96', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/icons/icon-180x180.png', sizes: '180x180', type: 'image/png' },
-    ],
-    shortcut: '/icons/icon-32x32.png',
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+    shortcut: '/icon.png',
   },
   openGraph: {
     title: 'FinanceiroIA',
     description: 'Controle financeiro pessoal com Inteligência Artificial',
-    images: [{ url: '/icons/icon-512x512.png', width: 512, height: 512 }],
+    images: [{ url: '/icon.png', width: 1688, height: 1688 }],
   },
   appleWebApp: {
     capable: true,

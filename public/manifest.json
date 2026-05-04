@@ -11,32 +11,32 @@
   "lang": "pt-BR",
   "icons": [
     {
-      "src": "/icons/icon-48x48.png",
-      "sizes": "48x48",
+      "src": "/icons/iconv2.png",
+      "sizes": "1688x1688",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
+      "src": "/icons/iconv2.png",
+      "sizes": "1688x1688",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "/icons/iconv2.png",
+      "sizes": "1688x1688",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/icons/iconv2.png",
+      "sizes": "1688x1688",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/icons/iconv2.png",
+      "sizes": "1688x1688",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -47,25 +47,25 @@
       "name": "Nova Despesa",
       "description": "Registrar uma despesa rapidamente",
       "url": "/?action=nova-despesa",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/iconv2.png", "sizes": "1688x1688" }]
     },
     {
       "name": "Nova Receita",
       "description": "Registrar uma receita rapidamente",
       "url": "/?action=nova-receita",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/iconv2.png", "sizes": "1688x1688" }]
     },
     {
       "name": "Ver Gastos",
       "description": "Abrir a tela de gastos",
       "url": "/?action=ver-gastos",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/iconv2.png", "sizes": "1688x1688" }]
     },
     {
       "name": "Ver Cartões",
       "description": "Abrir a tela de cartões",
       "url": "/?action=ver-cartoes",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/iconv2.png", "sizes": "1688x1688" }]
     }
   ]
 }
