@@ -15,6 +15,7 @@ import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from '@/components/modais/ModalDuplicata';
 import BankLogo from '@/components/ui/BankLogo';
 import AIModelSelect from '@/components/ui/AIModelSelect';
+import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
 /* ── Tipos ──────────────────────────────────────────────────────────────────── */
 
@@ -742,8 +743,9 @@ export default function Assistente() {
       const fd = new FormData();
       fd.append('task', 'analisar_imagem_financeira');
       fd.append('imagem', file);
-      fd.append('provider', config.ai_modelo_padrao || 'automatico');
-      fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      fd.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
+      fd.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      fd.append('financialProvider', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/ai', { method: 'POST', body: fd });
       await processarResposta(aiId, res);
     } catch {
@@ -839,6 +841,13 @@ export default function Assistente() {
               task="chat"
               value={config.ai_modelo_padrao || 'automatico'}
               onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+              compact
+            />
+          </div>
+          <div className="min-w-[210px] mr-1">
+            <OCRModelSelect
+              value={config.ai_modelo_ocr_padrao || 'automatico'}
+              onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
               compact
             />
           </div>

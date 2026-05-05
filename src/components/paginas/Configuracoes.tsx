@@ -10,6 +10,7 @@ import {
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import AIModelSelect from '@/components/ui/AIModelSelect';
+import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
 // ── Seção genérica ────────────────────────────────────────
 function Secao({ titulo, icone, children }: { titulo: string; icone: React.ReactNode; children: React.ReactNode }) {
@@ -149,6 +150,7 @@ export default function Configuracoes() {
     configured: boolean;
     model: string;
     strengths: string[];
+    type?: string;
   }>>([]);
   const [aiFallbackOrder, setAiFallbackOrder] = useState<string[]>([]);
   const [taxasSelic, setTaxasSelic]     = useState(String(selicAtual || 10.75));
@@ -376,6 +378,16 @@ export default function Configuracoes() {
               mostrarToast('Modelo padrão de IA atualizado!');
             }}
           />
+          <div>
+            <p className="text-[11px] text-slate-500 mb-2">Leitor OCR padrão</p>
+            <OCRModelSelect
+              value={config.ai_modelo_ocr_padrao || 'automatico'}
+              onChange={(value) => {
+                atualizarConfig({ ai_modelo_ocr_padrao: value });
+                mostrarToast('Leitor OCR padrão atualizado!');
+              }}
+            />
+          </div>
           {aiFallbackOrder.length > 0 && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
               <p className="text-[11px] text-slate-500">Ordem de fallback</p>
@@ -395,6 +407,7 @@ export default function Configuracoes() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-2">Modelo: {provider.model}</p>
+                <p className="text-[11px] text-slate-500 mt-1">Tipo: {provider.type === 'ocr' ? 'OCR especializado' : 'Chat / análise financeira'}</p>
                 <p className="text-[11px] text-slate-500 mt-1">Forças: {provider.strengths.join(', ')}</p>
               </div>
             ))}

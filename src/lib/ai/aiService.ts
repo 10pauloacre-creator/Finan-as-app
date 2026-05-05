@@ -5,12 +5,20 @@ import { getTaskProfile } from './taskProfiles';
 import { runAnthropicProvider } from './providers/anthropicProvider';
 import { runDeepSeekProvider } from './providers/deepseekProvider';
 import { runGeminiProvider } from './providers/geminiProvider';
+import { extractTextFromImage as runGlmOcrProvider } from './providers/glmOcrProvider';
 import { runGroqProvider } from './providers/groqProvider';
 import { runHuggingFaceProvider } from './providers/huggingFaceProvider';
 
 interface AttachmentInput {
   mimeType: string;
   data: string;
+}
+
+interface AnalyzeReceiptInput {
+  file: File;
+  ocrProvider?: AIModelId;
+  financialProvider?: AIModelId;
+  userId?: string;
 }
 
 interface RunAIInput {
@@ -33,6 +41,17 @@ export interface RunAIResult {
   fallbackUsed: boolean;
   failedProvider?: AIProviderId;
   answer?: string;
+  raw?: unknown;
+  error?: string;
+}
+
+export interface OCRResult {
+  success: boolean;
+  providerUsed?: AIProviderId;
+  modelUsed?: string;
+  fallbackUsed: boolean;
+  failedProvider?: AIProviderId;
+  text?: string;
   raw?: unknown;
   error?: string;
 }
@@ -76,6 +95,10 @@ function buildPrompt(task: AITask, sanitizedInput: string) {
       return `Tarefa: gerar insights financeiros úteis em JSON.\nDados:\n${sanitizedInput}`;
     case 'analisar_meta':
       return `Tarefa: analisar meta financeira e sugerir próximos passos prudentes.\nDados:\n${sanitizedInput}`;
+    case 'estruturar_transacao_de_recibo':
+      return `Tarefa: estruturar transação a partir de texto OCR de recibo.\nDados:\n${sanitizedInput}`;
+    case 'extrair_texto_imagem':
+      return `Tarefa: extrair texto bruto de imagem.\nDados:\n${sanitizedInput}`;
     case 'analisar_recibo_futuramente':
     case 'analisar_imagem_financeira':
       return `Tarefa: analisar imagem financeira e responder em JSON.\nDados adicionais:\n${sanitizedInput}`;
@@ -117,6 +140,159 @@ async function executeProvider(
   }
 
   return runHuggingFaceProvider({ system, prompt, temperature, maxTokens });
+}
+
+async function extractTextWithVisionFallback(
+  provider: AIProviderId,
+  file: File,
+): Promise<{ provider: AIProviderId; model: string; content: string; raw: unknown }> {
+  if (provider === 'glmOcr') {
+    return runGlmOcrProvider({ image: await file.arrayBuffer(), providerId: 'glmOcr' });
+  }
+
+  if (provider === 'gemma4') {
+    return runGlmOcrProvider({ image: await file.arrayBuffer(), providerId: 'gemma4' });
+  }
+
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+  const prompt = [
+    'Extraia o texto desta imagem com máxima fidelidade.',
+    'Não resuma, não interprete e não classifique.',
+    'Preserve valores, datas e nomes como aparecerem.',
+    'Responda apenas com o texto extraído em português do Brasil.',
+  ].join('\n');
+
+  if (provider === 'gemini') {
+    return runGeminiProvider({
+      system: 'Você é um leitor OCR preciso.',
+      prompt,
+      temperature: 0,
+      maxTokens: 1800,
+      attachments: [{ mimeType: file.type || 'image/jpeg', data: base64 }],
+    });
+  }
+
+  throw new Error(`O provedor ${provider} não está habilitado para OCR de imagem.`);
+}
+
+export async function runOCR({
+  file,
+  provider = 'automatico',
+}: {
+  file: File;
+  provider?: AIModelId;
+}): Promise<OCRResult> {
+  const order = resolveProviderOrder(
+    'extrair_texto_imagem',
+    provider,
+    provider !== 'automatico' ? 'manual' : 'auto',
+  );
+  const errors: string[] = [];
+
+  if (order.length === 0) {
+    return {
+      success: false,
+      fallbackUsed: false,
+      error: 'Nenhum leitor OCR configurado está disponível no momento.',
+    };
+  }
+
+  for (let index = 0; index < order.length; index += 1) {
+    const candidate = order[index];
+    try {
+      const result = await extractTextWithVisionFallback(candidate, file);
+      console.info('[ai:ocr]', {
+        providerUsed: result.provider,
+        modelUsed: result.model,
+        fallbackUsed: index > 0,
+      });
+
+      return {
+        success: true,
+        providerUsed: result.provider,
+        modelUsed: result.model,
+        fallbackUsed: index > 0,
+        failedProvider: index > 0 ? order[0] : undefined,
+        text: result.content,
+        raw: result.raw,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'erro desconhecido';
+      errors.push(`${candidate}: ${message}`);
+    }
+  }
+
+  console.error('[ai:ocr:error]', { errors });
+  return {
+    success: false,
+    fallbackUsed: order.length > 1,
+    failedProvider: order[0],
+    error: 'Não foi possível extrair o texto da imagem agora. Tente novamente em instantes.',
+  };
+}
+
+export async function analisarRecibo({
+  file,
+  ocrProvider = 'automatico',
+  financialProvider = 'automatico',
+  userId,
+}: AnalyzeReceiptInput) {
+  const ocrResult = await runOCR({ file, provider: ocrProvider });
+  if (!ocrResult.success || !ocrResult.text) {
+    return {
+      success: false,
+      fallbackUsed: ocrResult.fallbackUsed,
+      failedProvider: ocrResult.failedProvider,
+      error: ocrResult.error || 'Não foi possível ler o recibo.',
+    };
+  }
+
+  const structured = await runAI({
+    task: 'estruturar_transacao_de_recibo',
+    provider: financialProvider,
+    mode: financialProvider !== 'automatico' ? 'manual' : 'auto',
+    userId,
+    options: { temperature: 0.2, maxTokens: 900 },
+    input: {
+      customPrompt: `Você recebeu um texto extraído por OCR de um recibo ou comprovante.
+Extraia e retorne apenas JSON válido com este formato:
+{
+  "estabelecimento": "string | null",
+  "valor_total": 0,
+  "data": "YYYY-MM-DD | null",
+  "categoria_sugerida": "string | null",
+  "forma_pagamento": "pix | debito | credito | dinheiro | transferencia | outro | null",
+  "confianca": 0,
+  "observacoes": "string curta"
+}
+
+Use apenas o texto abaixo. Se faltar dado, use null. Não invente valores.
+
+Texto OCR:
+${ocrResult.text}`,
+    },
+  });
+
+  if (!structured.success || !structured.answer) {
+    return {
+      success: false,
+      fallbackUsed: structured.fallbackUsed,
+      failedProvider: structured.failedProvider,
+      error: structured.error || 'Não foi possível estruturar a transação do recibo.',
+    };
+  }
+
+  return {
+    success: true,
+    ocrProviderUsed: ocrResult.providerUsed,
+    ocrModelUsed: ocrResult.modelUsed,
+    providerUsed: structured.providerUsed,
+    modelUsed: structured.modelUsed,
+    fallbackUsed: structured.fallbackUsed || ocrResult.fallbackUsed,
+    failedProvider: structured.failedProvider || ocrResult.failedProvider,
+    answer: structured.answer,
+    texto_extraido: ocrResult.text,
+  };
 }
 
 export async function runAI({

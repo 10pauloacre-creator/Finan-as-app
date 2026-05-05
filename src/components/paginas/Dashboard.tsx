@@ -13,7 +13,7 @@ import { calcularPrevisao } from '@/lib/previsao';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
-import AIModelSelect from '@/components/ui/AIModelSelect';
+import OCRModelSelect from '@/components/ui/OCRModelSelect';
 import { useCountUp } from '@/hooks/useCountUp';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
@@ -687,8 +687,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
         formData.append('imagem', arquivo);
         formData.append('legenda', `Fatura ou histórico do cartão ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
       }
-      formData.append('provider', config.ai_modelo_padrao || 'automatico');
-      formData.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      formData.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
+      formData.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      formData.append('financialProvider', config.ai_modelo_padrao || 'automatico');
 
       const resposta = await fetch('/api/ai', {
         method: 'POST',
@@ -1102,10 +1103,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
                   <div className="flex flex-wrap gap-2 mt-3">
                     <div className="min-w-[220px]">
-                      <AIModelSelect
-                        task="pdf"
-                        value={config.ai_modelo_padrao || 'automatico'}
-                        onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+                      <OCRModelSelect
+                        value={config.ai_modelo_ocr_padrao || 'automatico'}
+                        onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
                         compact
                       />
                     </div>

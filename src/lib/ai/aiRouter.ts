@@ -26,6 +26,7 @@ export function getProviderStatus() {
       description: model.description,
       configured: Boolean(process.env[model.envKey]),
       model: process.env[model.modelEnv] || model.defaultModel,
+      type: model.type || 'chat',
       fallbackOrder: parseFallbackOrder(),
       strengths: model.strengths,
       supportsVision: model.supportsVision,

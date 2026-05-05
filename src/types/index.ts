@@ -157,6 +157,7 @@ export interface ConfiguracaoApp {
   tema: 'claro' | 'escuro' | 'sistema';
   moeda: string;
   ai_modelo_padrao?: AIModelId;
+  ai_modelo_ocr_padrao?: AIModelId;
   selic_atual?: number;
   cdi_atual?: number;
   ipca_atual?: number;

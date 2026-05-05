@@ -225,6 +225,7 @@ const CONFIG_DEFAULT: ConfiguracaoApp = {
   moeda: 'BRL',
   notificacoes_ativas: true,
   ai_modelo_padrao: 'automatico',
+  ai_modelo_ocr_padrao: 'automatico',
 };
 export const storageConfig = {
   get: (): ConfiguracaoApp => getObj<ConfiguracaoApp>(KEYS.CONFIG, CONFIG_DEFAULT),

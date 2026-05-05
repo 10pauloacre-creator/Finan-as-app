@@ -48,16 +48,27 @@ export const TASK_PROFILES: Record<AITask, TaskProfile> = {
     description: 'Analisar metas financeiras e sugerir próximos passos.',
     output: 'text',
   },
-  analisar_recibo_futuramente: {
-    preferredProviders: ['gemma4', 'gemini', 'anthropic', 'deepseek', 'groq'],
-    description: 'Ler comprovantes e extrair dados financeiros.',
+  estruturar_transacao_de_recibo: {
+    preferredProviders: ['gemini', 'anthropic', 'deepseek', 'gemma4', 'groq'],
+    description: 'Estruturar uma transação de recibo a partir do texto extraído por OCR.',
     output: 'json',
+  },
+  extrair_texto_imagem: {
+    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
+    description: 'Extrair texto bruto de imagens de recibos e comprovantes.',
+    output: 'text',
+    multimodal: 'image',
+  },
+  analisar_recibo_futuramente: {
+    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
+    description: 'Ler comprovantes e extrair dados financeiros.',
+    output: 'text',
     multimodal: 'image',
   },
   analisar_imagem_financeira: {
-    preferredProviders: ['gemini', 'gemma4', 'anthropic', 'deepseek', 'groq'],
+    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
     description: 'Extrair transações de imagens financeiras.',
-    output: 'json',
+    output: 'text',
     multimodal: 'image',
   },
   analisar_audio_financeiro: {

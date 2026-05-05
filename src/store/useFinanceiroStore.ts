@@ -78,6 +78,7 @@ const CONFIG_DEFAULT: ConfiguracaoApp = {
   moeda: 'BRL',
   notificacoes_ativas: true,
   ai_modelo_padrao: 'automatico',
+  ai_modelo_ocr_padrao: 'automatico',
 };
 
 let listenersDeSyncRegistrados = false;

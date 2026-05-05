@@ -1,6 +1,6 @@
 import { getProviderStatus } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
-import { runAI } from '@/lib/ai/aiService';
+import { analisarRecibo, runAI, runOCR } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
 import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
 
@@ -285,13 +285,10 @@ async function handleFormDataRequest(formData: FormData) {
   if (task === 'analisar_recibo_futuramente') {
     const foto = formData.get('foto') as File | null;
     if (!foto) return Response.json({ success: false, error: 'Nenhuma foto enviada.' }, { status: 400 });
-    const result = await runAI({
-      task: 'analisar_recibo_futuramente',
-      provider,
-      mode,
-      input: { customPrompt: imagePrompt() },
-      attachments: [{ mimeType: foto.type || 'image/jpeg', data: Buffer.from(await foto.arrayBuffer()).toString('base64') }],
-      options: { temperature: 0.1, maxTokens: 1024 },
+    const result = await analisarRecibo({
+      file: foto,
+      ocrProvider: provider,
+      financialProvider: String(formData.get('financialProvider') || 'automatico') as AIModelId,
     });
     if (!result.success) return Response.json({ success: false, error: result.error }, { status: 500 });
     const parsed = jsonFromText(result.answer || '') as Record<string, unknown> | null;
@@ -301,7 +298,11 @@ async function handleFormDataRequest(formData: FormData) {
       modelUsed: result.modelUsed,
       fallbackUsed: result.fallbackUsed,
       failedProvider: result.failedProvider,
+      ocrProviderUsed: result.ocrProviderUsed,
+      ocrModelUsed: result.ocrModelUsed,
       dados: parsed ? { ...parsed, categoria_id: inferCategoryId(parsed) } : undefined,
+      texto_extraido: result.texto_extraido,
+      revisaoObrigatoria: true,
       texto_original: result.answer,
     });
   }
