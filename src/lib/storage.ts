@@ -220,7 +220,12 @@ export const storageReservas = {
 };
 
 // ── CONFIGURAÇÕES ───────────────────────────────────────
-const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notificacoes_ativas: true };
+const CONFIG_DEFAULT: ConfiguracaoApp = {
+  tema: 'escuro',
+  moeda: 'BRL',
+  notificacoes_ativas: true,
+  ai_modelo_padrao: 'automatico',
+};
 export const storageConfig = {
   get: (): ConfiguracaoApp => getObj<ConfiguracaoApp>(KEYS.CONFIG, CONFIG_DEFAULT),
   replace: (config: ConfiguracaoApp): void => setObj(KEYS.CONFIG, config),

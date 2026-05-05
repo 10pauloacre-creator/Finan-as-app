@@ -14,6 +14,7 @@ export interface RespostaPDF {
   bancaNome?: string;
   mesReferencia?: string;
   resposta: string;
+  providerUsed?: string;
 }
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
@@ -101,6 +102,19 @@ function parseFaturaJSON(raw: string): FaturaExtraida | { erro: string } {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const formData = await req.formData();
+    const requestedModel = String(formData.get('aiModel') || 'automatico');
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            requestedModel !== 'automatico' && requestedModel !== 'gemini'
+              ? 'O modelo escolhido não processa PDFs diretamente e o fallback multimodal está indisponível agora.'
+              : 'A IA para PDFs está indisponível no momento. Tente novamente mais tarde.',
+        },
+        { status: 503 },
+      );
+    }
     const pdfFile  = formData.get('pdf') as File | null;
 
     if (!pdfFile) {
@@ -137,6 +151,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         tipo: 'conversa',
         resposta: `❌ ${parsed.erro} Certifique-se de enviar o PDF da fatura do cartão.`,
+        providerUsed: 'gemini',
       } satisfies RespostaPDF);
     }
 
@@ -155,6 +170,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       bancaNome,
       mesReferencia,
       resposta: `Fatura **${bancaNome}**${mesReferencia ? ` — ${mesReferencia}` : ''} analisada!\n\nEncontrei **${count} lançamento${count !== 1 ? 's' : ''}** (${despesas} despesas).\n\nTotal de despesas: **R$ ${totalValor.toFixed(2).replace('.', ',')}**\n\nRevise e confirme cada transação abaixo:`,
+      providerUsed: 'gemini',
     } satisfies RespostaPDF);
 
   } catch (err) {

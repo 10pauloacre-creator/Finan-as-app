@@ -47,6 +47,19 @@ O usuário disse (via áudio): "${transcricao}"`;
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const formData = await req.formData();
+    const requestedModel = String(formData.get('aiModel') || 'automatico');
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            requestedModel !== 'automatico' && requestedModel !== 'gemini'
+              ? 'O modelo escolhido não processa áudio diretamente e o fallback multimodal está indisponível agora.'
+              : 'A IA para áudio está indisponível no momento. Tente outro recurso ou ajuste sua configuração.',
+        },
+        { status: 503 },
+      );
+    }
     const audioFile = formData.get('audio') as File | null;
 
     if (!audioFile) {
@@ -115,6 +128,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         transacao: tx,
         transcricao,
         resposta,
+        providerUsed: 'gemini',
       } satisfies RespostaAssistente);
     }
 
@@ -130,6 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       transcricao,
       resposta: chatResult.response.text().trim()
         || 'Entendi o áudio mas não identifiquei um gasto. Descreva com valor e o que foi gasto.',
+      providerUsed: 'gemini',
     } satisfies RespostaAssistente);
 
   } catch (err) {

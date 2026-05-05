@@ -48,6 +48,19 @@ export interface RespostaAssistenteImagem extends RespostaAssistente {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const formData  = await req.formData();
+    const requestedModel = String(formData.get('aiModel') || 'automatico');
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            requestedModel !== 'automatico' && requestedModel !== 'gemini'
+              ? 'O modelo escolhido não processa imagens diretamente e o fallback multimodal está indisponível agora.'
+              : 'A IA para imagens está indisponível no momento. Tente novamente em instantes.',
+        },
+        { status: 503 },
+      );
+    }
     const imagemFile = formData.get('imagem') as File | null;
     const legenda    = formData.get('legenda') as string | null;
 
@@ -78,6 +91,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         tipo: 'transacao',
         transacao: tx,
         resposta: `Analisei a imagem e encontrei uma **${tx.tipo}** de R$ ${tx.valor.toFixed(2).replace('.', ',')}. Confira e confirme.`,
+        providerUsed: 'gemini',
       } satisfies RespostaAssistente);
     }
 
@@ -87,12 +101,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         tipo: 'transacao',
         transacoes: parsed.transacoes,
         resposta: `Encontrei **${count} transação${count !== 1 ? 'ões' : ''}** no extrato. Revise e confirme cada uma.`,
+        providerUsed: 'gemini',
       } as RespostaAssistenteImagem);
     }
 
     return NextResponse.json({
       tipo: 'conversa',
       resposta: `Não consegui identificar transações nesta imagem. ${parsed.erro}. Tente enviar um comprovante ou nota fiscal mais legível.`,
+      providerUsed: 'gemini',
     } satisfies RespostaAssistente);
 
   } catch (err) {

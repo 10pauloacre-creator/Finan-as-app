@@ -2,6 +2,8 @@
 // TIPOS GLOBAIS DO FINANCEIRO IA
 // ============================
 
+import type { AIModelId } from '@/lib/ai/catalog';
+
 export type MetodoPagamento = 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'outro';
 export type OrigemTransacao = 'manual' | 'whatsapp' | 'whatsapp_texto' | 'whatsapp_audio' | 'whatsapp_imagem' | 'extrato_foto' | 'open_banking' | 'assistente' | 'assistente_audio' | 'assistente_imagem';
 export type TipoTransacao = 'despesa' | 'receita' | 'transferencia';
@@ -154,6 +156,7 @@ export interface ConfiguracaoApp {
   pin?: string;
   tema: 'claro' | 'escuro' | 'sistema';
   moeda: string;
+  ai_modelo_padrao?: AIModelId;
   selic_atual?: number;
   cdi_atual?: number;
   ipca_atual?: number;

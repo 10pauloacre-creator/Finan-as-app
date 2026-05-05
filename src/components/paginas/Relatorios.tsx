@@ -13,6 +13,7 @@ import {
   Brain, FileText, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import type { Transacao, Categoria, ContaBancaria, CartaoCredito } from '@/types';
+import AIModelSelect from '@/components/ui/AIModelSelect';
 
 const CORES = ['#7C3AED','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#F97316'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -114,7 +115,7 @@ function contextoMes(
 // ─── Componente RelatorioIA ────────────────────────────────────────────────────
 
 function RelatorioIA() {
-  const { transacoes, categorias, contas, cartoes } = useFinanceiroStore();
+  const { transacoes, categorias, contas, cartoes, config, atualizarConfig } = useFinanceiroStore();
   const hoje = new Date();
 
   const [mesSel, setMesSel] = useState(hoje.getMonth() + 1);
@@ -163,7 +164,7 @@ function RelatorioIA() {
       const res = await fetch('/api/relatorio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contexto, mes: mesSel, ano: anoSel }),
+        body: JSON.stringify({ contexto, mes: mesSel, ano: anoSel, aiModel: config.ai_modelo_padrao || 'automatico' }),
       });
 
       if (!res.ok) {
@@ -204,6 +205,13 @@ function RelatorioIA() {
     <div className="space-y-5">
       {/* Seletor de mes/ano + botao */}
       <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-[220px]">
+          <AIModelSelect
+            task="report"
+            value={config.ai_modelo_padrao || 'automatico'}
+            onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+          />
+        </div>
         <select
           value={mesSel}
           onChange={e => { setMesSel(Number(e.target.value)); setRelatorio(null); }}
@@ -693,3 +701,4 @@ export default function Relatorios() {
     </div>
   );
 }
+

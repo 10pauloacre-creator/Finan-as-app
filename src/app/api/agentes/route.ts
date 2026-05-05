@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { AIModelId } from '@/lib/ai/catalog';
+import { generateTextWithFallback } from '@/lib/ai/text';
 
 type AgenteId = 'albert' | 'marie' | 'galileu';
 
@@ -36,7 +35,7 @@ Seja preciso, estratégico e orientado a longo prazo. Máx 3 insights. Formato J
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { agente, contexto } = await req.json() as { agente: AgenteId; contexto: string };
+    const { agente, contexto, aiModel } = await req.json() as { agente: AgenteId; contexto: string; aiModel?: AIModelId };
 
     if (!agente || !PERSONA[agente]) {
       return NextResponse.json({ error: 'agente inválido' }, { status: 400 });
@@ -55,13 +54,15 @@ ${contexto}
 IMPORTANTE: Responda APENAS com o JSON válido pedido. Sem markdown, sem texto adicional.
 Use português brasileiro informal e amigável nas mensagens.`;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
+    const result = await generateTextWithFallback({
+      task: 'agents',
+      preferredModel: aiModel || 'automatico',
+      temperature: 0.6,
+      maxTokens: 1024,
+      system: `Você é ${nome} ${emoji}, ${papel} do FinanceiroIA.`,
+      user: prompt,
     });
-
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim()
+    const raw = result.content.trim()
       .replace(/```json\n?/g, '').replace(/```/g, '').trim();
 
     let parsed: { insights: unknown[] };
@@ -71,8 +72,7 @@ Use português brasileiro informal e amigável nas mensagens.`;
     } catch {
       parsed = { insights: [] };
     }
-
-    return NextResponse.json({ agente, nome, emoji, insights: parsed.insights });
+    return NextResponse.json({ agente, nome, emoji, insights: parsed.insights, providerUsed: result.providerUsed });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
     console.error('[agentes]', msg);

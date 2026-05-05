@@ -16,6 +16,7 @@ export interface RespostaAssistente {
   transacao?: TransacaoExtraida;
   transcricao?: string;
   resposta: string;
+  providerUsed?: string;
 }
 
 export function parseTransacaoJSON(raw: string): TransacaoExtraida | { erro: string } {

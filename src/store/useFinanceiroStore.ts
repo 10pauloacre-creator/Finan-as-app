@@ -73,7 +73,12 @@ interface FinanceiroState {
   enviarParaNuvem: () => Promise<{ ok: boolean; msg: string }>;
 }
 
-const CONFIG_DEFAULT: ConfiguracaoApp = { tema: 'escuro', moeda: 'BRL', notificacoes_ativas: true };
+const CONFIG_DEFAULT: ConfiguracaoApp = {
+  tema: 'escuro',
+  moeda: 'BRL',
+  notificacoes_ativas: true,
+  ai_modelo_padrao: 'automatico',
+};
 
 let listenersDeSyncRegistrados = false;
 let syncEmAndamento: Promise<void> | null = null;

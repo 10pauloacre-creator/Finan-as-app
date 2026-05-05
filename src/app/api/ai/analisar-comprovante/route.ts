@@ -6,11 +6,20 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ erro: 'Gemini API não configurada' }, { status: 500 });
-    }
-
     const formData = await req.formData();
+    const requestedModel = String(formData.get('aiModel') || 'automatico');
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        {
+          erro:
+            requestedModel !== 'automatico' && requestedModel !== 'gemini'
+              ? 'O modelo escolhido não lê comprovantes diretamente e o fallback multimodal está indisponível agora.'
+              : 'A IA de leitura de comprovantes está indisponível no momento.',
+        },
+        { status: 503 },
+      );
+    }
     const foto     = formData.get('foto') as File;
 
     if (!foto) {
@@ -93,6 +102,7 @@ Regras:
     return NextResponse.json({
       dados: { ...dadosExtraidos, categoria_id },
       texto_original: texto,
+      providerUsed: 'gemini',
     });
   } catch (error) {
     console.error('Erro ao analisar comprovante:', error);

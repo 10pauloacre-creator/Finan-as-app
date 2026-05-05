@@ -13,6 +13,7 @@ import { calcularPrevisao } from '@/lib/previsao';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
+import AIModelSelect from '@/components/ui/AIModelSelect';
 import { useCountUp } from '@/hooks/useCountUp';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
@@ -540,6 +541,7 @@ function diasAte(dia: number) {
 export default function Dashboard({ onNovoPagina }: Props) {
   const {
     transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual,
+    config, atualizarConfig,
     adicionarTransacao, atualizarFaturaCartao,
   } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
@@ -683,6 +685,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
         formData.append('imagem', arquivo);
         formData.append('legenda', `Fatura ou histórico do cartão ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
       }
+
+      formData.append('aiModel', config.ai_modelo_padrao || 'automatico');
 
       const resposta = await fetch(isPdf ? '/api/assistente/pdf' : '/api/assistente/imagem', {
         method: 'POST',
@@ -1095,6 +1099,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-3">
+                    <div className="min-w-[220px]">
+                      <AIModelSelect
+                        task="pdf"
+                        value={config.ai_modelo_padrao || 'automatico'}
+                        onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+                        compact
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { AIModelId } from '@/lib/ai/catalog';
+import { generateTextWithFallback } from '@/lib/ai/text';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { contexto, mes, ano } = await req.json() as {
+    const { contexto, mes, ano, aiModel } = await req.json() as {
       contexto: string;
       mes: number;
       ano: number;
+      aiModel?: AIModelId;
     };
 
     const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -41,13 +41,15 @@ Regras:
 - Tom amigável, como um conselheiro de confiança
 - Responda APENAS JSON válido`;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.5, maxOutputTokens: 1536 },
+    const result = await generateTextWithFallback({
+      task: 'report',
+      preferredModel: aiModel || 'automatico',
+      temperature: 0.5,
+      maxTokens: 1536,
+      system: `Você é um consultor financeiro pessoal brasileiro gerando o relatório mensal de ${nomeMes} de ${ano}.`,
+      user: prompt,
     });
-
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim()
+    const raw = result.content.trim()
       .replace(/```json\n?/g, '').replace(/```/g, '').trim();
 
     let parsed;
@@ -58,7 +60,7 @@ Regras:
       parsed = { resumo: 'Não foi possível gerar o relatório.', nota_mes: 'regular', destaques: [], recomendacoes: [] };
     }
 
-    return NextResponse.json({ ...parsed, mes, ano });
+    return NextResponse.json({ ...parsed, mes, ano, providerUsed: result.providerUsed });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro';
     return NextResponse.json({ error: msg }, { status: 500 });

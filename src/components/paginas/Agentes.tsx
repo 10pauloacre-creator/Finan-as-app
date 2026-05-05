@@ -8,6 +8,8 @@ import { calcularPrevisao, GastoPrevisto } from '@/lib/previsao';
 import { calcularScore } from '@/lib/score-financeiro';
 import { formatarMoeda } from '@/lib/storage';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import AIModelSelect from '@/components/ui/AIModelSelect';
+import type { AIModelId } from '@/lib/ai/catalog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,9 +161,10 @@ function InsightItem({ insight }: { insight: AgenteInsight }) {
 interface AgenteCardProps {
   config: typeof AGENTE_CONFIG[number];
   contexto: string;
+  aiModel: AIModelId;
 }
 
-function AgenteCard({ config, contexto }: AgenteCardProps) {
+function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
   const [insights, setInsights] = useState<AgenteInsight[]>([]);
   const [cacheTs, setCacheTs] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -187,7 +190,7 @@ function AgenteCard({ config, contexto }: AgenteCardProps) {
       const res = await fetch('/api/agentes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agente: config.id, contexto }),
+        body: JSON.stringify({ agente: config.id, contexto, aiModel }),
       });
 
       if (!res.ok) {
@@ -543,7 +546,7 @@ function EvolucaoScore() {
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function Agentes() {
-  const { transacoes, categorias, contas, cartoes } = useFinanceiroStore();
+  const { transacoes, categorias, contas, cartoes, config, atualizarConfig } = useFinanceiroStore();
 
   const contexto = construirContexto({ transacoes, categorias, contas, cartoes });
   const previsoes = calcularPrevisao(transacoes, 30);
@@ -561,13 +564,21 @@ export default function Agentes() {
         </p>
       </div>
 
+      <div className="max-w-xs">
+        <AIModelSelect
+          task="agents"
+          value={config.ai_modelo_padrao || 'automatico'}
+          onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+        />
+      </div>
+
       {/* Evolucao do Score — topo */}
       <EvolucaoScore />
 
       {/* Agent cards */}
       <div className="space-y-4">
         {AGENTE_CONFIG.map(cfg => (
-          <AgenteCard key={cfg.id} config={cfg} contexto={contexto} />
+          <AgenteCard key={cfg.id} config={cfg} contexto={contexto} aiModel={config.ai_modelo_padrao || 'automatico'} />
         ))}
       </div>
 
@@ -593,3 +604,4 @@ export default function Agentes() {
     </div>
   );
 }
+

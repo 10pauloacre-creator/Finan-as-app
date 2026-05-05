@@ -14,6 +14,7 @@ import { BANCO_INFO } from '@/types';
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from '@/components/modais/ModalDuplicata';
 import BankLogo from '@/components/ui/BankLogo';
+import AIModelSelect from '@/components/ui/AIModelSelect';
 
 /* ── Tipos ──────────────────────────────────────────────────────────────────── */
 
@@ -35,6 +36,12 @@ interface Mensagem {
   carregando?: boolean;
   ts: number;
 }
+type AcaoAssistente =
+  | 'pergunta_livre'
+  | 'resumo_mensal'
+  | 'categorizar_transacoes'
+  | 'plano_economia'
+  | 'alerta_gastos';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 
@@ -93,6 +100,29 @@ const MSG_BOAS_VINDAS: Mensagem = {
   texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n• 📄 **PDF** — fatura do cartão de crédito (lança todos os gastos de uma vez!)\n\nVou extrair as informações e você confirma para salvar!',
   ts: Date.now(),
 };
+
+const ACOES_RAPIDAS: Array<{ id: AcaoAssistente; label: string; prompt: string }> = [
+  {
+    id: 'resumo_mensal',
+    label: 'Resumo mensal',
+    prompt: 'Faça um resumo mensal do meu financeiro com receitas, despesas, saldo e pontos de atenção.',
+  },
+  {
+    id: 'categorizar_transacoes',
+    label: 'Categorizar',
+    prompt: 'Me ajude a categorizar minhas transações recentes e destaque categorias ambíguas.',
+  },
+  {
+    id: 'plano_economia',
+    label: 'Plano de economia',
+    prompt: 'Monte um plano de economia conservador com base no meu contexto financeiro atual.',
+  },
+  {
+    id: 'alerta_gastos',
+    label: 'Gastos fora do padrão',
+    prompt: 'Analise meu contexto financeiro e aponte gastos fora do padrão ou concentrações preocupantes.',
+  },
+];
 
 /* ── Componente TransacaoCard ───────────────────────────────────────────────── */
 
@@ -432,7 +462,7 @@ export default function Assistente() {
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
 
-  const { adicionarTransacao, contas, cartoes, transacoes, categorias } = useFinanceiroStore();
+  const { adicionarTransacao, contas, cartoes, transacoes, categorias, config, atualizarConfig } = useFinanceiroStore();
 
   // State for duplicate modal
   const [duplicataPendente, setDuplicataPendente] = useState<{
@@ -582,28 +612,37 @@ export default function Assistente() {
 
   // ── Enviar texto ────────────────────────────────────────────────────────────
 
+  async function enviarPergunta(
+    pergunta: string,
+    action: AcaoAssistente = 'pergunta_livre',
+    textoUsuario = pergunta,
+  ) {
+    if (!pergunta.trim() || enviando) return;
+    setEnviando(true);
+
+    addMsg({ papel: 'user', texto: textoUsuario });
+    const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
+
+    try {
+      const financialContext = construirContexto({ transacoes, categorias, contas, cartoes });
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: pergunta, action, financialContext, aiModel: config.ai_modelo_padrao || 'automatico' }),
+      });
+      await processarResposta(aiId, res);
+    } catch {
+      updateMsg(aiId, { carregando: false, texto: 'Falha de conexao. Tente novamente.' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   async function enviarTexto() {
     const t = texto.trim();
     if (!t || enviando) return;
     setTexto('');
-    setEnviando(true);
-
-    addMsg({ papel: 'user', texto: t });
-    const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
-
-    try {
-      const contexto = construirContexto({ transacoes, categorias, contas, cartoes });
-      const res = await fetch('/api/assistente/texto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: t, contexto }),
-      });
-      await processarResposta(aiId, res);
-    } catch {
-      updateMsg(aiId, { carregando: false, texto: '❌ Sem conexão. Tente novamente.' });
-    } finally {
-      setEnviando(false);
-    }
+    await enviarPergunta(t);
   }
 
   // ── Enviar áudio ────────────────────────────────────────────────────────────
@@ -616,6 +655,7 @@ export default function Assistente() {
     try {
       const fd = new FormData();
       fd.append('audio', blob, `audio.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`);
+      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/assistente/audio', { method: 'POST', body: fd });
       await processarResposta(aiId, res, true);
     } catch {
@@ -681,6 +721,7 @@ export default function Assistente() {
     try {
       const fd = new FormData();
       fd.append('imagem', file);
+      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/assistente/imagem', { method: 'POST', body: fd });
       await processarResposta(aiId, res);
     } catch {
@@ -718,6 +759,7 @@ export default function Assistente() {
     try {
       const fd = new FormData();
       fd.append('pdf', file);
+      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/assistente/pdf', { method: 'POST', body: fd });
 
       if (!res.ok) {
@@ -767,8 +809,27 @@ export default function Assistente() {
             <p className="text-[11px] text-slate-500">Texto · Voz · Foto · Fatura PDF</p>
           </div>
         </div>
+        <div className="px-4 py-3 border-b border-white/[0.06] flex gap-2 overflow-x-auto">
+          <div className="min-w-[210px] mr-1">
+            <AIModelSelect
+              task="chat"
+              value={config.ai_modelo_padrao || 'automatico'}
+              onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+              compact
+            />
+          </div>
+          {ACOES_RAPIDAS.map((acao) => (
+            <button
+              key={acao.id}
+              onClick={() => enviarPergunta(acao.prompt, acao.id, 'Atalho: ' + acao.label)}
+              disabled={enviando || gravando}
+              className="shrink-0 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04] text-xs font-medium text-slate-300 hover:bg-white/[0.08] hover:text-white transition-colors disabled:opacity-40"
+            >
+              {acao.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Mensagens */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {msgs.map(msg => (
             <Bubble
@@ -928,3 +989,10 @@ export default function Assistente() {
     </>
   );
 }
+
+
+
+
+
+
+

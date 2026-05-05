@@ -5,10 +5,11 @@ import {
   Settings, Lock, Bell, Palette, Database, RefreshCw,
   Download, Upload, Trash2, Shield, ChevronRight, Check,
   Eye, EyeOff, X, Smartphone, Globe, Info, LogOut,
-  TrendingUp, Cloud, AlertTriangle, Copy,
+  TrendingUp, Cloud, AlertTriangle, Copy, Brain,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
+import AIModelSelect from '@/components/ui/AIModelSelect';
 
 // ── Seção genérica ────────────────────────────────────────
 function Secao({ titulo, icone, children }: { titulo: string; icone: React.ReactNode; children: React.ReactNode }) {
@@ -332,6 +333,22 @@ export default function Configuracoes() {
       </Secao>
 
       {/* ── TAXAS ECONÔMICAS ─────────────────────────────── */}
+      <Secao titulo="Inteligência Artificial" icone={<Brain size={14} />}>
+        <div className="px-4 py-4 space-y-3">
+          <p className="text-xs text-slate-500">
+            Escolha a IA padrão do app. No modo automático, o FinanceiroIA tenta a melhor opção para cada tarefa e troca de modelo quando houver fallback disponível.
+          </p>
+          <AIModelSelect
+            task="chat"
+            value={config.ai_modelo_padrao || 'automatico'}
+            onChange={(value) => {
+              atualizarConfig({ ai_modelo_padrao: value });
+              mostrarToast('Modelo padrão de IA atualizado!');
+            }}
+          />
+        </div>
+      </Secao>
+
       <Secao titulo="Taxas Econômicas" icone={<TrendingUp size={14} />}>
         <div className="px-4 py-4 space-y-4">
           <p className="text-xs text-slate-500">Usadas no simulador de investimentos</p>
@@ -548,3 +565,4 @@ function PwaInstallButton({ onToast }: { onToast: (m: string) => void }) {
     </button>
   );
 }
+

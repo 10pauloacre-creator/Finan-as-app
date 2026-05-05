@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { AIModelId } from '@/lib/ai/catalog';
+import { generateTextWithFallback } from '@/lib/ai/text';
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ dicas: [] }, { status: 200 });
-    }
-
-    const { transacoes } = await req.json();
+    const { transacoes, aiModel } = await req.json() as { transacoes: Record<string, unknown>[]; aiModel?: AIModelId };
     if (!transacoes || transacoes.length === 0) {
       return NextResponse.json({ dicas: [] });
     }
@@ -45,13 +40,15 @@ Regras:
 - Se os dados forem bons, parabenize!
 - RESPONDA APENAS JSON, sem markdown.`;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+    const result = await generateTextWithFallback({
+      task: 'tips',
+      preferredModel: aiModel || 'automatico',
+      temperature: 0.7,
+      maxTokens: 1024,
+      system: 'Você é um consultor financeiro pessoal brasileiro amigável.',
+      user: prompt,
     });
-
-    const result = await model.generateContent(prompt);
-    const texto  = result.response.text().trim();
+    const texto  = result.content.trim();
     const clean  = texto.replace(/```json\n?|\n?```/g, '').trim();
 
     let dicas = [];
@@ -61,7 +58,7 @@ Regras:
       dicas = [];
     }
 
-    return NextResponse.json({ dicas });
+    return NextResponse.json({ dicas, providerUsed: result.providerUsed });
   } catch (error) {
     console.error('Erro ao gerar dicas:', error);
     return NextResponse.json({ dicas: [] });

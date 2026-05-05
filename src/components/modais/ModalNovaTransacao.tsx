@@ -9,6 +9,7 @@ import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from './ModalDuplicata';
 import { formatFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
+import AIModelSelect from '@/components/ui/AIModelSelect';
 
 interface Props {
   aberto: boolean;
@@ -44,7 +45,7 @@ function getFormVazio(tipo: TipoTransacao = 'despesa') {
 }
 
 export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa' }: Props) {
-  const { categorias, contas, cartoes, transacoes, adicionarTransacao, editarTransacao } = useFinanceiroStore();
+  const { categorias, contas, cartoes, transacoes, adicionarTransacao, editarTransacao, config, atualizarConfig } = useFinanceiroStore();
   const [form, setForm] = useState(() => getFormVazio(tipoInicial));
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [sucesso, setSucesso] = useState(false);
@@ -100,6 +101,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     try {
       const fd = new FormData();
       fd.append('foto', file);
+      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
 
       const res = await fetch('/api/ai/analisar-comprovante', { method: 'POST', body: fd });
       const data = await res.json();
@@ -232,6 +234,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             {/* Upload de foto para IA analisar */}
             {!transacaoEditar && (
               <div>
+                <div className="mb-3">
+                  <AIModelSelect
+                    task="receipt"
+                    value={config.ai_modelo_padrao || 'automatico'}
+                    onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+                  />
+                </div>
                 <input
                   type="file"
                   ref={fileRef}
@@ -485,3 +494,4 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     </>
   );
 }
+
