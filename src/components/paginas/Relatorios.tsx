@@ -161,10 +161,15 @@ function RelatorioIA() {
     setLoading(true);
     try {
       const contexto = contextoMes(transacoes, categorias, contas, cartoes, mesSel, anoSel);
-      const res = await fetch('/api/relatorio', {
+      const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contexto, mes: mesSel, ano: anoSel, aiModel: config.ai_modelo_padrao || 'automatico' }),
+        body: JSON.stringify({
+          task: 'resumo_mensal',
+          mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
+          provider: config.ai_modelo_padrao || 'automatico',
+          input: { contexto, mes: mesSel, ano: anoSel },
+        }),
       });
 
       if (!res.ok) {

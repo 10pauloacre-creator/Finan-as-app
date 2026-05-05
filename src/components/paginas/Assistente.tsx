@@ -628,7 +628,25 @@ export default function Assistente() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: pergunta, action, financialContext, aiModel: config.ai_modelo_padrao || 'automatico' }),
+        body: JSON.stringify({
+          task:
+            action === 'resumo_mensal'
+              ? 'resumo_mensal'
+              : action === 'categorizar_transacoes'
+              ? 'categorizar_transacao'
+              : action === 'plano_economia'
+              ? 'plano_economia'
+              : action === 'alerta_gastos'
+              ? 'detectar_gastos_incomuns'
+              : 'responder_pergunta_financeira',
+          mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
+          provider: config.ai_modelo_padrao || 'automatico',
+          input: {
+            question: pergunta,
+            action,
+            financialContext,
+          },
+        }),
       });
       await processarResposta(aiId, res);
     } catch {
@@ -654,9 +672,11 @@ export default function Assistente() {
 
     try {
       const fd = new FormData();
+      fd.append('task', 'analisar_audio_financeiro');
       fd.append('audio', blob, `audio.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`);
-      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
-      const res = await fetch('/api/assistente/audio', { method: 'POST', body: fd });
+      fd.append('provider', config.ai_modelo_padrao || 'automatico');
+      fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      const res = await fetch('/api/ai', { method: 'POST', body: fd });
       await processarResposta(aiId, res, true);
     } catch {
       updateMsg(aiId, { carregando: false, texto: '❌ Erro ao enviar áudio.' });
@@ -720,9 +740,11 @@ export default function Assistente() {
 
     try {
       const fd = new FormData();
+      fd.append('task', 'analisar_imagem_financeira');
       fd.append('imagem', file);
-      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
-      const res = await fetch('/api/assistente/imagem', { method: 'POST', body: fd });
+      fd.append('provider', config.ai_modelo_padrao || 'automatico');
+      fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      const res = await fetch('/api/ai', { method: 'POST', body: fd });
       await processarResposta(aiId, res);
     } catch {
       updateMsg(aiId, { carregando: false, texto: '❌ Erro ao analisar imagem.' });
@@ -758,9 +780,11 @@ export default function Assistente() {
 
     try {
       const fd = new FormData();
+      fd.append('task', 'analisar_pdf_financeiro');
       fd.append('pdf', file);
-      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
-      const res = await fetch('/api/assistente/pdf', { method: 'POST', body: fd });
+      fd.append('provider', config.ai_modelo_padrao || 'automatico');
+      fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      const res = await fetch('/api/ai', { method: 'POST', body: fd });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };

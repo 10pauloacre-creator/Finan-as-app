@@ -142,10 +142,40 @@ export default function Configuracoes() {
   const [toast, setToast]               = useState('');
   const [buscandoTaxas, setBuscandoTaxas] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [aiStatus, setAiStatus] = useState<Array<{
+    id: string;
+    label: string;
+    description: string;
+    configured: boolean;
+    model: string;
+    strengths: string[];
+  }>>([]);
+  const [aiFallbackOrder, setAiFallbackOrder] = useState<string[]>([]);
   const [taxasSelic, setTaxasSelic]     = useState(String(selicAtual || 10.75));
   const [taxasCdi, setTaxasCdi]         = useState(String(cdiAtual  || 10.65));
   const [taxasIpca, setTaxasIpca]       = useState(String(ipcaAtual || 4.83));
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/ai')
+      .then(async (res) => {
+        const data = await res.json();
+        if (!active || !data?.success) return;
+        setAiStatus(data.models || []);
+        setAiFallbackOrder(data.fallbackOrder || []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAiStatus([]);
+        setAiFallbackOrder([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function mostrarToast(msg: string) {
     setToast(msg);
@@ -346,6 +376,29 @@ export default function Configuracoes() {
               mostrarToast('Modelo padrão de IA atualizado!');
             }}
           />
+          {aiFallbackOrder.length > 0 && (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+              <p className="text-[11px] text-slate-500">Ordem de fallback</p>
+              <p className="text-xs text-slate-300 mt-1">{aiFallbackOrder.join(' → ')}</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            {aiStatus.map((provider) => (
+              <div key={provider.id} className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-200">{provider.label}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{provider.description}</p>
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${provider.configured ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'bg-red-500/15 text-red-300 border border-red-500/20'}`}>
+                    {provider.configured ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2">Modelo: {provider.model}</p>
+                <p className="text-[11px] text-slate-500 mt-1">Forças: {provider.strengths.join(', ')}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </Secao>
 

@@ -680,15 +680,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
       const formData = new FormData();
 
       if (isPdf) {
+        formData.append('task', 'analisar_pdf_financeiro');
         formData.append('pdf', arquivo);
       } else {
+        formData.append('task', 'analisar_imagem_financeira');
         formData.append('imagem', arquivo);
         formData.append('legenda', `Fatura ou histórico do cartão ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
       }
+      formData.append('provider', config.ai_modelo_padrao || 'automatico');
+      formData.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
 
-      formData.append('aiModel', config.ai_modelo_padrao || 'automatico');
-
-      const resposta = await fetch(isPdf ? '/api/assistente/pdf' : '/api/assistente/imagem', {
+      const resposta = await fetch('/api/ai', {
         method: 'POST',
         body: formData,
       });
@@ -1457,3 +1459,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
     </div>
   );
 }
+
+
+

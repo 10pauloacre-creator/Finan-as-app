@@ -187,10 +187,20 @@ function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
     setErro(null);
 
     try {
-      const res = await fetch('/api/agentes', {
+      const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agente: config.id, contexto, aiModel }),
+        body: JSON.stringify({
+          task: 'agente_financeiro',
+          mode: aiModel !== 'automatico' ? 'manual' : 'auto',
+          provider: aiModel,
+          input: {
+            agente: config.id,
+            nome: config.nome,
+            descricao: config.descricao,
+            contexto,
+          },
+        }),
       });
 
       if (!res.ok) {

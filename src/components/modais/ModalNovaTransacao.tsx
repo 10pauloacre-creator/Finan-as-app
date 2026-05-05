@@ -100,10 +100,12 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
     try {
       const fd = new FormData();
+      fd.append('task', 'analisar_recibo_futuramente');
       fd.append('foto', file);
-      fd.append('aiModel', config.ai_modelo_padrao || 'automatico');
+      fd.append('provider', config.ai_modelo_padrao || 'automatico');
+      fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
 
-      const res = await fetch('/api/ai/analisar-comprovante', { method: 'POST', body: fd });
+      const res = await fetch('/api/ai', { method: 'POST', body: fd });
       const data = await res.json();
 
       if (data.dados) {
