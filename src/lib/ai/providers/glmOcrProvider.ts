@@ -1,4 +1,5 @@
 import { InferenceClient } from '@huggingface/inference';
+import type { InferenceProviderOrPolicy } from '@huggingface/inference';
 import { AIProviderId, getModelName } from '../aiModels';
 
 interface GlmOcrInput {
@@ -16,6 +17,17 @@ function normalizeGeneratedText(result: unknown) {
   return String(result || '');
 }
 
+function toBlob(image: Blob | ArrayBuffer | Uint8Array) {
+  if (image instanceof Blob) {
+    return image;
+  }
+
+  const bytes = image instanceof Uint8Array ? image : new Uint8Array(image);
+  const arrayBuffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(arrayBuffer).set(bytes);
+  return new Blob([arrayBuffer]);
+}
+
 export async function extractTextFromImage(input: GlmOcrInput) {
   if (!process.env.HF_TOKEN) {
     throw new Error('HF_TOKEN não configurado.');
@@ -24,16 +36,13 @@ export async function extractTextFromImage(input: GlmOcrInput) {
   const client = new InferenceClient(process.env.HF_TOKEN);
   const providerId = input.providerId || 'glmOcr';
   const modelName = input.modelOverride || getModelName(providerId);
-  const provider = input.providerOverride || (providerId === 'glmOcr' ? process.env.GLM_OCR_PROVIDER || 'zai-org' : undefined);
-
-  const data =
-    input.image instanceof Blob
-      ? input.image
-      : new Blob([input.image instanceof Uint8Array ? input.image : new Uint8Array(input.image)]);
+  const provider = (
+    input.providerOverride || (providerId === 'glmOcr' ? process.env.GLM_OCR_PROVIDER || 'zai-org' : undefined)
+  ) as InferenceProviderOrPolicy | undefined;
 
   const result = await client.imageToText({
     model: modelName,
-    data,
+    data: toBlob(input.image),
     provider,
   });
 

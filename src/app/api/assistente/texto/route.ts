@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseTransacaoJSON } from '@/lib/assistente-types';
-import type { TransacaoExtraida, RespostaAssistente } from '@/lib/assistente-types';
+import type { RespostaAssistente } from '@/lib/assistente-types';
+import type { AIModelId } from '@/lib/ai/aiModels';
+import { runAI } from '@/lib/ai/aiService';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];
-
-// ── Prompts ──────────────────────────────────────────────────────────────────
 
 const PROMPT_EXTRACAO = (texto: string, contexto?: string) => `Você é um extrator de transações financeiras. Analise a mensagem e decida:
 
@@ -32,59 +30,98 @@ ${contexto ? `\nContexto financeiro do usuário:\n${contexto}\n` : ''}
 Mensagem: "${texto}"`;
 
 const PROMPT_CONVERSA = (texto: string, contexto?: string) => `Você é o assistente financeiro do FinanceiroIA, app de controle financeiro pessoal.
-Responda em português brasileiro de forma amigável, concisa e útil (máx. 3 parágrafos curtos).
+Responda em português do Brasil de forma amigável, concisa e útil (máx. 3 parágrafos curtos).
 Ajude com dúvidas sobre finanças pessoais, orçamento, investimentos e economia doméstica.
 Se o usuário mencionar um gasto sem detalhes suficientes, oriente-o a informar valor e descrição.
 ${contexto ? `\nDados financeiros do usuário (use para responder perguntas específicas):\n${contexto}\n` : ''}
 Pergunta: ${texto}`;
 
-// ── Handler ──────────────────────────────────────────────────────────────────
+function resolveMode(aiModel?: AIModelId) {
+  return aiModel && aiModel !== 'automatico' ? 'manual' as const : 'auto' as const;
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const { texto, contexto } = await req.json() as { texto: string; contexto?: string };
+    const { texto, contexto, aiModel } = await req.json() as {
+      texto: string;
+      contexto?: string;
+      aiModel?: AIModelId;
+    };
+
     if (!texto?.trim()) {
       return NextResponse.json({ error: 'texto obrigatório' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
+    const extractResult = await runAI({
+      task: 'categorizar_transacao',
+      input: { customPrompt: PROMPT_EXTRACAO(texto, contexto) },
+      provider: aiModel || 'automatico',
+      mode: resolveMode(aiModel),
+      options: { temperature: 0.1, maxTokens: 512 },
     });
 
-    // 1. Tenta extrair transação
-    const extractResult_raw = await model.generateContent(PROMPT_EXTRACAO(texto, contexto));
-    const extractResult = parseTransacaoJSON(
-      extractResult_raw.response.text().trim(),
-    );
+    if (extractResult.success && extractResult.answer) {
+      const parsed = parseTransacaoJSON(extractResult.answer);
 
-    if ('valor' in extractResult) {
-      const resposta =
-        extractResult.tipo === 'despesa'
-          ? `Encontrei uma **despesa** de R$ ${extractResult.valor.toFixed(2).replace('.', ',')}. Confira e confirme para salvar.`
-          : `Encontrei uma **receita** de R$ ${extractResult.valor.toFixed(2).replace('.', ',')}. Confira e confirme para salvar.`;
+      if ('valor' in parsed) {
+        const resposta =
+          parsed.tipo === 'despesa'
+            ? `Encontrei uma **despesa** de R$ ${parsed.valor.toFixed(2).replace('.', ',')}. Confira e confirme para salvar.`
+            : `Encontrei uma **receita** de R$ ${parsed.valor.toFixed(2).replace('.', ',')}. Confira e confirme para salvar.`;
 
-      return NextResponse.json({
-        tipo: 'transacao',
-        transacao: extractResult,
-        resposta,
-      } satisfies RespostaAssistente);
+        return NextResponse.json({
+          tipo: 'transacao',
+          transacao: parsed,
+          resposta,
+          providerUsed: extractResult.providerUsed,
+          modelUsed: extractResult.modelUsed,
+          fallbackUsed: extractResult.fallbackUsed,
+          failedProvider: extractResult.failedProvider,
+          success: true,
+        } satisfies RespostaAssistente & {
+          modelUsed?: string;
+          fallbackUsed?: boolean;
+          failedProvider?: string;
+          success: boolean;
+        });
+      }
     }
 
-    // 2. Fallback: resposta conversacional
-    const modelConversa = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+    const chatResult = await runAI({
+      task: 'responder_pergunta_financeira',
+      input: { customPrompt: PROMPT_CONVERSA(texto, contexto) },
+      provider: aiModel || 'automatico',
+      mode: resolveMode(aiModel),
+      options: { temperature: 0.3, maxTokens: 512 },
     });
-    const chatResult = await modelConversa.generateContent(PROMPT_CONVERSA(texto, contexto));
-    const resposta = chatResult.response.text().trim()
-      || 'Desculpe, não consegui processar sua mensagem. Tente novamente.';
 
-    return NextResponse.json({ tipo: 'conversa', resposta } satisfies RespostaAssistente);
+    if (!chatResult.success || !chatResult.answer) {
+      return NextResponse.json(
+        { error: chatResult.error || 'Não foi possível consultar a IA agora. Tente novamente em instantes.' },
+        { status: 503 },
+      );
+    }
 
+    return NextResponse.json({
+      tipo: 'conversa',
+      resposta: chatResult.answer.trim() || 'Desculpe, não consegui processar sua mensagem. Tente novamente.',
+      providerUsed: chatResult.providerUsed,
+      modelUsed: chatResult.modelUsed,
+      fallbackUsed: chatResult.fallbackUsed,
+      failedProvider: chatResult.failedProvider,
+      success: true,
+    } satisfies RespostaAssistente & {
+      modelUsed?: string;
+      fallbackUsed?: boolean;
+      failedProvider?: string;
+      success: boolean;
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
     console.error('[assistente/texto]', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Não foi possível consultar a IA agora. Tente novamente em instantes.' },
+      { status: 500 },
+    );
   }
 }

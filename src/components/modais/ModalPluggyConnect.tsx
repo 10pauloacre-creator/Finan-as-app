@@ -119,7 +119,12 @@ export default function ModalPluggyConnect({ aberto, onFechar, onSincronizado }:
   }, []);
 
   useEffect(() => {
-    if (aberto) buscarToken();
+    if (!aberto) return;
+    const timeout = window.setTimeout(() => {
+      buscarToken();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [aberto, buscarToken]);
 
   function handleConfirmar() {

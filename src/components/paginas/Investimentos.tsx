@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, TrendingUp, Calculator, RefreshCw, Info, X, ShieldCheck, BarChart2 } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, Calculator, RefreshCw, Info, X, ShieldCheck } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { formatFinancialDate } from '@/lib/date';
@@ -287,9 +287,20 @@ export default function Investimentos() {
     finally { setBuscando(false); }
   }
 
-  useEffect(() => { if (!selicAtual) buscarTaxas(); }, []);
+  useEffect(() => {
+    if (selicAtual) return;
+    const timeout = window.setTimeout(() => {
+      buscarTaxas();
+    }, 0);
 
-  const taxas = { selic: selicAtual || 10.75, cdi: cdiAtual || 10.65, ipca: ipcaAtual || 4.83 };
+    return () => window.clearTimeout(timeout);
+  }, [buscarTaxas, selicAtual]);
+
+  const taxas = useMemo(() => ({
+    selic: selicAtual || 10.75,
+    cdi: cdiAtual || 10.65,
+    ipca: ipcaAtual || 4.83,
+  }), [selicAtual, cdiAtual, ipcaAtual]);
 
   const prazoMeses = useMemo(() => {
     if (modoCustom) {

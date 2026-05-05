@@ -56,7 +56,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     provider: 'anthropic',
     envKey: 'ANTHROPIC_API_KEY',
     modelEnv: 'ANTHROPIC_MODEL',
-    defaultModel: 'claude-3-5-haiku-latest',
+    defaultModel: 'claude-3-5-haiku-20241022',
     strengths: ['analise', 'texto_longo', 'raciocinio'],
     supportsVision: false,
     supportsChat: true,

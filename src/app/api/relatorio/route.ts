@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AIModelId } from '@/lib/ai/catalog';
-import { generateTextWithFallback } from '@/lib/ai/text';
+import type { AIModelId } from '@/lib/ai/aiModels';
+import { runAI } from '@/lib/ai/aiService';
+
+function jsonFromText(text: string) {
+  const clean = text.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -11,11 +23,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       aiModel?: AIModelId;
     };
 
-    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const nomeMes = meses[mes - 1] ?? 'Mês';
-
-    const prompt = `Você é um consultor financeiro pessoal brasileiro gerando o relatório mensal de ${nomeMes} de ${ano}.
+    const result = await runAI({
+      task: 'resumo_mensal',
+      provider: aiModel || 'automatico',
+      mode: aiModel && aiModel !== 'automatico' ? 'manual' : 'auto',
+      options: { temperature: 0.5, maxTokens: 1536 },
+      input: {
+        customPrompt: `Você é um consultor financeiro pessoal brasileiro gerando um relatório mensal.
 
 Analise os dados financeiros abaixo e gere um relatório completo em JSON (sem markdown):
 
@@ -35,34 +49,45 @@ DADOS FINANCEIROS:
 ${contexto}
 
 Regras:
-- Máx 3 destaques, máx 3 recomendações
-- Use valores reais (R$ X,XX) nas descrições
-- Seja específico, não genérico
-- Tom amigável, como um conselheiro de confiança
-- Responda APENAS JSON válido`;
-
-    const result = await generateTextWithFallback({
-      task: 'report',
-      preferredModel: aiModel || 'automatico',
-      temperature: 0.5,
-      maxTokens: 1536,
-      system: `Você é um consultor financeiro pessoal brasileiro gerando o relatório mensal de ${nomeMes} de ${ano}.`,
-      user: prompt,
+- MÁX 3 destaques e MÁX 3 recomendações
+- Use valores reais quando eles estiverem disponíveis no contexto
+- Seja específico, prudente e útil
+- Responda APENAS JSON válido.`,
+      },
     });
-    const raw = result.content.trim()
-      .replace(/```json\n?/g, '').replace(/```/g, '').trim();
 
-    let parsed;
-    try {
-      const match = raw.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(match?.[0] ?? '{}');
-    } catch {
-      parsed = { resumo: 'Não foi possível gerar o relatório.', nota_mes: 'regular', destaques: [], recomendacoes: [] };
+    if (!result.success || !result.answer) {
+      return NextResponse.json(
+        { success: false, error: result.error || 'Não foi possível consultar a IA agora. Tente novamente em instantes.' },
+        { status: 503 },
+      );
     }
 
-    return NextResponse.json({ ...parsed, mes, ano, providerUsed: result.providerUsed });
+    const parsed = jsonFromText(result.answer) || {
+      resumo: 'Não foi possível gerar o relatório.',
+      nota_mes: 'regular',
+      destaques: [],
+      recomendacoes: [],
+      previsao_proximo_mes: '',
+    };
+
+    return NextResponse.json({
+      success: true,
+      ...parsed,
+      mes,
+      ano,
+      providerUsed: result.providerUsed,
+      modelUsed: result.modelUsed,
+      fallbackUsed: result.fallbackUsed,
+      failedProvider: result.failedProvider,
+      answer: result.answer,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[relatorio]', msg);
+    return NextResponse.json(
+      { success: false, error: 'Não foi possível consultar a IA agora. Tente novamente em instantes.' },
+      { status: 500 },
+    );
   }
 }

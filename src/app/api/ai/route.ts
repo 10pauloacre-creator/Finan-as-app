@@ -1,6 +1,6 @@
 import { getProviderStatus } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
-import { analisarRecibo, runAI, runOCR } from '@/lib/ai/aiService';
+import { analisarRecibo, runAI } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
 import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
 

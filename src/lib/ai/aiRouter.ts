@@ -1,6 +1,16 @@
 import { AI_MODELS, AIModelId, AIProviderId, AITask } from './aiModels';
 import { getTaskProfile } from './taskProfiles';
 
+export type ProviderAvailabilityStatus = 'not_configured' | 'unknown' | 'healthy' | 'degraded';
+
+interface ProviderHealthState {
+  available: boolean;
+  lastCheckedAt: string;
+  lastError?: string;
+}
+
+const providerHealth = new Map<AIProviderId, ProviderHealthState>();
+
 function parseFallbackOrder() {
   const raw = process.env.AI_FALLBACK_ORDER || 'gemini,groq,deepseek,gemma4,anthropic';
   return raw
@@ -20,11 +30,33 @@ export function getDefaultProviderMode() {
 export function getProviderStatus() {
   return (Object.keys(AI_MODELS) as AIProviderId[]).map((provider) => {
     const model = AI_MODELS[provider];
+    const configured = Boolean(process.env[model.envKey]);
+    const runtime = providerHealth.get(provider);
+    const availability: ProviderAvailabilityStatus = !configured
+      ? 'not_configured'
+      : !runtime
+      ? 'unknown'
+      : runtime.available
+      ? 'healthy'
+      : 'degraded';
+
     return {
       id: provider,
       label: model.label,
       description: model.description,
-      configured: Boolean(process.env[model.envKey]),
+      configured,
+      available: runtime?.available ?? null,
+      availability,
+      statusLabel:
+        availability === 'healthy'
+          ? 'Disponível'
+          : availability === 'degraded'
+          ? 'Indisponível agora'
+          : availability === 'unknown'
+          ? 'Configurado, aguardando teste'
+          : 'Não configurado',
+      lastCheckedAt: runtime?.lastCheckedAt,
+      lastError: runtime?.lastError,
       model: process.env[model.modelEnv] || model.defaultModel,
       type: model.type || 'chat',
       fallbackOrder: parseFallbackOrder(),
@@ -50,9 +82,9 @@ export function resolveProviderOrder(task: AITask, requestedProvider?: AIModelId
       ? (defaultProvider as AIProviderId)
       : undefined;
 
-  let baseOrder = mode === 'manual' && manualProvider
+  const baseOrder = mode === 'manual' && manualProvider
     ? [manualProvider, ...recommended.filter((provider) => provider !== manualProvider)]
-    : recommended;
+    : [...recommended];
 
   for (const provider of fallback) {
     if (!baseOrder.includes(provider)) {
@@ -61,4 +93,19 @@ export function resolveProviderOrder(task: AITask, requestedProvider?: AIModelId
   }
 
   return baseOrder.filter((provider, index) => configured.includes(provider) && baseOrder.indexOf(provider) === index);
+}
+
+export function markProviderSuccess(provider: AIProviderId) {
+  providerHealth.set(provider, {
+    available: true,
+    lastCheckedAt: new Date().toISOString(),
+  });
+}
+
+export function markProviderFailure(provider: AIProviderId, error: string) {
+  providerHealth.set(provider, {
+    available: false,
+    lastCheckedAt: new Date().toISOString(),
+    lastError: error,
+  });
 }

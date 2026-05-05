@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -8,11 +8,11 @@ import {
   TrendingUp, Cloud, AlertTriangle, Copy, Brain,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { formatarMoeda } from '@/lib/storage';
+import { storageTransacoes } from '@/lib/storage';
 import AIModelSelect from '@/components/ui/AIModelSelect';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
-// ── Seção genérica ────────────────────────────────────────
+// â”€â”€ SeÃ§Ã£o genÃ©rica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Secao({ titulo, icone, children }: { titulo: string; icone: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
@@ -65,7 +65,7 @@ function Toggle({ ativo, onChange }: { ativo: boolean; onChange: (v: boolean) =>
   );
 }
 
-// ── Modal PIN ─────────────────────────────────────────────
+// â”€â”€ Modal PIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ModalPin({ onFechar, onSalvar }: { onFechar: () => void; onSalvar: (pin: string) => void }) {
   const [atual, setAtual]   = useState('');
   const [novo, setNovo]     = useState('');
@@ -78,8 +78,8 @@ function ModalPin({ onFechar, onSalvar }: { onFechar: () => void; onSalvar: (pin
   function salvar() {
     const pinAtual = config.pin || '1234';
     if (atual !== pinAtual) { setErro('PIN atual incorreto'); return; }
-    if (novo.length < 4)    { setErro('O novo PIN deve ter pelo menos 4 dígitos'); return; }
-    if (novo !== conf)      { setErro('Os PINs não coincidem'); return; }
+    if (novo.length < 4)    { setErro('O novo PIN deve ter pelo menos 4 dÃ­gitos'); return; }
+    if (novo !== conf)      { setErro('Os PINs nÃ£o coincidem'); return; }
     onSalvar(novo);
   }
 
@@ -128,7 +128,7 @@ function ModalPin({ onFechar, onSalvar }: { onFechar: () => void; onSalvar: (pin
   );
 }
 
-// ══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default function Configuracoes() {
   const {
     config, atualizarConfig, desautenticar,
@@ -148,6 +148,11 @@ export default function Configuracoes() {
     label: string;
     description: string;
     configured: boolean;
+    available?: boolean | null;
+    availability?: 'not_configured' | 'unknown' | 'healthy' | 'degraded';
+    statusLabel?: string;
+    lastCheckedAt?: string;
+    lastError?: string;
     model: string;
     strengths: string[];
     type?: string;
@@ -241,7 +246,7 @@ export default function Configuracoes() {
       return `${t.data},"${t.descricao}",${t.valor},${t.tipo},"${cat?.nome || ''}",${t.metodo_pagamento || ''}`;
     });
     const csv = [header, ...rows].join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM para Excel
+    const blob = new Blob(['ï»¿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM para Excel
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url;
@@ -259,14 +264,13 @@ export default function Configuracoes() {
     reader.onload = () => {
       try {
         const dados = JSON.parse(reader.result as string);
-        // Aplica importação (apenas adiciona, não sobrescreve)
+        // Aplica importaÃ§Ã£o (apenas adiciona, nÃ£o sobrescreve)
         if (dados.transacoes) dados.transacoes.forEach((t: typeof transacoes[0]) => {
-          const { storageTransacoes } = require('@/lib/storage');
           storageTransacoes.save(t);
         });
         carregarDados();
-        mostrarToast(`Importado: ${dados.transacoes?.length || 0} transações`);
-      } catch { mostrarToast('Arquivo inválido'); }
+        mostrarToast(`Importado: ${dados.transacoes?.length || 0} transaÃ§Ãµes`);
+      } catch { mostrarToast('Arquivo invÃ¡lido'); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -287,8 +291,8 @@ export default function Configuracoes() {
   }
 
   function limparTodosDados() {
-    if (!confirm('⚠️ Isso vai APAGAR TODOS os seus dados locais permanentemente. Essa ação não pode ser desfeita.\n\nTem certeza?')) return;
-    if (!confirm('Segunda confirmação: todos os dados serão perdidos. Continuar?')) return;
+    if (!confirm('âš ï¸ Isso vai APAGAR TODOS os seus dados locais permanentemente. Essa aÃ§Ã£o nÃ£o pode ser desfeita.\n\nTem certeza?')) return;
+    if (!confirm('Segunda confirmaÃ§Ã£o: todos os dados serÃ£o perdidos. Continuar?')) return;
     const keys = Object.keys(localStorage).filter(k => k.startsWith('fin_'));
     keys.forEach(k => localStorage.removeItem(k));
     carregarDados();
@@ -306,13 +310,13 @@ export default function Configuracoes() {
           <Settings size={18} className="text-purple-400" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-white">Configurações</h1>
+          <h1 className="text-lg font-bold text-white">ConfiguraÃ§Ãµes</h1>
           <p className="text-xs text-slate-500">{totalDados} registros locais</p>
         </div>
       </div>
 
-      {/* ── SEGURANÇA ─────────────────────────────────────── */}
-      <Secao titulo="Segurança" icone={<Shield size={14} />}>
+      {/* â”€â”€ SEGURANÃ‡A â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <Secao titulo="SeguranÃ§a" icone={<Shield size={14} />}>
         <Item
           label="Alterar PIN de acesso"
           descricao="PIN protege o acesso ao app"
@@ -325,18 +329,18 @@ export default function Configuracoes() {
           }
         />
         <Item
-          label="Bloqueio automático"
+          label="Bloqueio automÃ¡tico"
           descricao="Bloquear ao fechar o app"
           icone={<Lock size={15} />}
           acao={<Toggle ativo={true} onChange={() => mostrarToast('Em breve')} />}
         />
       </Secao>
 
-      {/* ── PREFERÊNCIAS ─────────────────────────────────── */}
-      <Secao titulo="Preferências" icone={<Palette size={14} />}>
+      {/* â”€â”€ PREFERÃŠNCIAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <Secao titulo="PreferÃªncias" icone={<Palette size={14} />}>
         <Item
           label="Moeda"
-          descricao="Moeda padrão do app"
+          descricao="Moeda padrÃ£o do app"
           icone={<Globe size={15} />}
           acao={
             <select
@@ -344,54 +348,54 @@ export default function Configuracoes() {
               onChange={e => { atualizarConfig({ moeda: e.target.value }); mostrarToast('Moeda atualizada!'); }}
               className="bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none focus:border-purple-500"
             >
-              <option value="BRL">R$ — Real (BRL)</option>
-              <option value="USD">$ — Dólar (USD)</option>
-              <option value="EUR">€ — Euro (EUR)</option>
-              <option value="GBP">£ — Libra (GBP)</option>
+              <option value="BRL">R$ â€” Real (BRL)</option>
+              <option value="USD">$ â€” DÃ³lar (USD)</option>
+              <option value="EUR">â‚¬ â€” Euro (EUR)</option>
+              <option value="GBP">Â£ â€” Libra (GBP)</option>
             </select>
           }
         />
         <Item
-          label="Notificações"
-          descricao="Alertas de orçamento e lembretes"
+          label="NotificaÃ§Ãµes"
+          descricao="Alertas de orÃ§amento e lembretes"
           icone={<Bell size={15} />}
           acao={
             <Toggle
               ativo={config.notificacoes_ativas}
-              onChange={v => { atualizarConfig({ notificacoes_ativas: v }); mostrarToast(v ? 'Notificações ativas' : 'Notificações desativadas'); }}
+              onChange={v => { atualizarConfig({ notificacoes_ativas: v }); mostrarToast(v ? 'NotificaÃ§Ãµes ativas' : 'NotificaÃ§Ãµes desativadas'); }}
             />
           }
         />
       </Secao>
 
-      {/* ── TAXAS ECONÔMICAS ─────────────────────────────── */}
-      <Secao titulo="Inteligência Artificial" icone={<Brain size={14} />}>
+      {/* â”€â”€ TAXAS ECONÃ”MICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <Secao titulo="InteligÃªncia Artificial" icone={<Brain size={14} />}>
         <div className="px-4 py-4 space-y-3">
           <p className="text-xs text-slate-500">
-            Escolha a IA padrão do app. No modo automático, o FinanceiroIA tenta a melhor opção para cada tarefa e troca de modelo quando houver fallback disponível.
+            Escolha a IA padrÃ£o do app. No modo automÃ¡tico, o FinanceiroIA tenta a melhor opÃ§Ã£o para cada tarefa e troca de modelo quando houver fallback disponÃ­vel.
           </p>
           <AIModelSelect
             task="chat"
             value={config.ai_modelo_padrao || 'automatico'}
             onChange={(value) => {
               atualizarConfig({ ai_modelo_padrao: value });
-              mostrarToast('Modelo padrão de IA atualizado!');
+              mostrarToast('Modelo padrÃ£o de IA atualizado!');
             }}
           />
           <div>
-            <p className="text-[11px] text-slate-500 mb-2">Leitor OCR padrão</p>
+            <p className="text-[11px] text-slate-500 mb-2">Leitor OCR padrÃ£o</p>
             <OCRModelSelect
               value={config.ai_modelo_ocr_padrao || 'automatico'}
               onChange={(value) => {
                 atualizarConfig({ ai_modelo_ocr_padrao: value });
-                mostrarToast('Leitor OCR padrão atualizado!');
+                mostrarToast('Leitor OCR padrÃ£o atualizado!');
               }}
             />
           </div>
           {aiFallbackOrder.length > 0 && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
               <p className="text-[11px] text-slate-500">Ordem de fallback</p>
-              <p className="text-xs text-slate-300 mt-1">{aiFallbackOrder.join(' → ')}</p>
+              <p className="text-xs text-slate-300 mt-1">{aiFallbackOrder.join(' â†’ ')}</p>
             </div>
           )}
           <div className="space-y-2">
@@ -402,20 +406,38 @@ export default function Configuracoes() {
                     <p className="text-sm font-medium text-slate-200">{provider.label}</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">{provider.description}</p>
                   </div>
-                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${provider.configured ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'bg-red-500/15 text-red-300 border border-red-500/20'}`}>
-                    {provider.configured ? 'Configurado' : 'Não configurado'}
+                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
+                    provider.availability === 'healthy'
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
+                      : provider.availability === 'degraded'
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                        : provider.configured
+                          ? 'bg-blue-500/15 text-blue-300 border border-blue-500/20'
+                          : 'bg-red-500/15 text-red-300 border border-red-500/20'
+                  }`}>
+                    {provider.statusLabel || (provider.configured ? 'Configurado' : 'Não configurado')}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-2">Modelo: {provider.model}</p>
                 <p className="text-[11px] text-slate-500 mt-1">Tipo: {provider.type === 'ocr' ? 'OCR especializado' : 'Chat / análise financeira'}</p>
                 <p className="text-[11px] text-slate-500 mt-1">Forças: {provider.strengths.join(', ')}</p>
+                {provider.lastCheckedAt && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Último teste: {new Date(provider.lastCheckedAt).toLocaleString('pt-BR')}
+                  </p>
+                )}
+                {provider.lastError && (
+                  <p className="text-[11px] text-amber-300/90 mt-1">
+                    Última falha: {provider.lastError}
+                  </p>
+                )}
               </div>
             ))}
           </div>
         </div>
       </Secao>
 
-      <Secao titulo="Taxas Econômicas" icone={<TrendingUp size={14} />}>
+      <Secao titulo="Taxas EconÃ´micas" icone={<TrendingUp size={14} />}>
         <div className="px-4 py-4 space-y-4">
           <p className="text-xs text-slate-500">Usadas no simulador de investimentos</p>
           <div className="grid grid-cols-3 gap-3">
@@ -445,8 +467,8 @@ export default function Configuracoes() {
         </div>
       </Secao>
 
-      {/* ── SINCRONIZAÇÃO ─────────────────────────────────── */}
-      <Secao titulo="Sincronização na Nuvem" icone={<Cloud size={14} />}>
+      {/* â”€â”€ SINCRONIZAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <Secao titulo="SincronizaÃ§Ã£o na Nuvem" icone={<Cloud size={14} />}>
         <div className="px-4 py-4 space-y-3">
           <p className="text-xs text-slate-500">Sincronize seus dados com o Supabase</p>
           <div className="flex gap-2">
@@ -464,14 +486,14 @@ export default function Configuracoes() {
         </div>
       </Secao>
 
-      {/* ── DADOS E BACKUP ────────────────────────────────── */}
+      {/* â”€â”€ DADOS E BACKUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Secao titulo="Dados & Backup" icone={<Database size={14} />}>
         <div className="px-4 py-3 border-b border-white/[0.04]">
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
-              { label: 'Transações',   val: transacoes.length   },
+              { label: 'TransaÃ§Ãµes',   val: transacoes.length   },
               { label: 'Contas',       val: contas.length        },
-              { label: 'Cartões',      val: cartoes.length       },
+              { label: 'CartÃµes',      val: cartoes.length       },
               { label: 'Investimentos',val: investimentos.length },
             ].map(({ label, val }) => (
               <div key={label} className="bg-white/[0.03] rounded-xl py-2.5">
@@ -483,7 +505,7 @@ export default function Configuracoes() {
         </div>
         <Item
           label="Exportar Backup (JSON)"
-          descricao="Todos os dados para restauração"
+          descricao="Todos os dados para restauraÃ§Ã£o"
           icone={<Download size={15} />}
           acao={
             <button onClick={exportarDados}
@@ -493,8 +515,8 @@ export default function Configuracoes() {
           }
         />
         <Item
-          label="Exportar Transações (CSV)"
-          descricao="Compatível com Excel e Google Sheets"
+          label="Exportar TransaÃ§Ãµes (CSV)"
+          descricao="CompatÃ­vel com Excel e Google Sheets"
           icone={<Download size={15} />}
           acao={
             <button onClick={exportarCSV}
@@ -518,8 +540,8 @@ export default function Configuracoes() {
           }
         />
         <Item
-          label="Copiar dados para área de transferência"
-          descricao="Todas as transações como JSON"
+          label="Copiar dados para Ã¡rea de transferÃªncia"
+          descricao="Todas as transaÃ§Ãµes como JSON"
           icone={<Copy size={15} />}
           acao={
             <button onClick={() => {
@@ -532,27 +554,27 @@ export default function Configuracoes() {
         />
       </Secao>
 
-      {/* ── APP ───────────────────────────────────────────── */}
+      {/* â”€â”€ APP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Secao titulo="Aplicativo" icone={<Smartphone size={14} />}>
         <Item
           label="Instalar como App (PWA)"
-          descricao="Adicionar à tela inicial do celular"
+          descricao="Adicionar Ã  tela inicial do celular"
           icone={<Smartphone size={15} />}
           acao={<PwaInstallButton onToast={mostrarToast} />}
         />
         <Item
-          label="Versão do app"
+          label="VersÃ£o do app"
           icone={<Info size={15} />}
           valor="FinanceiroIA v1.0"
         />
         <Item
           label="Idioma"
           icone={<Globe size={15} />}
-          valor="Português Brasil"
+          valor="PortuguÃªs Brasil"
         />
       </Secao>
 
-      {/* ── ZONA DE PERIGO ────────────────────────────────── */}
+      {/* â”€â”€ ZONA DE PERIGO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Secao titulo="Zona de Perigo" icone={<AlertTriangle size={14} />}>
         <Item
           label="Sair / Bloquear app"
@@ -567,7 +589,7 @@ export default function Configuracoes() {
         />
         <Item
           label="Apagar todos os dados locais"
-          descricao="Irreversível — cria backup antes"
+          descricao="IrreversÃ­vel â€” cria backup antes"
           icone={<Trash2 size={15} />}
           danger
           acao={
@@ -593,7 +615,7 @@ export default function Configuracoes() {
   );
 }
 
-// ── Botão PWA Install ─────────────────────────────────────
+// â”€â”€ BotÃ£o PWA Install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PwaInstallButton({ onToast }: { onToast: (m: string) => void }) {
   const [prompt, setPrompt] = useState<Event & { prompt?: () => Promise<void> } | null>(null);
   const [instalado, setInstalado] = useState(false);
@@ -613,7 +635,7 @@ function PwaInstallButton({ onToast }: { onToast: (m: string) => void }) {
   if (!prompt) return (
     <span className="text-[11px] text-slate-500">
       {window.matchMedia('(display-mode: standalone)').matches
-        ? '✓ Já instalado'
+        ? 'âœ“ JÃ¡ instalado'
         : 'Abra no Chrome'}
     </span>
   );
@@ -631,4 +653,5 @@ function PwaInstallButton({ onToast }: { onToast: (m: string) => void }) {
     </button>
   );
 }
+
 

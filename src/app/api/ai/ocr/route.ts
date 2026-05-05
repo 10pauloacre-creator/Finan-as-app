@@ -5,7 +5,16 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
 
 export async function POST(req: Request) {
+  const contentType = req.headers.get('content-type') || '';
+
   try {
+    if (!contentType.includes('multipart/form-data')) {
+      return Response.json(
+        { success: false, error: 'Envie a imagem como multipart/form-data.' },
+        { status: 415 },
+      );
+    }
+
     const formData = await req.formData();
     const image = formData.get('image') as File | null;
     const provider = String(formData.get('provider') || 'automatico') as AIModelId;

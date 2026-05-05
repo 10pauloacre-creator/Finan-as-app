@@ -255,7 +255,6 @@ function mapConfig(config: ConfiguracaoApp) {
     cdi_atual: config.cdi_atual,
     ipca_atual: config.ipca_atual,
     selic_atualizado_em: config.selic_atualizado_em,
-    whatsapp_numero_autorizado: config.whatsapp_numero_autorizado,
     notificacoes_ativas: config.notificacoes_ativas,
   };
 }

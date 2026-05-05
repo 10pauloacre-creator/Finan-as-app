@@ -1,12 +1,13 @@
 'use client';
+/* eslint-disable react/no-unescaped-entities */
 
 import { useMemo, useState } from 'react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, LineChart, Line
 } from 'recharts';
 import {
   TrendingDown, TrendingUp, Lightbulb, Download,
@@ -706,4 +707,5 @@ export default function Relatorios() {
     </div>
   );
 }
+
 

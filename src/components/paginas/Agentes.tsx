@@ -219,7 +219,7 @@ function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
     } finally {
       setLoading(false);
     }
-  }, [config.id, contexto, loading]);
+  }, [aiModel, config.descricao, config.id, config.nome, contexto, loading]);
 
   return (
     <div className={`rounded-2xl border ${config.cor.border} ${config.cor.bg} p-5 space-y-4`}>

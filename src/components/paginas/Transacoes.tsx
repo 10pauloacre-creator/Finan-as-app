@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Trash2, Edit, Plus, MessageCircle, RefreshCw } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, Trash2, Edit, Plus } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
-import { BotTransacao } from '@/lib/data-store';
 import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 
 const FILTROS_TIPO = [
@@ -30,7 +29,7 @@ function formatarDataHeader(dataStr: string): string {
 }
 
 export default function Transacoes() {
-  const { transacoes, categorias, excluirTransacao, adicionarTransacao } = useFinanceiroStore();
+  const { transacoes, categorias, excluirTransacao } = useFinanceiroStore();
 
   const [busca, setBusca]                 = useState('');
   const [filtroTipo, setFiltroTipo]       = useState('todos');
@@ -40,69 +39,6 @@ export default function Transacoes() {
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto]     = useState(false);
   const [transacaoEditar, setTransacaoEditar] = useState<Transacao | undefined>();
-  const [botPendentes, setBotPendentes]   = useState(0);
-  const [importando, setImportando]       = useState(false);
-
-  const verificarFila = useCallback(async () => {
-    try {
-      const res = await fetch('/api/bot/fila');
-      if (res.ok) {
-        const data = await res.json() as { total: number };
-        setBotPendentes(data.total);
-      }
-    } catch { /* sem conexão */ }
-  }, []);
-
-  useEffect(() => {
-    const timeout = setTimeout(verificarFila, 0);
-    const interval = setInterval(verificarFila, 30_000);
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-    };
-  }, [verificarFila]);
-
-  async function importarDoBot() {
-    setImportando(true);
-    try {
-      const res = await fetch('/api/bot/fila');
-      if (!res.ok) return;
-      const { transacoes: botTxs } = await res.json() as { transacoes: BotTransacao[] };
-      if (!botTxs.length) { alert('Nenhuma transação pendente do bot.'); return; }
-
-      const catPadrao = categorias[0]?.id || '';
-      const ids: string[] = [];
-
-      for (const bt of botTxs) {
-        const catMatch = categorias.find(c =>
-          c.nome.toLowerCase().includes(bt.categoria.toLowerCase())
-        );
-        adicionarTransacao({
-          tipo: bt.tipo,
-          valor: bt.valor,
-          descricao: bt.descricao,
-          data: bt.data,
-          categoria_id: catMatch?.id || catPadrao,
-          metodo_pagamento: bt.metodo_pagamento === 'nao_informado'
-            ? 'pix'
-            : bt.metodo_pagamento as 'pix' | 'credito' | 'debito' | 'dinheiro',
-          origem: 'whatsapp_texto',
-        });
-        ids.push(bt.id);
-      }
-
-      await fetch('/api/bot/fila', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
-
-      setBotPendentes(0);
-      alert(`✅ ${botTxs.length} transação(ões) importada(s) com sucesso!`);
-    } finally {
-      setImportando(false);
-    }
-  }
 
   // Filtragem por período
   const transacoesPorPeriodo = useMemo(() => {
@@ -185,20 +121,6 @@ export default function Transacoes() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white">Transações</h2>
         <div className="flex gap-2">
-          <button
-            onClick={importarDoBot}
-            disabled={importando}
-            className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white hover:border-white/20 disabled:opacity-50"
-            title="Importar lançamentos do WhatsApp Bot"
-          >
-            {importando ? <RefreshCw size={15} className="animate-spin" /> : <MessageCircle size={15} />}
-            <span className="hidden sm:inline">Bot</span>
-            {botPendentes > 0 && !importando && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {botPendentes > 9 ? '9+' : botPendentes}
-              </span>
-            )}
-          </button>
           <button
             onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
             className="btn-primary flex items-center gap-1.5 text-white px-3 py-2 rounded-xl text-sm font-medium"
@@ -396,3 +318,4 @@ export default function Transacoes() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 import { AIModelId, AIProviderId, AITask } from './aiModels';
-import { resolveProviderOrder } from './aiRouter';
+import { markProviderFailure, markProviderSuccess, resolveProviderOrder } from './aiRouter';
 import { sanitizeFinancialData } from './sanitizeFinancialData';
 import { getTaskProfile } from './taskProfiles';
 import { runAnthropicProvider } from './providers/anthropicProvider';
@@ -206,6 +206,7 @@ export async function runOCR({
         modelUsed: result.model,
         fallbackUsed: index > 0,
       });
+      markProviderSuccess(result.provider);
 
       return {
         success: true,
@@ -219,6 +220,7 @@ export async function runOCR({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido';
       errors.push(`${candidate}: ${message}`);
+      markProviderFailure(candidate, message);
     }
   }
 
@@ -339,6 +341,7 @@ export async function runAI({
         modelUsed: result.model,
         fallbackUsed: index > 0,
       });
+      markProviderSuccess(result.provider);
 
       return {
         success: true,
@@ -352,6 +355,7 @@ export async function runAI({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido';
       errors.push(`${candidate}: ${message}`);
+      markProviderFailure(candidate, message);
       console.warn('[ai:fallback]', { task, provider: candidate, message });
     }
   }
