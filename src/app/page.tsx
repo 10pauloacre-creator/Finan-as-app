@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import TelaLogin from '@/components/TelaLogin';
 import AppPrincipal from '@/components/AppPrincipal';
 
 export default function Home() {
-  const { autenticado, carregarDados } = useFinanceiroStore();
+  const { carregarDados } = useFinanceiroStore();
   const [montado, setMontado] = useState(false);
 
   useEffect(() => {
@@ -25,10 +24,6 @@ export default function Home() {
         </div>
       </div>
     );
-  }
-
-  if (!autenticado) {
-    return <TelaLogin />;
   }
 
   return <AppPrincipal />;

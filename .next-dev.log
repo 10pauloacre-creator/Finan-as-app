@@ -156,3 +156,5 @@ Caused by:
 
  POST /api/ai 500 in 1250ms (next.js: 1076ms, application-code: 174ms)
  POST /api/ai 200 in 120ms (next.js: 109ms, application-code: 12ms)
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET / 200 in 377ms (next.js: 99ms, application-code: 278ms)
