@@ -1,5 +1,5 @@
 import { AI_MODELS, AIModelId, AIProviderId, AITask } from './aiModels';
-import { markProviderFailure, markProviderSuccess, resolveProviderOrder } from './aiRouter';
+import { markProviderFailure, markProviderSuccess, resolveProviderOrder, setLastExecution } from './aiRouter';
 import { sanitizeFinancialData } from './sanitizeFinancialData';
 import { getTaskProfile } from './taskProfiles';
 import { runAnthropicProvider } from './providers/anthropicProvider';
@@ -8,6 +8,7 @@ import { runGeminiProvider } from './providers/geminiProvider';
 import { extractTextFromImage as runGlmOcrProvider } from './providers/glmOcrProvider';
 import { runGroqProvider } from './providers/groqProvider';
 import { runHuggingFaceProvider } from './providers/huggingFaceProvider';
+import { runOpenRouterProvider } from './providers/openRouterProvider';
 
 interface AttachmentInput {
   mimeType: string;
@@ -75,6 +76,25 @@ const FINANCIAL_SYSTEM_PROMPT = [
   'Responda sempre em português do Brasil.',
 ].join('\n');
 
+const DEFAULT_MAX_TOKENS_BY_TASK: Record<AITask, number> = {
+  categorizar_transacao: 150,
+  resumo_mensal: 700,
+  responder_pergunta_financeira: 800,
+  detectar_gastos_incomuns: 900,
+  plano_economia: 1200,
+  analise_profunda: 1800,
+  explicar_grafico: 900,
+  gerar_insights: 700,
+  analisar_meta: 900,
+  estruturar_transacao_de_recibo: 700,
+  extrair_texto_imagem: 900,
+  analisar_recibo_futuramente: 900,
+  analisar_imagem_financeira: 1200,
+  analisar_audio_financeiro: 900,
+  analisar_pdf_financeiro: 4000,
+  agente_financeiro: 1024,
+};
+
 function buildPrompt(task: AITask, sanitizedInput: string) {
   try {
     const parsed = JSON.parse(sanitizedInput) as { customPrompt?: string };
@@ -128,6 +148,19 @@ async function executeProvider(
   maxTokens: number,
   attachments?: AttachmentInput[],
 ) {
+  if (
+    provider === 'openrouterFree' ||
+    provider === 'openrouterFast' ||
+    provider === 'openrouterReasoning' ||
+    provider === 'openrouterPremium'
+  ) {
+    if (attachments?.length) {
+      throw new Error(`O provedor ${provider} ainda não suporta esta tarefa multimodal no app.`);
+    }
+
+    return runOpenRouterProvider({ providerId: provider, system, prompt, temperature, maxTokens });
+  }
+
   if (provider === 'gemini') {
     return runGeminiProvider({ system, prompt, temperature, maxTokens, attachments });
   }
@@ -378,7 +411,7 @@ export async function runAI({
 }: RunAIInput): Promise<RunAIResult> {
   const order = resolveProviderOrder(task, provider, mode);
   const temperature = options?.temperature ?? 0.3;
-  const maxTokens = options?.maxTokens ?? 800;
+  const maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS_BY_TASK[task] ?? 800;
   const sanitizedInput = sanitizeFinancialData(input);
   const prompt = buildPrompt(task, sanitizedInput);
   const profile = getTaskProfile(task);
@@ -412,6 +445,13 @@ export async function runAI({
         fallbackUsed: index > 0,
       });
       markProviderSuccess(result.provider);
+      setLastExecution({
+        task,
+        providerUsed: result.provider,
+        modelUsed: result.model,
+        fallbackUsed: index > 0,
+        failedProvider: index > 0 ? order[0] : undefined,
+      });
 
       return {
         success: true,
@@ -431,6 +471,11 @@ export async function runAI({
   }
 
   console.error('[ai:error]', { task, userId: userId || 'anon', errors });
+  setLastExecution({
+    task,
+    fallbackUsed: order.length > 1,
+    failedProvider: order[0],
+  });
 
   return {
     success: false,

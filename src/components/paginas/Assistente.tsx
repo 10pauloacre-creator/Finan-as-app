@@ -42,6 +42,7 @@ type AcaoAssistente =
   | 'resumo_mensal'
   | 'categorizar_transacoes'
   | 'plano_economia'
+  | 'analise_profunda'
   | 'alerta_gastos';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -117,6 +118,11 @@ const ACOES_RAPIDAS: Array<{ id: AcaoAssistente; label: string; prompt: string }
     id: 'plano_economia',
     label: 'Plano de economia',
     prompt: 'Monte um plano de economia conservador com base no meu contexto financeiro atual.',
+  },
+  {
+    id: 'analise_profunda',
+    label: 'Análise profunda',
+    prompt: 'Faça uma análise profunda das minhas finanças, com padrões, riscos, oportunidades e próximos passos prioritários.',
   },
   {
     id: 'alerta_gastos',
@@ -637,6 +643,8 @@ export default function Assistente() {
               ? 'categorizar_transacao'
               : action === 'plano_economia'
               ? 'plano_economia'
+              : action === 'analise_profunda'
+              ? 'analise_profunda'
               : action === 'alerta_gastos'
               ? 'detectar_gastos_incomuns'
               : 'responder_pergunta_financeira',

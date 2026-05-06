@@ -1,4 +1,4 @@
-import { getProviderStatus } from '@/lib/ai/aiRouter';
+import { getLastExecution, getProviderStatus } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
 import { analisarRecibo, diagnoseProviders, runAI } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
@@ -109,6 +109,18 @@ Responda em português do Brasil, de forma objetiva, sem inventar valores.`,
     };
   }
 
+  if (task === 'analise_profunda') {
+    return {
+      customPrompt: `Faça uma análise profunda das finanças do usuário com foco em padrões, riscos, oportunidades e próximos passos.
+Use apenas os dados abaixo, sem inventar valores.
+
+Dados:
+${safeInput}
+
+Responda em português do Brasil, com profundidade e objetividade.`,
+    };
+  }
+
   if (task === 'detectar_gastos_incomuns') {
     return {
       customPrompt: `Analise os dados e aponte gastos fora do padrão, concentrações preocupantes ou anomalias sem inventar informações:
@@ -205,6 +217,7 @@ async function handleJsonRequest(body: {
     body.action === 'resumo_mensal' ? 'resumo_mensal' :
     body.action === 'categorizar_transacoes' ? 'categorizar_transacao' :
     body.action === 'plano_economia' ? 'plano_economia' :
+    body.action === 'analise_profunda' ? 'analise_profunda' :
     body.action === 'alerta_gastos' ? 'detectar_gastos_incomuns' :
     'responder_pergunta_financeira'
   );
@@ -220,7 +233,7 @@ async function handleJsonRequest(body: {
     input: buildTextTaskPayload(legacyTask, input),
     provider: body.provider || body.aiModel || 'automatico',
     mode: body.mode || ((body.provider || body.aiModel) && (body.provider || body.aiModel) !== 'automatico' ? 'manual' : 'auto'),
-    options: { temperature: 0.3, maxTokens: 800 },
+    options: { temperature: 0.3 },
   });
 
   if (!result.success) {
@@ -449,12 +462,22 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const shouldCheck = url.searchParams.get('check') === '1';
   const diagnostics = shouldCheck ? await diagnoseProviders() : undefined;
+  const models = getProviderStatus();
+  const lastExecution = getLastExecution();
 
   return Response.json({
     success: true,
     defaultProvider: process.env.AI_DEFAULT_PROVIDER || 'auto',
-    fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'gemini,groq,deepseek,gemma4,anthropic').split(',').map((item) => item.trim()),
-    models: getProviderStatus(),
+    fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'openrouterFast,openrouterFree,openrouterReasoning,gemini,groq,deepseek,gemma4,anthropic').split(',').map((item) => item.trim()),
+    models,
+    openrouter: {
+      configured: Boolean(process.env.OPENROUTER_API_KEY),
+      fastModel: process.env.OPENROUTER_FAST_MODEL || 'google/gemini-2.5-flash',
+      reasoningModel: process.env.OPENROUTER_REASONING_MODEL || 'deepseek/deepseek-chat',
+      premiumModel: process.env.OPENROUTER_PREMIUM_MODEL || 'anthropic/claude-sonnet-4.5',
+      freeModel: process.env.OPENROUTER_FREE_MODEL || 'openrouter/free',
+    },
+    lastExecution,
     diagnostics,
   });
 }

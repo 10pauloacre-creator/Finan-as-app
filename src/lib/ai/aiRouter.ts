@@ -1,4 +1,4 @@
-import { AI_MODELS, AIModelId, AIProviderId, AITask } from './aiModels';
+import { AI_MODELS, AIModelId, AIProviderId, AITask, isOpenRouterProvider } from './aiModels';
 import { getTaskProfile } from './taskProfiles';
 
 export type ProviderAvailabilityStatus = 'not_configured' | 'unknown' | 'healthy' | 'degraded';
@@ -9,10 +9,20 @@ interface ProviderHealthState {
   lastError?: string;
 }
 
+interface LastExecutionState {
+  providerUsed?: AIProviderId;
+  modelUsed?: string;
+  task?: AITask;
+  fallbackUsed: boolean;
+  failedProvider?: AIProviderId;
+  at?: string;
+}
+
 const providerHealth = new Map<AIProviderId, ProviderHealthState>();
+let lastExecution: LastExecutionState = { fallbackUsed: false };
 
 function parseFallbackOrder() {
-  const raw = process.env.AI_FALLBACK_ORDER || 'gemini,groq,deepseek,gemma4,anthropic';
+  const raw = process.env.AI_FALLBACK_ORDER || 'openrouterFast,openrouterFree,openrouterReasoning,gemini,groq,deepseek,gemma4,anthropic';
   return raw
     .split(',')
     .map((item) => item.trim())
@@ -20,6 +30,10 @@ function parseFallbackOrder() {
 }
 
 function getConfigHint(provider: AIProviderId) {
+  if (isOpenRouterProvider(provider) && !process.env.OPENROUTER_API_KEY) {
+    return 'Defina OPENROUTER_API_KEY para habilitar os modelos OpenRouter.';
+  }
+
   if (provider === 'deepseek' && !process.env.DEEPSEEK_API_KEY) {
     return 'Defina DEEPSEEK_API_KEY para habilitar este provedor.';
   }
@@ -31,7 +45,7 @@ function getConfigHint(provider: AIProviderId) {
     }
   }
 
-  if (provider === 'gemma4' && process.env.HF_TOKEN) {
+  if ((provider === 'gemma4' || provider === 'glmOcr') && process.env.HF_TOKEN) {
     return 'Use um HF_TOKEN com permissão para Inference Providers e billing habilitado no Hugging Face Router.';
   }
 
@@ -44,19 +58,15 @@ function summarizeProviderError(error?: string) {
   if (error.includes('Quota exceeded') || error.includes('Too Many Requests')) {
     return 'Quota do provedor esgotada no momento.';
   }
-
   if (error.includes('credit balance is too low')) {
     return 'Saldo insuficiente na conta do provedor.';
   }
-
   if (error.includes('Invalid API Key')) {
     return 'Chave de API inválida.';
   }
-
   if (error.includes('sufficient permissions to call Inference Providers')) {
     return 'Token sem permissão para usar Inference Providers.';
   }
-
   if (error.includes('não configurada') || error.includes('nao configurada')) {
     return 'Credencial não configurada.';
   }
@@ -110,12 +120,19 @@ export function getProviderStatus() {
       fallbackOrder: parseFallbackOrder(),
       strengths: model.strengths,
       supportsVision: model.supportsVision,
+      tier: model.tier,
     };
   });
 }
 
 export function getRecommendedProviders(task: AITask) {
   return getTaskProfile(task).preferredProviders;
+}
+
+function shouldAllowPremium(task: AITask, requestedProvider?: AIModelId, mode: 'auto' | 'manual' = 'auto') {
+  if (task === 'analise_profunda') return true;
+  if (mode === 'manual' && requestedProvider === 'openrouterPremium') return true;
+  return false;
 }
 
 export function resolveProviderOrder(task: AITask, requestedProvider?: AIModelId, mode: 'auto' | 'manual' = 'auto') {
@@ -140,7 +157,14 @@ export function resolveProviderOrder(task: AITask, requestedProvider?: AIModelId
     }
   }
 
-  return baseOrder.filter((provider, index) => configured.includes(provider) && baseOrder.indexOf(provider) === index);
+  const allowPremium = shouldAllowPremium(task, requestedProvider, mode);
+
+  return baseOrder.filter((provider, index) => {
+    if (!configured.includes(provider)) return false;
+    if (baseOrder.indexOf(provider) !== index) return false;
+    if (!allowPremium && provider === 'openrouterPremium') return false;
+    return true;
+  });
 }
 
 export function markProviderSuccess(provider: AIProviderId) {
@@ -156,4 +180,21 @@ export function markProviderFailure(provider: AIProviderId, error: string) {
     lastCheckedAt: new Date().toISOString(),
     lastError: error,
   });
+}
+
+export function setLastExecution(state: {
+  providerUsed?: AIProviderId;
+  modelUsed?: string;
+  task?: AITask;
+  fallbackUsed: boolean;
+  failedProvider?: AIProviderId;
+}) {
+  lastExecution = {
+    ...state,
+    at: new Date().toISOString(),
+  };
+}
+
+export function getLastExecution() {
+  return lastExecution;
 }

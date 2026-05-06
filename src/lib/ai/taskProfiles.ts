@@ -9,47 +9,52 @@ export interface TaskProfile {
 
 export const TASK_PROFILES: Record<AITask, TaskProfile> = {
   categorizar_transacao: {
-    preferredProviders: ['groq', 'gemini', 'deepseek', 'gemma4', 'anthropic'],
+    preferredProviders: ['openrouterFast', 'openrouterFree', 'openrouterReasoning', 'groq', 'gemini'],
     description: 'Classificar transações com resposta curta em JSON.',
     output: 'json',
   },
   resumo_mensal: {
-    preferredProviders: ['gemini', 'deepseek', 'anthropic', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterPremium', 'gemini', 'anthropic'],
     description: 'Gerar resumo mensal claro em português do Brasil.',
     output: 'json',
   },
   plano_economia: {
-    preferredProviders: ['anthropic', 'gemini', 'deepseek', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterReasoning', 'openrouterPremium', 'openrouterFast', 'anthropic', 'gemini'],
     description: 'Montar um plano prático, prudente e conservador.',
     output: 'text',
   },
   detectar_gastos_incomuns: {
-    preferredProviders: ['deepseek', 'gemini', 'anthropic', 'groq', 'gemma4'],
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'deepseek', 'gemini'],
     description: 'Encontrar anomalias sem inventar dados.',
     output: 'text',
   },
   responder_pergunta_financeira: {
-    preferredProviders: ['gemini', 'anthropic', 'deepseek', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterPremium', 'gemini', 'anthropic'],
     description: 'Responder perguntas financeiras com base apenas no contexto recebido.',
     output: 'text',
   },
   explicar_grafico: {
-    preferredProviders: ['gemini', 'gemma4', 'anthropic', 'deepseek', 'groq'],
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'deepseek'],
     description: 'Explicar um gráfico ou tendência financeira de forma clara.',
     output: 'text',
   },
   gerar_insights: {
-    preferredProviders: ['gemini', 'deepseek', 'gemma4', 'anthropic', 'groq'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterFree', 'gemini', 'deepseek'],
     description: 'Gerar insights, recomendações e observações úteis em JSON.',
     output: 'json',
   },
   analisar_meta: {
-    preferredProviders: ['anthropic', 'gemini', 'deepseek', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'anthropic', 'gemini'],
     description: 'Analisar metas financeiras e sugerir próximos passos.',
     output: 'text',
   },
+  analise_profunda: {
+    preferredProviders: ['openrouterPremium', 'openrouterReasoning', 'anthropic', 'deepseek'],
+    description: 'Executar uma análise profunda, detalhada e mais custosa.',
+    output: 'text',
+  },
   estruturar_transacao_de_recibo: {
-    preferredProviders: ['gemini', 'anthropic', 'deepseek', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterFree', 'gemini', 'deepseek'],
     description: 'Estruturar uma transação de recibo a partir do texto extraído por OCR.',
     output: 'json',
   },
@@ -72,19 +77,19 @@ export const TASK_PROFILES: Record<AITask, TaskProfile> = {
     multimodal: 'image',
   },
   analisar_audio_financeiro: {
-    preferredProviders: ['gemini', 'gemma4', 'anthropic', 'deepseek', 'groq'],
+    preferredProviders: ['gemini', 'gemma4', 'openrouterFast', 'openrouterReasoning'],
     description: 'Transcrever áudio e identificar transações financeiras.',
     output: 'json',
     multimodal: 'audio',
   },
   analisar_pdf_financeiro: {
-    preferredProviders: ['gemini', 'gemma4', 'anthropic', 'deepseek', 'groq'],
+    preferredProviders: ['gemini', 'gemma4', 'openrouterFast', 'openrouterReasoning'],
     description: 'Ler PDFs financeiros e extrair lançamentos.',
     output: 'json',
     multimodal: 'pdf',
   },
   agente_financeiro: {
-    preferredProviders: ['gemini', 'anthropic', 'deepseek', 'gemma4', 'groq'],
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
     description: 'Análise de agentes especializados com saída em JSON.',
     output: 'json',
   },

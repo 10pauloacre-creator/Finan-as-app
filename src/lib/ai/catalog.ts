@@ -5,6 +5,7 @@ export type { AIModelId, AIProviderId };
 
 export type AITaskKind =
   | 'chat'
+  | 'deep'
   | 'agents'
   | 'tips'
   | 'report'
@@ -15,6 +16,7 @@ export type AITaskKind =
 
 const LEGACY_TASK_MAP: Record<AITaskKind, AITask> = {
   chat: 'responder_pergunta_financeira',
+  deep: 'analise_profunda',
   agents: 'agente_financeiro',
   tips: 'gerar_insights',
   report: 'resumo_mensal',
@@ -33,7 +35,11 @@ export function mapLegacyTask(task: AITaskKind): AITask {
 export function getSupportedAIModels(task: AITaskKind) {
   const profile = getTaskProfile(mapLegacyTask(task));
   const supported = new Set<AIModelId>(['automatico', ...profile.preferredProviders]);
-  return AI_MODEL_OPTIONS.filter((option) => supported.has(option.id));
+  return AI_MODEL_OPTIONS.filter((option) => {
+    if (!supported.has(option.id)) return false;
+    if (task !== 'deep' && option.id === 'openrouterPremium') return false;
+    return true;
+  });
 }
 
 export function resolveAIExecutionOrder(task: AITaskKind, preferred: AIModelId = 'automatico') {

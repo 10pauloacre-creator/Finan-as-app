@@ -1,4 +1,15 @@
-export type AIProviderId = 'gemini' | 'anthropic' | 'groq' | 'deepseek' | 'gemma4' | 'glmOcr';
+export type AIProviderId =
+  | 'openrouterFree'
+  | 'openrouterFast'
+  | 'openrouterReasoning'
+  | 'openrouterPremium'
+  | 'gemini'
+  | 'anthropic'
+  | 'groq'
+  | 'deepseek'
+  | 'gemma4'
+  | 'glmOcr';
+
 export type AIModelId = 'automatico' | AIProviderId;
 export type AIMode = 'auto' | 'manual';
 export type AITask =
@@ -10,6 +21,7 @@ export type AITask =
   | 'explicar_grafico'
   | 'gerar_insights'
   | 'analisar_meta'
+  | 'analise_profunda'
   | 'estruturar_transacao_de_recibo'
   | 'extrair_texto_imagem'
   | 'analisar_recibo_futuramente'
@@ -33,9 +45,62 @@ export interface AIModelDefinition {
   supportsPdf?: boolean;
   recommendedFor?: string[];
   description: string;
+  tier?: 'free' | 'fast' | 'reasoning' | 'premium' | 'fallback' | 'ocr';
 }
 
 export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
+  openrouterFree: {
+    id: 'openrouterFree',
+    label: 'OpenRouter Free',
+    provider: 'openrouter',
+    envKey: 'OPENROUTER_API_KEY',
+    modelEnv: 'OPENROUTER_FREE_MODEL',
+    defaultModel: 'openrouter/free',
+    strengths: ['baixo_custo', 'fallback', 'texto'],
+    supportsVision: false,
+    supportsChat: true,
+    description: 'Modelo gratuito para fallback econômico via OpenRouter.',
+    tier: 'free',
+  },
+  openrouterFast: {
+    id: 'openrouterFast',
+    label: 'OpenRouter Fast',
+    provider: 'openrouter',
+    envKey: 'OPENROUTER_API_KEY',
+    modelEnv: 'OPENROUTER_FAST_MODEL',
+    defaultModel: 'google/gemini-2.5-flash',
+    strengths: ['rapidez', 'chat', 'economico', 'resumo'],
+    supportsVision: false,
+    supportsChat: true,
+    description: 'Modelo rápido e econômico, padrão para uso diário.',
+    tier: 'fast',
+  },
+  openrouterReasoning: {
+    id: 'openrouterReasoning',
+    label: 'OpenRouter Reasoning',
+    provider: 'openrouter',
+    envKey: 'OPENROUTER_API_KEY',
+    modelEnv: 'OPENROUTER_REASONING_MODEL',
+    defaultModel: 'deepseek/deepseek-chat',
+    strengths: ['raciocinio', 'analise', 'plano'],
+    supportsVision: false,
+    supportsChat: true,
+    description: 'Modelo de raciocínio para análises e planejamento mais cuidadoso.',
+    tier: 'reasoning',
+  },
+  openrouterPremium: {
+    id: 'openrouterPremium',
+    label: 'OpenRouter Premium',
+    provider: 'openrouter',
+    envKey: 'OPENROUTER_API_KEY',
+    modelEnv: 'OPENROUTER_PREMIUM_MODEL',
+    defaultModel: 'anthropic/claude-sonnet-4.5',
+    strengths: ['profundo', 'premium', 'analise'],
+    supportsVision: false,
+    supportsChat: true,
+    description: 'Modelo premium reservado para Análise profunda ou seleção manual.',
+    tier: 'premium',
+  },
   gemini: {
     id: 'gemini',
     label: 'Gemini',
@@ -48,7 +113,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     supportsChat: true,
     supportsAudio: true,
     supportsPdf: true,
-    description: 'Boa opção geral e hoje é a principal IA multimodal do app.',
+    description: 'Fallback multimodal legado para imagem, áudio e PDF.',
+    tier: 'fallback',
   },
   anthropic: {
     id: 'anthropic',
@@ -60,7 +126,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['analise', 'texto_longo', 'raciocinio'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Forte para análises mais cuidadosas e textos mais longos.',
+    description: 'Fallback legado para análises textuais.',
+    tier: 'fallback',
   },
   groq: {
     id: 'groq',
@@ -72,7 +139,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['rapidez', 'chat', 'classificacao'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Muito rápida para chat e classificações objetivas.',
+    description: 'Fallback legado muito rápido para chat e classificação.',
+    tier: 'fallback',
   },
   deepseek: {
     id: 'deepseek',
@@ -84,7 +152,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['raciocinio', 'analise', 'codigo'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Boa para raciocínio, análise e respostas mais estruturadas.',
+    description: 'Fallback legado para raciocínio e análise estruturada.',
+    tier: 'fallback',
   },
   gemma4: {
     id: 'gemma4',
@@ -96,7 +165,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['multimodal', 'texto', 'analise'],
     supportsVision: true,
     supportsChat: true,
-    description: 'Modelo via Hugging Face Router, útil como alternativa forte de texto.',
+    description: 'Fallback textual via Hugging Face Router.',
+    tier: 'fallback',
   },
   glmOcr: {
     id: 'glmOcr',
@@ -111,6 +181,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     supportsChat: false,
     recommendedFor: ['analisar_recibo', 'extrair_texto_imagem', 'ler_comprovante'],
     description: 'OCR especializado para recibos, comprovantes e notas fiscais.',
+    tier: 'ocr',
   },
 };
 
@@ -118,13 +189,15 @@ export const AI_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; description
   {
     id: 'automatico',
     label: 'Automático recomendado',
-    description: 'O app escolhe a melhor IA para a tarefa e tenta fallback automático.',
+    description: 'Modo econômico: prioriza OpenRouter Fast e usa fallback automático.',
   },
-  ...Object.values(AI_MODELS).map((model) => ({
-    id: model.id,
-    label: model.label,
-    description: model.description,
-  })),
+  ...Object.values(AI_MODELS)
+    .filter((model) => model.type !== 'ocr')
+    .map((model) => ({
+      id: model.id,
+      label: model.label,
+      description: model.description,
+    })),
 ];
 
 export const OCR_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; description: string }> = [
@@ -162,4 +235,8 @@ export function getModelName(provider: AIProviderId) {
 export function isProviderConfigured(provider: AIProviderId) {
   const definition = AI_MODELS[provider];
   return Boolean(process.env[definition.envKey]);
+}
+
+export function isOpenRouterProvider(provider: AIProviderId) {
+  return AI_MODELS[provider].provider === 'openrouter';
 }

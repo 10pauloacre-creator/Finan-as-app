@@ -159,6 +159,19 @@ export default function Configuracoes() {
     type?: string;
   }>>([]);
   const [aiFallbackOrder, setAiFallbackOrder] = useState<string[]>([]);
+  const [openRouterInfo, setOpenRouterInfo] = useState<{
+    configured: boolean;
+    fastModel: string;
+    reasoningModel: string;
+    premiumModel: string;
+    freeModel: string;
+  } | null>(null);
+  const [lastExecution, setLastExecution] = useState<{
+    providerUsed?: string;
+    modelUsed?: string;
+    fallbackUsed?: boolean;
+    at?: string;
+  } | null>(null);
   const [taxasSelic, setTaxasSelic]     = useState(String(selicAtual || 10.75));
   const [taxasCdi, setTaxasCdi]         = useState(String(cdiAtual  || 10.65));
   const [taxasIpca, setTaxasIpca]       = useState(String(ipcaAtual || 4.83));
@@ -167,17 +180,21 @@ export default function Configuracoes() {
   useEffect(() => {
     let active = true;
 
-    fetch('/api/ai')
+    fetch('/api/ai?check=1')
       .then(async (res) => {
         const data = await res.json();
         if (!active || !data?.success) return;
         setAiStatus(data.models || []);
         setAiFallbackOrder(data.fallbackOrder || []);
+        setOpenRouterInfo(data.openrouter || null);
+        setLastExecution(data.lastExecution || null);
       })
       .catch(() => {
         if (!active) return;
         setAiStatus([]);
         setAiFallbackOrder([]);
+        setOpenRouterInfo(null);
+        setLastExecution(null);
       });
 
     return () => {
@@ -393,6 +410,41 @@ export default function Configuracoes() {
               }}
             />
           </div>
+          {openRouterInfo && (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-slate-200">OpenRouter</p>
+                <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
+                  openRouterInfo.configured
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
+                    : 'bg-red-500/15 text-red-300 border border-red-500/20'
+                }`}>
+                  {openRouterInfo.configured ? 'Configurado' : 'Não configurado'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">Modelo rápido: {openRouterInfo.fastModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo de raciocínio: {openRouterInfo.reasoningModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo premium: {openRouterInfo.premiumModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo gratuito: {openRouterInfo.freeModel}</p>
+            </div>
+          )}
+          {lastExecution?.providerUsed && (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 space-y-1">
+              <p className="text-[11px] text-slate-500">Última IA usada</p>
+              <p className="text-xs text-slate-200">{lastExecution.providerUsed}</p>
+              {lastExecution.modelUsed && (
+                <p className="text-[11px] text-slate-400">Modelo: {lastExecution.modelUsed}</p>
+              )}
+              <p className="text-[11px] text-slate-400">
+                Fallback usado: {lastExecution.fallbackUsed ? 'Sim' : 'Não'}
+              </p>
+              {lastExecution.at && (
+                <p className="text-[11px] text-slate-500">
+                  Em: {new Date(lastExecution.at).toLocaleString('pt-BR')}
+                </p>
+              )}
+            </div>
+          )}
           {aiFallbackOrder.length > 0 && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
               <p className="text-[11px] text-slate-500">Ordem de fallback</p>

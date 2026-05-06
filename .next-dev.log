@@ -53,3 +53,7 @@ Please migrate to a newer model. Visit https://docs.anthropic.com/en/docs/resour
   ]
 }
  POST /api/ai 500 in 2.2s (next.js: 7ms, application-code: 2.2s)
+The model 'claude-3-5-haiku-20241022' is deprecated and will reach end-of-life on February 19th, 2026
+Please migrate to a newer model. Visit https://docs.anthropic.com/en/docs/resources/model-deprecations for more information.
+ GET /api/ai?check=1 200 in 2.2s (next.js: 140ms, application-code: 2.0s)
+  Reload env: .env.local
