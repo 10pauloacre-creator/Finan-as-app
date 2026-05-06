@@ -1,6 +1,6 @@
 import { getProviderStatus } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
-import { analisarRecibo, runAI } from '@/lib/ai/aiService';
+import { analisarRecibo, diagnoseProviders, runAI } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
 import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
 
@@ -445,12 +445,17 @@ async function handleFormDataRequest(formData: FormData) {
   return Response.json({ success: false, error: 'Tarefa multimodal inválida.' }, { status: 400 });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const shouldCheck = url.searchParams.get('check') === '1';
+  const diagnostics = shouldCheck ? await diagnoseProviders() : undefined;
+
   return Response.json({
     success: true,
     defaultProvider: process.env.AI_DEFAULT_PROVIDER || 'auto',
     fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'gemini,groq,deepseek,gemma4,anthropic').split(',').map((item) => item.trim()),
     models: getProviderStatus(),
+    diagnostics,
   });
 }
 

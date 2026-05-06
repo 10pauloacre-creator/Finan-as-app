@@ -19,6 +19,51 @@ function parseFallbackOrder() {
     .filter((item): item is AIProviderId => item in AI_MODELS);
 }
 
+function getConfigHint(provider: AIProviderId) {
+  if (provider === 'deepseek' && !process.env.DEEPSEEK_API_KEY) {
+    return 'Defina DEEPSEEK_API_KEY para habilitar este provedor.';
+  }
+
+  if (provider === 'groq' && process.env.GROQ_API_KEY) {
+    const key = process.env.GROQ_API_KEY;
+    if ((key.match(/gsk_/g) || []).length > 1) {
+      return 'A chave do Groq parece duplicada ou malformada. Gere uma nova chave em console.groq.com e salve apenas um valor.';
+    }
+  }
+
+  if (provider === 'gemma4' && process.env.HF_TOKEN) {
+    return 'Use um HF_TOKEN com permissão para Inference Providers e billing habilitado no Hugging Face Router.';
+  }
+
+  return undefined;
+}
+
+function summarizeProviderError(error?: string) {
+  if (!error) return undefined;
+
+  if (error.includes('Quota exceeded') || error.includes('Too Many Requests')) {
+    return 'Quota do provedor esgotada no momento.';
+  }
+
+  if (error.includes('credit balance is too low')) {
+    return 'Saldo insuficiente na conta do provedor.';
+  }
+
+  if (error.includes('Invalid API Key')) {
+    return 'Chave de API inválida.';
+  }
+
+  if (error.includes('sufficient permissions to call Inference Providers')) {
+    return 'Token sem permissão para usar Inference Providers.';
+  }
+
+  if (error.includes('não configurada') || error.includes('nao configurada')) {
+    return 'Credencial não configurada.';
+  }
+
+  return error.length > 180 ? `${error.slice(0, 177)}...` : error;
+}
+
 export function getConfiguredProviders() {
   return (Object.keys(AI_MODELS) as AIProviderId[]).filter((provider) => Boolean(process.env[AI_MODELS[provider].envKey]));
 }
@@ -32,6 +77,8 @@ export function getProviderStatus() {
     const model = AI_MODELS[provider];
     const configured = Boolean(process.env[model.envKey]);
     const runtime = providerHealth.get(provider);
+    const configHint = getConfigHint(provider);
+    const summarizedError = summarizeProviderError(runtime?.lastError);
     const availability: ProviderAvailabilityStatus = !configured
       ? 'not_configured'
       : !runtime
@@ -56,7 +103,8 @@ export function getProviderStatus() {
           ? 'Configurado, aguardando teste'
           : 'Não configurado',
       lastCheckedAt: runtime?.lastCheckedAt,
-      lastError: runtime?.lastError,
+      lastError: summarizedError,
+      configHint,
       model: process.env[model.modelEnv] || model.defaultModel,
       type: model.type || 'chat',
       fallbackOrder: parseFallbackOrder(),

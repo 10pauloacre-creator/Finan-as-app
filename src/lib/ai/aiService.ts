@@ -1,4 +1,4 @@
-import { AIModelId, AIProviderId, AITask } from './aiModels';
+import { AI_MODELS, AIModelId, AIProviderId, AITask } from './aiModels';
 import { markProviderFailure, markProviderSuccess, resolveProviderOrder } from './aiRouter';
 import { sanitizeFinancialData } from './sanitizeFinancialData';
 import { getTaskProfile } from './taskProfiles';
@@ -54,6 +54,13 @@ export interface OCRResult {
   text?: string;
   raw?: unknown;
   error?: string;
+}
+
+export interface ProviderDiagnostic {
+  provider: AIProviderId;
+  ok: boolean;
+  message: string;
+  model?: string;
 }
 
 const FINANCIAL_SYSTEM_PROMPT = [
@@ -140,6 +147,18 @@ async function executeProvider(
   }
 
   return runHuggingFaceProvider({ system, prompt, temperature, maxTokens });
+}
+
+function buildProbeImageFile() {
+  const pngBytes = Uint8Array.from([
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
+    0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 144, 119, 83,
+    222, 0, 0, 0, 12, 73, 68, 65, 84, 8, 29, 99, 248, 255, 255, 63,
+    0, 5, 254, 2, 254, 167, 53, 129, 132, 0, 0, 0, 0, 73, 69, 78,
+    68, 174, 66, 96, 130,
+  ]);
+
+  return new File([pngBytes], 'probe.png', { type: 'image/png' });
 }
 
 async function extractTextWithVisionFallback(
@@ -231,6 +250,57 @@ export async function runOCR({
     failedProvider: order[0],
     error: 'Não foi possível extrair o texto da imagem agora. Tente novamente em instantes.',
   };
+}
+
+export async function probeProvider(provider: AIProviderId): Promise<ProviderDiagnostic> {
+  try {
+    if (provider === 'glmOcr') {
+      const result = await extractTextWithVisionFallback('glmOcr', buildProbeImageFile());
+      markProviderSuccess(provider);
+      return {
+        provider,
+        ok: true,
+        model: result.model,
+        message: 'Leitor OCR respondeu ao teste.',
+      };
+    }
+
+    const result = await executeProvider(
+      provider,
+      'Você é um verificador técnico de conectividade.',
+      'Responda apenas com OK.',
+      0,
+      16,
+    );
+    markProviderSuccess(provider);
+
+    return {
+      provider,
+      ok: true,
+      model: result.model,
+      message: 'Provider respondeu ao teste.',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'erro desconhecido';
+    markProviderFailure(provider, message);
+
+    return {
+      provider,
+      ok: false,
+      message,
+    };
+  }
+}
+
+export async function diagnoseProviders() {
+  const providers = Object.keys(AI_MODELS) as AIProviderId[];
+  const diagnostics: ProviderDiagnostic[] = [];
+
+  for (const provider of providers) {
+    diagnostics.push(await probeProvider(provider));
+  }
+
+  return diagnostics;
 }
 
 export async function analisarRecibo({

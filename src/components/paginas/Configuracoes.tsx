@@ -153,6 +153,7 @@ export default function Configuracoes() {
     statusLabel?: string;
     lastCheckedAt?: string;
     lastError?: string;
+    configHint?: string;
     model: string;
     strengths: string[];
     type?: string;
@@ -429,6 +430,11 @@ export default function Configuracoes() {
                 {provider.lastError && (
                   <p className="text-[11px] text-amber-300/90 mt-1">
                     Última falha: {provider.lastError}
+                  </p>
+                )}
+                {provider.configHint && (
+                  <p className="text-[11px] text-sky-300/90 mt-1">
+                    Ajuste sugerido: {provider.configHint}
                   </p>
                 )}
               </div>
