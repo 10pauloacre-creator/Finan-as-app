@@ -158,3 +158,124 @@ Caused by:
  POST /api/ai 200 in 120ms (next.js: 109ms, application-code: 12ms)
 ⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
  GET / 200 in 377ms (next.js: 99ms, application-code: 278ms)
+✓ Compiled in 140ms
+✓ Compiled in 134ms
+⨯ ./src/components/AppPrincipal.tsx:21:61
+Module not found: Can't resolve '@/components/paginas/Configuracoes'
+  [90m19 |[0m [36mimport[0m [33mAssinaturas[0m    [36mfrom[0m [32m'@/components/paginas/Assinaturas'[0m;
+  [90m20 |[0m [36mimport[0m [33mAgentes[0m        [36mfrom[0m [32m'@/components/paginas/Agentes'[0m;
+[31m[1m>[0m [90m21 |[0m [36mimport[0m [33mCalendario[0m     [36mfrom[0m [32m'@/components/paginas/Calendario'[0m;
+  [90m   |[0m                                                             [31m[1m^[0m
+[31m[1m>[0m [90m22 |[0m [36mimport[0m [33mConfiguracoes[0m  [36mfrom[0m [32m'@/components/paginas/Configuracoes'[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m23 |[0m [36mimport[0m [33mModalNovaTransacao[0m [36mfrom[0m [32m'@/components/modais/ModalNovaTransacao'[0m;
+  [90m24 |[0m [36mimport[0m { useFinanceiroStore } [36mfrom[0m [32m'@/store/useFinanceiroStore'[0m;
+  [90m25 |[0m [36mimport[0m { isSupabaseConfigured } [36mfrom[0m [32m'@/lib/supabase'[0m;
+
+Import map: aliased to relative './src/components/paginas/Configuracoes' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/AppPrincipal.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/AppPrincipal.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/AppPrincipal.tsx:21:61
+Module not found: Can't resolve '@/components/paginas/Configuracoes'
+  [90m19 |[0m [36mimport[0m [33mAssinaturas[0m    [36mfrom[0m [32m'@/components/paginas/Assinaturas'[0m;
+  [90m20 |[0m [36mimport[0m [33mAgentes[0m        [36mfrom[0m [32m'@/components/paginas/Agentes'[0m;
+[31m[1m>[0m [90m21 |[0m [36mimport[0m [33mCalendario[0m     [36mfrom[0m [32m'@/components/paginas/Calendario'[0m;
+  [90m   |[0m                                                             [31m[1m^[0m
+[31m[1m>[0m [90m22 |[0m [36mimport[0m [33mConfiguracoes[0m  [36mfrom[0m [32m'@/components/paginas/Configuracoes'[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m23 |[0m [36mimport[0m [33mModalNovaTransacao[0m [36mfrom[0m [32m'@/components/modais/ModalNovaTransacao'[0m;
+  [90m24 |[0m [36mimport[0m { useFinanceiroStore } [36mfrom[0m [32m'@/store/useFinanceiroStore'[0m;
+  [90m25 |[0m [36mimport[0m { isSupabaseConfigured } [36mfrom[0m [32m'@/lib/supabase'[0m;
+
+Import map: aliased to relative './src/components/paginas/Configuracoes' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/AppPrincipal.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/AppPrincipal.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/AppPrincipal.tsx:21:61
+Module not found: Can't resolve '@/components/paginas/Configuracoes'
+  [90m19 |[0m [36mimport[0m [33mAssinaturas[0m    [36mfrom[0m [32m'@/components/paginas/Assinaturas'[0m;
+  [90m20 |[0m [36mimport[0m [33mAgentes[0m        [36mfrom[0m [32m'@/components/paginas/Agentes'[0m;
+[31m[1m>[0m [90m21 |[0m [36mimport[0m [33mCalendario[0m     [36mfrom[0m [32m'@/components/paginas/Calendario'[0m;
+  [90m   |[0m                                                             [31m[1m^[0m
+[31m[1m>[0m [90m22 |[0m [36mimport[0m [33mConfiguracoes[0m  [36mfrom[0m [32m'@/components/paginas/Configuracoes'[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m23 |[0m [36mimport[0m [33mModalNovaTransacao[0m [36mfrom[0m [32m'@/components/modais/ModalNovaTransacao'[0m;
+  [90m24 |[0m [36mimport[0m { useFinanceiroStore } [36mfrom[0m [32m'@/store/useFinanceiroStore'[0m;
+  [90m25 |[0m [36mimport[0m { isSupabaseConfigured } [36mfrom[0m [32m'@/lib/supabase'[0m;
+
+Import map: aliased to relative './src/components/paginas/Configuracoes' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/AppPrincipal.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/AppPrincipal.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/components/AppPrincipal.tsx:21:61
+Module not found: Can't resolve '@/components/paginas/Configuracoes'
+  [90m19 |[0m [36mimport[0m [33mAssinaturas[0m    [36mfrom[0m [32m'@/components/paginas/Assinaturas'[0m;
+  [90m20 |[0m [36mimport[0m [33mAgentes[0m        [36mfrom[0m [32m'@/components/paginas/Agentes'[0m;
+[31m[1m>[0m [90m21 |[0m [36mimport[0m [33mCalendario[0m     [36mfrom[0m [32m'@/components/paginas/Calendario'[0m;
+  [90m   |[0m                                                             [31m[1m^[0m
+[31m[1m>[0m [90m22 |[0m [36mimport[0m [33mConfiguracoes[0m  [36mfrom[0m [32m'@/components/paginas/Configuracoes'[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m23 |[0m [36mimport[0m [33mModalNovaTransacao[0m [36mfrom[0m [32m'@/components/modais/ModalNovaTransacao'[0m;
+  [90m24 |[0m [36mimport[0m { useFinanceiroStore } [36mfrom[0m [32m'@/store/useFinanceiroStore'[0m;
+  [90m25 |[0m [36mimport[0m { isSupabaseConfigured } [36mfrom[0m [32m'@/lib/supabase'[0m;
+
+Import map: aliased to relative './src/components/paginas/Configuracoes' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/components/AppPrincipal.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/AppPrincipal.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+✓ Compiled in 210ms
+✓ Compiled in 2s
+✓ Compiled in 595ms

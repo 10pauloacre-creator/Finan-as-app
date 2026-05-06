@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import iconV2 from '@/app/icons/Iconv2.png';
@@ -27,7 +27,7 @@ import { TipoTransacao } from '@/types';
 
 type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes' | 'calendario';
 
-/** Desktop sidebar — all pages */
+/** Desktop sidebar - all pages */
 const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
   { id: 'transacoes',   label: 'Gastos',        icone: ArrowLeftRight  },
@@ -43,7 +43,7 @@ const navDesktop = [
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
 
-/** Mobile bottom nav — 4 primary + "Mais" button */
+/** Mobile bottom nav - 4 primary + "Mais" button */
 const navMobile = [
   { id: 'dashboard',  label: 'Início', icone: LayoutDashboard },
   { id: 'transacoes', label: 'Gastos', icone: ArrowLeftRight  },
@@ -359,3 +359,4 @@ export default function AppPrincipal() {
     </div>
   );
 }
+

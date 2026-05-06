@@ -6,7 +6,7 @@ import {
   Check, X, Wifi, WifiOff, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { formatarMoeda, mesAtual } from '@/lib/storage';
+import { formatarMoeda, mesAtual, storageContas, storageCartoes, storageTransacoes } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, TipoConta, ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalPluggyConnect from '@/components/modais/ModalPluggyConnect';
 import BankLogo from '@/components/ui/BankLogo';
@@ -20,7 +20,7 @@ export default function Bancos() {
   const {
     contas, transacoes, categorias,
     atualizarSaldoConta, adicionarConta, excluirConta,
-    adicionarCartao, adicionarTransacao,
+    atualizarFaturaCartao, adicionarCartao, carregarDados,
   } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
 
@@ -84,9 +84,18 @@ export default function Bancos() {
 
     // 1. Contas bancárias
     resultado.contas.forEach(c => {
-      const existente = contas.find(ct => ct.pluggy_account_id === c.pluggy_account_id);
+      const existente = storageContas.getAll().find(ct => ct.pluggy_account_id === c.pluggy_account_id);
       if (existente) {
-        atualizarSaldoConta(existente.id, c.saldo);
+        storageContas.save({
+          ...existente,
+          banco: c.banco,
+          nome: c.nome,
+          tipo: c.tipo as TipoConta,
+          saldo: c.saldo,
+          pluggy_item_id: c.pluggy_item_id,
+          pluggy_account_id: c.pluggy_account_id,
+          pluggy_sync_em: agora,
+        });
       } else {
         adicionarConta({
           banco: c.banco,
@@ -102,28 +111,49 @@ export default function Bancos() {
 
     // 2. Cartões de crédito
     resultado.cartoes.forEach(c => {
-      adicionarCartao({
-        banco: c.banco,
-        nome: c.nome,
-        bandeira: c.bandeira,
-        limite: c.limite,
-        fatura_atual: c.fatura_atual,
-        dia_vencimento: c.dia_vencimento,
-        dia_fechamento: c.dia_fechamento,
-        pluggy_item_id: c.pluggy_item_id,
-        pluggy_account_id: c.pluggy_account_id,
-        pluggy_sync_em: agora,
-      } as Omit<CartaoCredito, 'id' | 'criado_em'>);
+      const existente = storageCartoes.getAll().find(ct => ct.pluggy_account_id === c.pluggy_account_id);
+      if (existente) {
+        storageCartoes.save({
+          ...existente,
+          banco: c.banco,
+          nome: c.nome,
+          bandeira: c.bandeira,
+          limite: c.limite,
+          fatura_atual: c.fatura_atual,
+          dia_vencimento: c.dia_vencimento,
+          dia_fechamento: c.dia_fechamento,
+          pluggy_item_id: c.pluggy_item_id,
+          pluggy_account_id: c.pluggy_account_id,
+          pluggy_sync_em: agora,
+        });
+        atualizarFaturaCartao(existente.id, c.fatura_atual);
+      } else {
+        adicionarCartao({
+          banco: c.banco,
+          nome: c.nome,
+          bandeira: c.bandeira,
+          limite: c.limite,
+          fatura_atual: c.fatura_atual,
+          dia_vencimento: c.dia_vencimento,
+          dia_fechamento: c.dia_fechamento,
+          pluggy_item_id: c.pluggy_item_id,
+          pluggy_account_id: c.pluggy_account_id,
+          pluggy_sync_em: agora,
+        } as Omit<CartaoCredito, 'id' | 'criado_em'>);
+      }
     });
 
     // 3. Transações (apenas as que não existem ainda)
-    const idsExistentes = new Set(transacoes.map(t => t.id));
+    carregarDados();
+    const idsExistentes = new Set(storageTransacoes.getAll().map(t => t.id));
+    const contasAtuais = storageContas.getAll();
     resultado.transacoes.forEach(tx => {
       const txId = `pluggy-${tx.pluggy_id}`;
       if (idsExistentes.has(txId)) return;
       // Encontra conta local vinculada
-      const contaLocal = contas.find(ct => ct.pluggy_account_id === tx.pluggy_account_id);
-      adicionarTransacao({
+      const contaLocal = contasAtuais.find(ct => ct.pluggy_account_id === tx.pluggy_account_id);
+      storageTransacoes.save({
+        id: txId,
         valor: tx.valor,
         descricao: tx.descricao,
         categoria_id: tx.categoria_id,
@@ -132,8 +162,11 @@ export default function Bancos() {
         metodo_pagamento: tx.metodo_pagamento as 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'outro',
         conta_id: contaLocal?.id,
         origem: 'open_banking',
-      } as Omit<Transacao, 'id' | 'criado_em'>);
+        criado_em: agora,
+      } as Transacao);
+      idsExistentes.add(txId);
     });
+    carregarDados();
   }
 
   // Verifica eventos pendentes do webhook ao montar
@@ -191,8 +224,28 @@ export default function Bancos() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId }),
     });
-    // Remove pluggy_item_id das contas locais (sem excluir a conta)
-    // Por ora apenas mostramos que foi desconectado
+    storageContas.getAll()
+      .filter((conta) => conta.pluggy_item_id === itemId)
+      .forEach((conta) => {
+        storageContas.save({
+          ...conta,
+          pluggy_item_id: undefined,
+          pluggy_account_id: undefined,
+          pluggy_sync_em: undefined,
+        });
+      });
+    storageCartoes.getAll()
+      .filter((cartao) => cartao.pluggy_item_id === itemId)
+      .forEach((cartao) => {
+        storageCartoes.save({
+          ...cartao,
+          pluggy_item_id: undefined,
+          pluggy_account_id: undefined,
+          pluggy_sync_em: undefined,
+        });
+      });
+    carregarDados();
+    setItemsPendentes((prev) => prev.filter((id) => id !== itemId));
   }
 
   const totalContas  = contas.reduce((s, c) => s + c.saldo, 0);

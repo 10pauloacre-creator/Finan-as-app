@@ -30,41 +30,41 @@ function buildTextTaskPayload(task: AITask, input: Record<string, unknown>) {
         'Contexto financeiro resumido:',
         safeInput || 'Sem contexto adicional.',
         '',
-        'Pergunta do usuÃ¡rio:',
+        'Pergunta do usuário:',
         String(input.question || ''),
       ].join('\n'),
     };
   }
 
   if (task === 'resumo_mensal') {
-    const mes = input.mes ? `MÃªs de referÃªncia: ${String(input.mes)}` : '';
-    const ano = input.ano ? `Ano de referÃªncia: ${String(input.ano)}` : '';
+    const mes = input.mes ? `Mês de referência: ${String(input.mes)}` : '';
+    const ano = input.ano ? `Ano de referência: ${String(input.ano)}` : '';
     return {
-      customPrompt: `Gere um relatÃ³rio mensal em JSON no formato:
+      customPrompt: `Gere um relatório mensal em JSON no formato:
 {
-  "resumo": "parÃ¡grafo narrativo de 3-4 frases",
-  "nota_mes": "Ã³timo" | "bom" | "regular" | "ruim",
+  "resumo": "parágrafo narrativo de 3-4 frases",
+  "nota_mes": "ótimo" | "bom" | "regular" | "ruim",
   "destaques": [{ "tipo": "positivo" | "negativo" | "neutro", "titulo": "...", "descricao": "..." }],
   "recomendacoes": [{ "prioridade": "alta" | "media" | "baixa", "acao": "...", "motivo": "..." }],
   "previsao_proximo_mes": "frase curta"
 }
 
-Dados do mÃªs:
+Dados do mês:
 ${mes}
 ${ano}
 ${safeInput}
 
-Responda apenas com JSON vÃ¡lido.`,
+Responda apenas com JSON válido.`,
     };
   }
 
   if (task === 'gerar_insights') {
     return {
-      customPrompt: `Analise os dados e retorne apenas um JSON vÃ¡lido no formato:
+      customPrompt: `Analise os dados e retorne apenas um JSON válido no formato:
 [
   {
     "tipo": "alerta" | "dica" | "conquista" | "previsao",
-    "titulo": "tÃ­tulo curto",
+    "titulo": "título curto",
     "mensagem": "mensagem objetiva"
   }
 ]
@@ -77,9 +77,9 @@ ${safeInput}`,
   if (task === 'agente_financeiro') {
     const agente = String(input.agente || 'agente');
     const nome = String(input.nome || agente);
-    const descricao = String(input.descricao || 'anÃ¡lise financeira especializada');
+    const descricao = String(input.descricao || 'análise financeira especializada');
     return {
-      customPrompt: `Atue como ${nome}, um agente financeiro especializado em ${descricao}, e retorne apenas JSON vÃ¡lido no formato:
+      customPrompt: `Atue como ${nome}, um agente financeiro especializado em ${descricao}, e retorne apenas JSON válido no formato:
 {
   "insights": [
     { "tipo": "alerta" | "ok" | "tendencia" | "padrao" | "oportunidade" | "projecao" | "estrategia" | "meta", "titulo": "...", "mensagem": "...", "acao": "..." }
@@ -93,7 +93,7 @@ ${safeInput}`,
 
   if (task === 'categorizar_transacao') {
     return {
-      customPrompt: `Classifique a transaÃ§Ã£o e responda apenas em JSON:
+      customPrompt: `Classifique a transação e responda apenas em JSON:
 { "categoria": "...", "tipo": "despesa" | "receita" | "transferencia", "justificativa": "..." }
 
 Dados:
@@ -103,35 +103,35 @@ ${safeInput}`,
 
   if (task === 'plano_economia') {
     return {
-      customPrompt: `Monte um plano de economia prÃ¡tico, conservador e viÃ¡vel com base apenas nestes dados:
+      customPrompt: `Monte um plano de economia prático, conservador e viável com base apenas nestes dados:
 ${safeInput}
 
-Responda em portuguÃªs do Brasil, de forma objetiva, sem inventar valores.`,
+Responda em português do Brasil, de forma objetiva, sem inventar valores.`,
     };
   }
 
   if (task === 'analise_profunda') {
     return {
-      customPrompt: `FaÃ§a uma anÃ¡lise profunda das finanÃ§as do usuÃ¡rio com foco em padrÃµes, riscos, oportunidades e prÃ³ximos passos.
+      customPrompt: `Faça uma análise profunda das finanças do usuário com foco em padrões, riscos, oportunidades e próximos passos.
 Use apenas os dados abaixo, sem inventar valores.
 
 Dados:
 ${safeInput}
 
-Responda em portuguÃªs do Brasil, com profundidade e objetividade.`,
+Responda em português do Brasil, com profundidade e objetividade.`,
     };
   }
 
   if (task === 'detectar_gastos_incomuns') {
     return {
-      customPrompt: `Analise os dados e aponte gastos fora do padrÃ£o, concentraÃ§Ãµes preocupantes ou anomalias sem inventar informaÃ§Ãµes:
+      customPrompt: `Analise os dados e aponte gastos fora do padrão, concentrações preocupantes ou anomalias sem inventar informações:
 ${safeInput}`,
     };
   }
 
   if (task === 'analisar_meta') {
     return {
-      customPrompt: `Analise a meta financeira e responda com orientaÃ§Ãµes prudentes e objetivas:
+      customPrompt: `Analise a meta financeira e responda com orientações prudentes e objetivas:
 ${safeInput}`,
     };
   }
@@ -142,35 +142,34 @@ ${safeInput}`,
 }
 
 function imagePrompt(legenda?: string | null) {
-  return `VocÃª Ã© um extrator de dados financeiros de imagens.
-${legenda ? `Contexto do usuÃ¡rio: "${legenda}"\n` : ''}
-TRANSAÃÃO ÃNICA: responda SOMENTE com JSON:
+  return `Você é um extrator de dados financeiros de imagens.
+${legenda ? `Contexto do usuário: "${legenda}"\n` : ''}TRANSAÇÃO ÚNICA: responda SOMENTE com JSON:
 {"modo":"unico","tipo":"despesa","valor":89.90,"descricao":"iFood - Pizza","categoria":"Delivery","data":"${HOJE()}","hora":"20:30","metodo_pagamento":"credito","parcelas":null,"local":"iFood","banco":null}
 
-EXTRATO COM MÃLTIPLAS TRANSAÃÃES: responda SOMENTE com JSON:
+EXTRATO COM MÚLTIPLAS TRANSAÇÕES: responda SOMENTE com JSON:
 {"modo":"lote","transacoes":[{"tipo":"despesa","valor":50,"descricao":"Mercado X","categoria":"Mercado","data":"${HOJE()}","hora":null,"metodo_pagamento":"debito","parcelas":null,"local":null,"banco":null}]}
 
-NÃO IDENTIFICADO:
+NÃO IDENTIFICADO:
 {"modo":"erro","erro":"motivo"}
 
-Responda apenas com JSON vÃ¡lido.`;
+Responda apenas com JSON válido.`;
 }
 
 function audioPrompt() {
-  return `Analise um Ã¡udio em portuguÃªs do Brasil e retorne SOMENTE JSON.
+  return `Analise um áudio em português do Brasil e retorne SOMENTE JSON.
 
-Se houver transaÃ§Ã£o financeira:
+Se houver transação financeira:
 {"transcricao":"...","tipo":"despesa","valor":50.00,"descricao":"iFood pizza","categoria":"Delivery","data":"${HOJE()}","hora":null,"metodo_pagamento":"pix","parcelas":null,"local":null,"banco":null}
 
-Se nÃ£o houver transaÃ§Ã£o:
-{"transcricao":"...","erro":"sem transaÃ§Ã£o identificada"}`;
+Se não houver transação:
+{"transcricao":"...","erro":"sem transacao identificada"}`;
 }
 
 function pdfPrompt() {
-  return `VocÃª Ã© um extrator de faturas de cartÃ£o de crÃ©dito brasileiras.
-Retorne SOMENTE um JSON vÃ¡lido:
+  return `Você é um extrator de faturas de cartão de crédito brasileiras.
+Retorne SOMENTE um JSON válido:
 {
-  "bancaNome": "Nome do banco/cartÃ£o",
+  "bancaNome": "Nome do banco/cartão",
   "mesReferencia": "MM/YYYY",
   "transacoes": [
     {
@@ -188,8 +187,8 @@ Retorne SOMENTE um JSON vÃ¡lido:
   ]
 }
 
-Se nÃ£o conseguir identificar a fatura:
-{"erro":"nÃ£o Ã© uma fatura de cartÃ£o"}`;
+Se não conseguir identificar a fatura:
+{"erro":"nao e uma fatura de cartao"}`;
 }
 
 function inferCategoryId(data: Record<string, unknown>) {
@@ -215,12 +214,12 @@ async function handleJsonRequest(body: {
   action?: string;
 }) {
   const legacyTask = body.task || (
-    body.action === 'resumo_mensal' ? 'resumo_mensal' :
-    body.action === 'categorizar_transacoes' ? 'categorizar_transacao' :
-    body.action === 'plano_economia' ? 'plano_economia' :
-    body.action === 'analise_profunda' ? 'analise_profunda' :
-    body.action === 'alerta_gastos' ? 'detectar_gastos_incomuns' :
-    'responder_pergunta_financeira'
+    body.action === 'resumo_mensal' ? 'resumo_mensal'
+      : body.action === 'categorizar_transacoes' ? 'categorizar_transacao'
+        : body.action === 'plano_economia' ? 'plano_economia'
+          : body.action === 'analise_profunda' ? 'analise_profunda'
+            : body.action === 'alerta_gastos' ? 'detectar_gastos_incomuns'
+              : 'responder_pergunta_financeira'
   );
 
   const input = body.input || {
@@ -298,14 +297,22 @@ async function handleFormDataRequest(formData: FormData) {
 
   if (task === 'analisar_recibo_futuramente') {
     const foto = formData.get('foto') as File | null;
-    if (!foto) return Response.json({ success: false, error: 'Nenhuma foto enviada.' }, { status: 400 });
+    if (!foto) {
+      return Response.json({ success: false, error: 'Nenhuma foto enviada.' }, { status: 400 });
+    }
+
     const result = await analisarRecibo({
       file: foto,
       ocrProvider: provider,
       financialProvider: String(formData.get('financialProvider') || 'automatico') as AIModelId,
     });
-    if (!result.success) return Response.json({ success: false, error: result.error }, { status: 500 });
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
     const parsed = jsonFromText(result.answer || '') as Record<string, unknown> | null;
+
     return Response.json({
       success: true,
       providerUsed: result.providerUsed,
@@ -323,19 +330,36 @@ async function handleFormDataRequest(formData: FormData) {
 
   if (task === 'analisar_imagem_financeira') {
     const imagem = formData.get('imagem') as File | null;
-    const legenda = formData.get('legenda') as string | null;
-    if (!imagem) return Response.json({ success: false, error: 'Imagem obrigatÃ³ria.' }, { status: 400 });
+    const legenda = String(formData.get('legenda') || '').trim();
+    if (!imagem) {
+      return Response.json({ success: false, error: 'Imagem obrigatória.' }, { status: 400 });
+    }
+
     const result = await runAI({
       task: 'analisar_imagem_financeira',
       provider,
       mode,
-      input: { customPrompt: imagePrompt(legenda) },
-      attachments: [{ mimeType: imagem.type || 'image/jpeg', data: Buffer.from(await imagem.arrayBuffer()).toString('base64'), fileName: imagem.name }],
+      input: { customPrompt: imagePrompt(legenda || null) },
+      attachments: [{
+        mimeType: imagem.type || 'image/jpeg',
+        data: Buffer.from(await imagem.arrayBuffer()).toString('base64'),
+        fileName: imagem.name,
+      }],
       options: { temperature: 0.1, maxTokens: 1200 },
     });
-    if (!result.success) return Response.json({ success: false, error: result.error }, { status: 500 });
-    const parsed = jsonFromText(result.answer || '') as { modo?: string; erro?: string; transacoes?: unknown[] } & Record<string, unknown> | null;
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
+    const parsed = jsonFromText(result.answer || '') as
+      | ({ modo?: 'unico'; tipo?: string; valor?: number } & Record<string, unknown>)
+      | { modo?: 'lote'; transacoes?: Array<Record<string, unknown>> }
+      | { modo?: 'erro'; erro?: string }
+      | null;
+
     if (parsed?.modo === 'lote') {
+      const transacoes = Array.isArray(parsed.transacoes) ? parsed.transacoes : [];
       return Response.json({
         success: true,
         providerUsed: result.providerUsed,
@@ -343,11 +367,12 @@ async function handleFormDataRequest(formData: FormData) {
         fallbackUsed: result.fallbackUsed,
         failedProvider: result.failedProvider,
         tipo: 'transacao',
-        transacoes: parsed.transacoes || [],
-        resposta: `Encontrei **${(parsed.transacoes || []).length} transaÃ§Ã£o${(parsed.transacoes || []).length !== 1 ? 'Ãµes' : ''}** no extrato. Revise e confirme cada uma.`,
+        transacoes,
+        resposta: `Encontrei **${transacoes.length} transação${transacoes.length !== 1 ? 'ões' : ''}** no extrato. Revise e confirme cada uma.`,
         answer: result.answer,
       });
     }
+
     if (parsed?.modo === 'erro') {
       return Response.json({
         success: true,
@@ -356,10 +381,17 @@ async function handleFormDataRequest(formData: FormData) {
         fallbackUsed: result.fallbackUsed,
         failedProvider: result.failedProvider,
         tipo: 'conversa',
-        resposta: `NÃ£o consegui identificar transaÃ§Ãµes nesta imagem. ${parsed.erro || 'Tente novamente com mais nitidez.'}`,
+        resposta: `Não consegui identificar transações nesta imagem. ${parsed.erro || 'Tente novamente com mais nitidez.'}`,
         answer: result.answer,
       });
     }
+
+    const transacao = (
+      parsed && !('transacoes' in parsed) && !('erro' in parsed)
+        ? parsed as Record<string, unknown>
+        : undefined
+    );
+
     return Response.json({
       success: true,
       providerUsed: result.providerUsed,
@@ -367,24 +399,35 @@ async function handleFormDataRequest(formData: FormData) {
       fallbackUsed: result.fallbackUsed,
       failedProvider: result.failedProvider,
       tipo: 'transacao',
-      transacao: parsed || undefined,
-      resposta: parsed ? `Analisei a imagem e encontrei uma **${String(parsed.tipo || 'transaÃ§Ã£o')}**. Confira e confirme.` : 'Imagem analisada.',
+      transacao,
+      resposta: transacao ? `Analisei a imagem e encontrei uma **${String(transacao['tipo'] || 'transação')}**. Confira e confirme.` : 'Imagem analisada.',
       answer: result.answer,
     });
   }
 
   if (task === 'analisar_audio_financeiro') {
     const audio = formData.get('audio') as File | null;
-    if (!audio) return Response.json({ success: false, error: 'Ãudio obrigatÃ³rio.' }, { status: 400 });
+    if (!audio) {
+      return Response.json({ success: false, error: 'Áudio obrigatório.' }, { status: 400 });
+    }
+
     const result = await runAI({
       task: 'analisar_audio_financeiro',
       provider,
       mode,
       input: { customPrompt: audioPrompt() },
-      attachments: [{ mimeType: audio.type || 'audio/webm', data: Buffer.from(await audio.arrayBuffer()).toString('base64'), fileName: audio.name }],
+      attachments: [{
+        mimeType: audio.type || 'audio/webm',
+        data: Buffer.from(await audio.arrayBuffer()).toString('base64'),
+        fileName: audio.name,
+      }],
       options: { temperature: 0.1, maxTokens: 900 },
     });
-    if (!result.success) return Response.json({ success: false, error: result.error }, { status: 500 });
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
     const parsed = jsonFromText(result.answer || '') as Record<string, unknown> | null;
     if (parsed?.erro) {
       return Response.json({
@@ -394,11 +437,12 @@ async function handleFormDataRequest(formData: FormData) {
         fallbackUsed: result.fallbackUsed,
         failedProvider: result.failedProvider,
         tipo: 'conversa',
-        transcricao: parsed.transcricao || '',
-        resposta: 'Entendi o Ã¡udio, mas nÃ£o identifiquei uma transaÃ§Ã£o financeira clara.',
+        transcricao: String(parsed.transcricao || ''),
+        resposta: 'Entendi o áudio, mas não identifiquei uma transação financeira clara.',
         answer: result.answer,
       });
     }
+
     return Response.json({
       success: true,
       providerUsed: result.providerUsed,
@@ -406,26 +450,43 @@ async function handleFormDataRequest(formData: FormData) {
       fallbackUsed: result.fallbackUsed,
       failedProvider: result.failedProvider,
       tipo: 'transacao',
-      transcricao: parsed?.transcricao || '',
+      transcricao: String(parsed?.transcricao || ''),
       transacao: parsed || undefined,
-      resposta: 'Ãudio analisado. Confira os dados detectados antes de salvar.',
+      resposta: 'Áudio analisado. Confira os dados detectados antes de salvar.',
       answer: result.answer,
     });
   }
 
   if (task === 'analisar_pdf_financeiro') {
     const pdf = formData.get('pdf') as File | null;
-    if (!pdf) return Response.json({ success: false, error: 'PDF obrigatÃ³rio.' }, { status: 400 });
+    if (!pdf) {
+      return Response.json({ success: false, error: 'PDF obrigatório.' }, { status: 400 });
+    }
+
     const result = await runAI({
       task: 'analisar_pdf_financeiro',
       provider,
       mode,
       input: { customPrompt: pdfPrompt() },
-      attachments: [{ mimeType: 'application/pdf', data: Buffer.from(await pdf.arrayBuffer()).toString('base64'), fileName: pdf.name }],
+      attachments: [{
+        mimeType: 'application/pdf',
+        data: Buffer.from(await pdf.arrayBuffer()).toString('base64'),
+        fileName: pdf.name,
+      }],
       options: { temperature: 0, maxTokens: 4000 },
     });
-    if (!result.success) return Response.json({ success: false, error: result.error }, { status: 500 });
-    const parsed = jsonFromText(result.answer || '') as { erro?: string; transacoes?: Array<{ tipo?: string; valor?: number }>; bancaNome?: string; mesReferencia?: string } | null;
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
+    const parsed = jsonFromText(result.answer || '') as {
+      erro?: string;
+      transacoes?: Array<{ tipo?: string; valor?: number }>;
+      bancaNome?: string;
+      mesReferencia?: string;
+    } | null;
+
     if (parsed?.erro) {
       return Response.json({
         success: true,
@@ -434,12 +495,17 @@ async function handleFormDataRequest(formData: FormData) {
         fallbackUsed: result.fallbackUsed,
         failedProvider: result.failedProvider,
         tipo: 'conversa',
-        resposta: `â ${parsed.erro}`,
+        resposta: `Não consegui concluir a leitura da fatura. ${parsed.erro}`,
         answer: result.answer,
       });
     }
+
     const transacoes = parsed?.transacoes || [];
-    const totalValor = transacoes.reduce((sum, item) => sum + (item.tipo === 'despesa' ? Number(item.valor || 0) : 0), 0);
+    const totalValor = transacoes.reduce(
+      (sum, item) => sum + (item.tipo === 'despesa' ? Number(item.valor || 0) : 0),
+      0,
+    );
+
     return Response.json({
       success: true,
       providerUsed: result.providerUsed,
@@ -451,20 +517,21 @@ async function handleFormDataRequest(formData: FormData) {
       totalValor,
       bancaNome: parsed?.bancaNome,
       mesReferencia: parsed?.mesReferencia,
-      resposta: `Fatura analisada com ${transacoes.length} lanÃ§amento${transacoes.length !== 1 ? 's' : ''}.`,
+      resposta: `Fatura analisada com ${transacoes.length} lançamento${transacoes.length !== 1 ? 's' : ''}.`,
       answer: result.answer,
     });
   }
 
-
   if (task === 'analisar_csv_financeiro') {
     const csv = formData.get('csv') as File | null;
-    if (!csv) return Response.json({ success: false, error: 'CSV obrigatorio.' }, { status: 400 });
+    if (!csv) {
+      return Response.json({ success: false, error: 'CSV obrigatório.' }, { status: 400 });
+    }
 
     const text = await csv.text();
     const parsed = parseCsvFinanceiro(text);
     if (!parsed.transacoes.length) {
-      return Response.json({ success: false, error: 'Nao encontrei lancamentos validos nesse CSV.' }, { status: 422 });
+      return Response.json({ success: false, error: 'Não encontrei lançamentos válidos nesse CSV.' }, { status: 422 });
     }
 
     return Response.json({
@@ -477,10 +544,11 @@ async function handleFormDataRequest(formData: FormData) {
       totalValor: parsed.totalValor,
       bancaNome: parsed.bancaNome,
       mesReferencia: parsed.mesReferencia,
-      resposta: `CSV analisado com ${parsed.transacoes.length} lancamento${parsed.transacoes.length !== 1 ? 's' : ''}. Revise antes de salvar.`,
+      resposta: `CSV analisado com ${parsed.transacoes.length} lançamento${parsed.transacoes.length !== 1 ? 's' : ''}. Revise antes de salvar.`,
     });
   }
-  return Response.json({ success: false, error: 'Tarefa multimodal invÃ¡lida.' }, { status: 400 });
+
+  return Response.json({ success: false, error: 'Tarefa multimodal inválida.' }, { status: 400 });
 }
 
 export async function GET(req: Request) {
@@ -493,7 +561,9 @@ export async function GET(req: Request) {
   return Response.json({
     success: true,
     defaultProvider: process.env.AI_DEFAULT_PROVIDER || 'auto',
-    fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'openrouterFast,openrouterFree,openrouterReasoning,gemini,groq,deepseek,gemma4,anthropic').split(',').map((item) => item.trim()),
+    fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'openrouterFast,openrouterFree,openrouterReasoning,gemini,groq,deepseek,gemma4,anthropic')
+      .split(',')
+      .map((item) => item.trim()),
     models,
     openrouter: {
       configured: Boolean(process.env.OPENROUTER_API_KEY),
@@ -519,16 +589,15 @@ export async function POST(req: Request) {
       return handleFormDataRequest(await req.formData());
     }
 
-    return Response.json({ success: false, error: 'Formato de requisiÃ§Ã£o nÃ£o suportado.' }, { status: 415 });
+    return Response.json({ success: false, error: 'Formato de requisição não suportado.' }, { status: 415 });
   } catch (error) {
     console.error('[api/ai]', error);
     return Response.json(
       {
         success: false,
-        error: 'NÃ£o foi possÃ­vel consultar a IA agora. Tente novamente em instantes.',
+        error: 'Não foi possível consultar a IA agora. Tente novamente em instantes.',
       },
       { status: 500 },
     );
   }
 }
-

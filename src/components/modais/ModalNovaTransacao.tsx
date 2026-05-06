@@ -86,6 +86,11 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
   const mostrarContaSelector = ['pix', 'debito', 'transferencia'].includes(form.metodo_pagamento);
   const mostrarCartaoSelector = form.metodo_pagamento === 'credito';
+  const contaObrigatoria = mostrarContaSelector && contas.length > 0;
+  const cartaoObrigatorio = mostrarCartaoSelector && cartoes.length > 0;
+  const formularioValido = Boolean(form.descricao && form.valor && form.categoria_id)
+    && (!contaObrigatoria || Boolean(form.conta_id))
+    && (!cartaoObrigatorio || Boolean(form.cartao_id));
 
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -112,12 +117,12 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       if (data.dados) {
         setForm(f => ({
           ...f,
-          descricao: data.dados.descricao || f.descricao,
-          valor: data.dados.valor?.toString() || f.valor,
+          descricao: data.dados.descricao || data.dados.estabelecimento || f.descricao,
+          valor: (data.dados.valor ?? data.dados.valor_total)?.toString() || f.valor,
           categoria_id: data.dados.categoria_id || f.categoria_id,
           data: data.dados.data || f.data,
           horario: data.dados.horario || f.horario,
-          metodo_pagamento: data.dados.metodo_pagamento || f.metodo_pagamento,
+          metodo_pagamento: data.dados.metodo_pagamento || data.dados.forma_pagamento || f.metodo_pagamento,
           parcelas: data.dados.parcelas?.toString() || f.parcelas,
           local: data.dados.local || f.local,
         }));
@@ -161,7 +166,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.descricao || !form.valor || !form.categoria_id) return;
+    if (!formularioValido) return;
 
     // Only check for duplicates on new transactions
     if (!transacaoEditar) {
@@ -389,7 +394,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.conta_id && (
-                  <p className="text-[11px] text-slate-600 mt-1">Não informado</p>
+                  <p className="text-[11px] text-amber-400 mt-1">Selecione uma conta para continuar.</p>
                 )}
               </div>
             )}
@@ -400,9 +405,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 <label className="text-xs text-slate-400 mb-1.5 block">Cartão de crédito</label>
                 <div className="flex flex-wrap gap-2">
                   {cartoes.map(cartao => {
-                    const info = BANCO_INFO[cartao.banco];
                     const ativo = form.cartao_id === cartao.id;
-                    const ultimos4 = cartao.nome.slice(-4);
                     return (
                       <button
                         key={cartao.id}
@@ -416,7 +419,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                       >
                         <BankLogo banco={cartao.banco} size={20} className="h-5 w-5 object-contain mt-0.5" />
                         <span className="flex flex-col items-start">
-                          <span>{info.nome} ···{ultimos4}</span>
+                          <span>{cartao.nome}</span>
                           <span className={`text-[10px] mt-0.5 ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
                             Fatura: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartao.fatura_atual)}
                           </span>
@@ -426,7 +429,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.cartao_id && (
-                  <p className="text-[11px] text-slate-600 mt-1">Não informado</p>
+                  <p className="text-[11px] text-amber-400 mt-1">Selecione um cartão para continuar.</p>
                 )}
               </div>
             )}
@@ -474,7 +477,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             {/* Botão salvar */}
             <button
               type="submit"
-              disabled={sucesso || !form.descricao || !form.valor || !form.categoria_id}
+              disabled={sucesso || !formularioValido}
               className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-900 disabled:text-purple-700 text-white py-3 rounded-xl font-semibold transition-all active:scale-95"
             >
               {sucesso ? '✅ Salvo!' : transacaoEditar ? 'Salvar Alterações' : 'Lançar Transação'}

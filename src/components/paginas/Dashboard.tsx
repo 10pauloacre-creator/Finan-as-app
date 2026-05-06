@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useEffect, useState, useRef } from 'react';
 import {
@@ -23,7 +23,7 @@ interface Props { onNovoPagina: (p: Pagina) => void; }
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-// â”€â”€â”€ Donut SVG interativo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Donut SVG interativo
 interface DonutItem { nome: string; valor: number; cor: string; icone?: string }
 function CategoryDonut({
   items,
@@ -89,7 +89,7 @@ function CategoryDonut({
           {activeItem ? (
             <>
               <text x={cx} y={cy - 6} textAnchor="middle" fill="white" fontSize="11" fontWeight="600">
-                {activeItem.nome.length > 10 ? activeItem.nome.slice(0, 9) + 'â€¦' : activeItem.nome}
+                {activeItem.nome.length > 10 ? activeItem.nome.slice(0, 9) + '...' : activeItem.nome}
               </text>
               <text x={cx} y={cy + 10} textAnchor="middle" fill="#94A3B8" fontSize="9">
                 {((activeItem.valor / (total || 1)) * 100).toFixed(0)}%
@@ -123,7 +123,7 @@ function CategoryDonut({
   );
 }
 
-// â”€â”€â”€ Evolution Chart SVG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Evolution Chart SVG
 interface EvoPoint { mes: string; receitas: number; despesas: number }
 function EvolutionChart({ data }: { data: EvoPoint[] }) {
   const [hover, setHover] = useState<{ x: number; idx: number } | null>(null);
@@ -249,14 +249,14 @@ function EvolutionChart({ data }: { data: EvoPoint[] }) {
           <span className="w-3 h-[2px] bg-emerald-400 rounded inline-block" />Entradas
         </span>
         <span className="flex items-center gap-1.5 text-red-400">
-          <span className="w-3 h-[2px] bg-red-400 rounded inline-block" />SaÃ­das
+          <span className="w-3 h-[2px] bg-red-400 rounded inline-block" />Saídas
         </span>
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€ InsightCard com typewriter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// InsightCard com typewriter
 interface DicaItem { id: string; tipo: 'alerta' | 'conquista' | 'dica'; titulo: string; mensagem: string }
 function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssistente: () => void }) {
   const [idx, setIdx] = useState(0);
@@ -343,7 +343,7 @@ function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssis
   );
 }
 
-// â”€â”€â”€ UpcomingCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// UpcomingCard
 interface CartaoVenc { id: string; nome: string; dia_vencimento: number; fatura_atual: number; banco: string }
 function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar: () => void }) {
   const hoje = new Date().getDate();
@@ -366,10 +366,10 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
     <section>
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          ðŸ“… PrÃ³ximas faturas
+          Próximas faturas
         </span>
         <button onClick={onNavegar} className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-          Ver cartÃµes <ArrowRight size={12} />
+          Ver cartões <ArrowRight size={12} />
         </button>
       </div>
       <div className="space-y-2">
@@ -386,7 +386,7 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white truncate">{c.nome}</div>
                 <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
-                  {urgente ? 'âš  Urgente Â· ' : ''}{c.diasRestantes === 0 ? 'Vence hoje' : `Vence em ${c.diasRestantes} dia${c.diasRestantes > 1 ? 's' : ''}`}
+                  {urgente ? 'Urgente • ' : ''}{c.diasRestantes === 0 ? 'Vence hoje' : `Vence em ${c.diasRestantes} dia${c.diasRestantes > 1 ? 's' : ''}`}
                 </div>
               </div>
               <div className="text-sm font-bold text-red-400 tabular-nums">{formatarMoeda(c.fatura_atual)}</div>
@@ -398,8 +398,8 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
   );
 }
 
-// â”€â”€â”€ Dashboard principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// â”€â”€â”€ Score Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Dashboard principal
+// Score Widget
 function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: () => void }) {
   const corScore =
     score.total >= 80 ? '#10B981' :
@@ -407,9 +407,9 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
     score.total >= 40 ? '#F59E0B' : '#EF4444';
 
   const labelNivel =
-    score.nivel === 'otimo' ? 'Ã“timo' :
+    score.nivel === 'otimo' ? 'Ótimo' :
     score.nivel === 'bom' ? 'Bom' :
-    score.nivel === 'atencao' ? 'AtenÃ§Ã£o' : 'CrÃ­tico';
+    score.nivel === 'atencao' ? 'Atenção' : 'Crítico';
 
   return (
     <button
@@ -432,7 +432,7 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
         {/* Middle: label + bar */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-300">Score de SaÃºde Financeira</span>
+            <span className="text-xs font-semibold text-slate-300">Score de Saúde Financeira</span>
           </div>
           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
             <div
@@ -491,7 +491,7 @@ function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
   if (exata) return exata.id;
 
   const mapaFallback: Record<string, string[]> = {
-    alimentacao: ['alimentacao', 'almoÃ§o', 'almoco', 'restaurante'],
+    alimentacao: ['alimentacao', 'almoço', 'almoco', 'restaurante'],
     mercado: ['mercado', 'supermercado', 'atacadao'],
     transporte: ['transporte', 'uber', 'combustivel', 'posto'],
     saude: ['saude', 'hospital', 'clinica'],
@@ -502,7 +502,7 @@ function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
     assinaturas: ['assinaturas', 'streaming', 'netflix', 'spotify'],
     contas: ['contas', 'energia', 'agua', 'internet'],
     pet: ['pet', 'veterinario'],
-    beleza: ['beleza', 'salÃ£o', 'salao'],
+    beleza: ['beleza', 'salão', 'salao'],
     presentes: ['presentes', 'presente'],
     farmacia: ['farmacia', 'drogaria'],
     delivery: ['delivery', 'ifood', 'rappi'],
@@ -565,7 +565,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
     doMes.filter(t => t.tipo === 'despesa').forEach(t => {
       const cat = categorias.find(c => c.id === t.categoria_id);
       const nome = cat?.nome || 'Outros';
-      if (!porCat[nome]) porCat[nome] = { valor: 0, cor: cat?.cor || '#6B7280', icone: cat?.icone || 'ðŸ’³' };
+      if (!porCat[nome]) porCat[nome] = { valor: 0, cor: cat?.cor || '#6B7280', icone: cat?.icone || '??' };
       porCat[nome].valor += t.valor;
     });
 
@@ -594,25 +594,25 @@ export default function Dashboard({ onNovoPagina }: Props) {
     if (dadosMes.doMes.length === 0) return;
     const dicas: typeof dicasIA = [];
     if (dadosMes.despesas > dadosMes.receitas * 0.9 && dadosMes.receitas > 0) {
-      dicas.push({ id: '1', tipo: 'alerta', titulo: 'Gastos acima do ideal', mensagem: `VocÃª usou ${((dadosMes.despesas / dadosMes.receitas) * 100).toFixed(0)}% da sua renda. O ideal Ã© manter abaixo de 80%.`, criado_em: new Date().toISOString() });
+      dicas.push({ id: '1', tipo: 'alerta', titulo: 'Gastos acima do ideal', mensagem: `Voc? usou ${((dadosMes.despesas / dadosMes.receitas) * 100).toFixed(0)}% da sua renda. O ideal ? manter abaixo de 80%.`, criado_em: new Date().toISOString() });
     }
     if (dadosMes.saldo > 0) {
-      dicas.push({ id: '3', tipo: 'conquista', titulo: 'Saldo positivo!', mensagem: `VocÃª tem ${formatarMoeda(dadosMes.saldo)} sobrando. ${selicAtual ? `Investindo na Selic (${selicAtual}% a.a.) renderiam ${formatarMoeda(dadosMes.saldo * selicAtual / 100 / 12)}/mÃªs.` : 'Considere investir!'}`, criado_em: new Date().toISOString() });
+      dicas.push({ id: '3', tipo: 'conquista', titulo: 'Saldo positivo!', mensagem: `Você tem ${formatarMoeda(dadosMes.saldo)} sobrando. ${selicAtual ? `Investindo na Selic (${selicAtual}% a.a.) renderiam ${formatarMoeda(dadosMes.saldo * selicAtual / 100 / 12)}/mês.` : 'Considere investir!'}`, criado_em: new Date().toISOString() });
     }
     if (dadosMes.graficoPizza.length > 0) {
       const topCat = dadosMes.graficoPizza[0];
-      dicas.push({ id: '4', tipo: 'dica', titulo: `Maior gasto: ${topCat.nome}`, mensagem: `${topCat.nome} representa ${((topCat.valor / dadosMes.despesas) * 100).toFixed(0)}% dos seus gastos (${formatarMoeda(topCat.valor)}). Analise se Ã© possÃ­vel reduzir.`, criado_em: new Date().toISOString() });
+      dicas.push({ id: '4', tipo: 'dica', titulo: `Maior gasto: ${topCat.nome}`, mensagem: `${topCat.nome} representa ${((topCat.valor / dadosMes.despesas) * 100).toFixed(0)}% dos seus gastos (${formatarMoeda(topCat.valor)}). Analise se é possível reduzir.`, criado_em: new Date().toISOString() });
     }
     setDicasIA(dicas);
   }, [dadosMes, setDicasIA, selicAtual]);
 
-  // Score de saÃºde financeira
+  // Score de saúde financeira
   const score = useMemo(
     () => calcularScore({ transacoes, orcamentos, contas, cartoes, metas }),
     [transacoes, orcamentos, contas, cartoes, metas],
   );
 
-  // PrevisÃ£o â€” prÃ³ximos 7 dias
+  // Previsão - próximos 7 dias
   const proximosGastos = useMemo(
     () => calcularPrevisao(transacoes, 7),
     [transacoes],
@@ -627,9 +627,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
     dadosMes.saldo < 0 ? '#EF4444' :
     '#F1F5F9';
 
-  const ocultar = (v: string) => saldoOculto ? 'â€¢â€¢â€¢â€¢â€¢â€¢' : v;
+  const ocultar = (v: string) => saldoOculto ? '??????' : v;
 
-  // TransaÃ§Ãµes filtradas por categoria selecionada no donut
+  // Transações filtradas por categoria selecionada no donut
   const transacoesFiltradas = useMemo(() => {
     const doMes = dadosMes.doMes;
     if (!catFiltro) return doMes.slice(0, 8);
@@ -690,7 +690,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       } else {
         formData.append('task', 'analisar_imagem_financeira');
         formData.append('imagem', arquivo);
-        formData.append('legenda', `Fatura ou histÃ³rico do cartÃ£o ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
+        formData.append('legenda', `Fatura ou histórico do cartão ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}`);
       }
       formData.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
       formData.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
@@ -709,7 +709,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       const payload = data as RespostaIAArquivo;
       const extraidas = payload.transacoes || (payload.transacao ? [payload.transacao] : []);
       if (!extraidas.length) {
-        throw new Error('A IA nÃ£o encontrou compras vÃ¡lidas nesse arquivo.');
+        throw new Error('A IA não encontrou compras válidas nesse arquivo.');
       }
 
       const existentes = transacoes.filter((transacao) => transacao.cartao_id === cartao.id);
@@ -752,13 +752,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
         tipo: 'sucesso',
         mensagem: importadas > 0
           ? `Fatura atualizada para ${formatarMoeda(totalFatura)} e ${importadas} compra${importadas > 1 ? 's foram' : ' foi'} importada${importadas > 1 ? 's' : ''}.`
-          : `Fatura atualizada para ${formatarMoeda(totalFatura)}. As compras jÃ¡ estavam no app.`,
+          : `Fatura atualizada para ${formatarMoeda(totalFatura)}. As compras j? estavam no app.`,
       });
     } catch (error) {
       setStatusImportacao({
         cartaoId: cartao.id,
         tipo: 'erro',
-        mensagem: error instanceof Error ? error.message : 'NÃ£o foi possÃ­vel atualizar esse cartÃ£o com IA.',
+        mensagem: error instanceof Error ? error.message : 'Não foi possível atualizar esse cartão com IA.',
       });
     } finally {
       setCartaoImportandoId(null);
@@ -775,16 +775,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
         onChange={handleImportarArquivoCartao}
       />
 
-      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-slate-400 text-sm font-medium mb-0.5">OlÃ¡, Paulo! ðŸ‘‹</p>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo do mÃªs</p>
+          <p className="text-slate-400 text-sm font-medium mb-0.5">Olá, Paulo!</p>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo do mês</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tabular-nums" style={{
               color: corSaldoMes,
             }}>
-              {saldoOculto ? 'R$ â€¢â€¢â€¢â€¢â€¢â€¢' : formatarMoeda(saldoMesAnimado)}
+              {saldoOculto ? 'R$ ??????' : formatarMoeda(saldoMesAnimado)}
             </h1>
             <button
               onClick={() => setSaldoOculto(v => !v)}
@@ -795,18 +795,18 @@ export default function Dashboard({ onNovoPagina }: Props) {
             </button>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            {MESES_ABREV[mes - 1]} {ano} â€¢ {dadosMes.doMes.length} transaÃ§Ãµes
+            {MESES_ABREV[mes - 1]} {ano} • {dadosMes.doMes.length} transações
           </p>
         </div>
         <div className="text-right">
           <div className="text-sm font-semibold tabular-nums text-slate-400">
-            {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} â€¢ ${cartoes.length} cart${cartoes.length === 1 ? 'Ã£o' : 'Ãµes'}`)}
+            {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} • ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
           </div>
-          <div className="text-slate-600 text-xs">visÃ£o geral</div>
+          <div className="text-slate-600 text-xs">visão geral</div>
         </div>
       </div>
 
-      {/* â”€â”€ Cards resumo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Cards resumo */}
       <div className="order-4 grid grid-cols-2 gap-3">
         <button
           type="button"
@@ -829,7 +829,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
           style={{ borderColor: 'rgba(239,68,68,0.2)' }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">SaÃ­das</span>
+            <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">Saídas</span>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
               <ArrowUpRight size={14} className="text-red-400" />
             </div>
@@ -838,22 +838,22 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </button>
       </div>
 
-      {/* â”€â”€ Score de SaÃºde Financeira â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Score de Saúde Financeira */}
       <div className="order-5">
         <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
       </div>
 
-      {/* â”€â”€ PrÃ³ximas faturas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Próximas faturas */}
       <div className="order-6">
         <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
       </div>
 
-      {/* â”€â”€ Contas bancÃ¡rias com sparkline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Contas bancárias com sparkline */}
       <section className="order-2">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Building2 size={15} className="text-slate-500" />
-            <span className="text-sm font-semibold text-slate-300">Contas BancÃ¡rias</span>
+            <span className="text-sm font-semibold text-slate-300">Contas Bancárias</span>
           </div>
           <button onClick={() => onNovoPagina('bancos')}
             className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
@@ -909,7 +909,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       <BankLogo banco={contaExpandida.banco} size={36} className="h-9 w-9 object-contain" />
                       <div>
                         <h3 className="text-sm font-semibold text-white">{info.nome}</h3>
-                        <p className="text-xs text-slate-500">{contaExpandida.nome} â€¢ {contaExpandida.tipo}</p>
+                        <p className="text-xs text-slate-500">{contaExpandida.nome} • {contaExpandida.tipo}</p>
                       </div>
                     </div>
                     <button
@@ -927,19 +927,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(contaExpandida.saldo))}</div>
                     </div>
                     <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">Entradas no mÃªs</div>
+                      <div className="text-[11px] text-slate-500">Entradas no mês</div>
                       <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(entradasMes))}</div>
                     </div>
                     <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">SaÃ­das no mÃªs</div>
+                      <div className="text-[11px] text-slate-500">Saídas no mês</div>
                       <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(saidasMes))}</div>
                     </div>
                   </div>
 
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">MovimentaÃ§Ãµes recentes</span>
-                      <span className="text-[11px] text-slate-600">{lista.length} lanÃ§amentos</span>
+                      <span className="text-xs font-medium text-slate-400">Movimentações recentes</span>
+                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
                     </div>
                     <div className="space-y-2">
                       {lista.slice(0, 5).map((transacao) => {
@@ -947,12 +947,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         return (
                           <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
-                              {categoria?.icone || 'ðŸ’³'}
+                              {categoria?.icone || '??'}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} â€¢ {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -963,7 +963,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       })}
                       {lista.length === 0 && (
                         <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
-                          Nenhuma movimentaÃ§Ã£o vinculada a essa conta ainda.
+                          Nenhuma movimentação vinculada a essa conta ainda.
                         </div>
                       )}
                     </div>
@@ -980,12 +980,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
         )}
       </section>
 
-      {/* â”€â”€ CartÃµes de crÃ©dito â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Cartões de crédito */}
       <section className="order-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <CreditCard size={15} className="text-slate-500" />
-            <span className="text-sm font-semibold text-slate-300">CartÃµes de CrÃ©dito</span>
+            <span className="text-sm font-semibold text-slate-300">Cartões de Crédito</span>
           </div>
           <button onClick={() => onNovoPagina('cartoes')}
             className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
@@ -1048,7 +1048,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-white">{cartaoExpandido.nome}</h3>
-                        <p className="text-xs text-slate-500">{info.nome} â€¢ {cartaoExpandido.bandeira}</p>
+                        <p className="text-xs text-slate-500">{info.nome} • {cartaoExpandido.bandeira}</p>
                       </div>
                     </div>
                     <button
@@ -1056,7 +1056,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       onClick={() => onNovoPagina('cartoes')}
                       className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
                     >
-                      Abrir cartÃ£o completo
+                      Abrir cartão completo
                     </button>
                   </div>
 
@@ -1070,7 +1070,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.limite))}</div>
                     </div>
                     <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">DisponÃ­vel</div>
+                      <div className="text-[11px] text-slate-500">Disponível</div>
                       <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(limiteDisponivel))}</div>
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
@@ -1082,11 +1082,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-medium text-slate-400">RelatÃ³rio individual do cartÃ£o</p>
-                        <p className="text-[11px] text-slate-600 mt-1">Uso do limite: {usoLimite.toFixed(1)}% â€¢ vencimento em {diasAte(cartaoExpandido.dia_vencimento)} dia(s)</p>
+                        <p className="text-xs font-medium text-slate-400">Relatório individual do cartão</p>
+                        <p className="text-[11px] text-slate-600 mt-1">Uso do limite: {usoLimite.toFixed(1)}% • vencimento em {diasAte(cartaoExpandido.dia_vencimento)} dia(s)</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-slate-500">MÃ©dia por compra</div>
+                        <div className="text-xs text-slate-500">Média por compra</div>
                         <div className="text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(ticketMedio))}</div>
                       </div>
                     </div>
@@ -1100,7 +1100,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         <div className="text-sm font-semibold text-white mt-1 tabular-nums">{ocultar(formatarMoeda(maiorCompra))}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Estornos / crÃ©ditos</div>
+                        <div className="text-[11px] text-slate-500">Estornos / créditos</div>
                         <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">{ocultar(formatarMoeda(estornos.reduce((soma, transacao) => soma + transacao.valor, 0)))}</div>
                       </div>
                     </div>
@@ -1145,7 +1145,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
                     >
                       <ImageIcon size={14} />
-                      Ler imagem / histÃ³rico
+                      Ler imagem / histórico
                     </button>
                   </div>
 
@@ -1163,8 +1163,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">Compras lanÃ§adas nesse cartÃ£o</span>
-                      <span className="text-[11px] text-slate-600">{lista.length} lanÃ§amentos</span>
+                      <span className="text-xs font-medium text-slate-400">Compras lançadas nesse cartão</span>
+                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
                     </div>
                     <div className="space-y-2">
                       {lista.slice(0, 8).map((transacao) => {
@@ -1172,12 +1172,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         return (
                           <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
-                              {categoria?.icone || 'ðŸ’³'}
+                              {categoria?.icone || '??'}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} â€¢ {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -1188,7 +1188,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       })}
                       {lista.length === 0 && (
                         <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
-                          Nenhuma compra vinculada a esse cartÃ£o ainda. Use o botÃ£o I.A para importar uma fatura ou histÃ³rico.
+                          Nenhuma compra vinculada a esse cartão ainda. Use o botão I.A. para importar uma fatura ou histórico.
                         </div>
                       )}
                     </div>
@@ -1200,7 +1200,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         ) : (
           <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
             <CreditCard size={36} className="mb-2 opacity-30" />
-            <p className="text-sm text-slate-500">Nenhum cartÃ£o cadastrado</p>
+            <p className="text-sm text-slate-500">Nenhum cartão cadastrado</p>
           </div>
         )}
         <div className="hidden space-y-3">
@@ -1239,8 +1239,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>DisponÃ­vel: <span className="text-emerald-400 font-medium">{ocultar(formatarMoeda(disponivel))}</span></span>
-                  <span>Vence em <span className={`font-medium ${diasVenc <= 5 ? 'text-red-400' : 'text-slate-300'}`}>{diasVenc}d</span> â€¢ dia {cartao.dia_vencimento}</span>
+                  <span>Disponível: <span className="text-emerald-400 font-medium">{ocultar(formatarMoeda(disponivel))}</span></span>
+                  <span>Vence em <span className={`font-medium ${diasVenc <= 5 ? "text-red-400" : "text-slate-300"}`}>{diasVenc}d</span> • dia {cartao.dia_vencimento}</span>
                 </div>
               </button>
             );
@@ -1248,11 +1248,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </section>
 
-      {/* â”€â”€ GrÃ¡ficos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* EvoluÃ§Ã£o 6 meses */}
+        {/* Evolução 6 meses */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">EvoluÃ§Ã£o â€” 6 meses</h3>
+          <h3 className="text-sm font-semibold text-slate-300 mb-4">Evolução - 6 meses</h3>
           <EvolutionChart data={dadosMes.areaData} />
         </div>
 
@@ -1262,7 +1262,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             Gastos por Categoria
             {catFiltro && (
               <button onClick={() => setCatFiltro(null)} className="ml-2 text-xs text-purple-400 hover:text-purple-300">
-                Ã— {catFiltro}
+                ? {catFiltro}
               </button>
             )}
           </h3>
@@ -1281,12 +1281,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </div>
 
-      {/* â”€â”€ AnÃ¡lise IA com typewriter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Análise IA com typewriter */}
       {dicasIA.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={15} className="text-purple-400" />
-            <span className="text-sm font-semibold text-slate-300">AnÃ¡lise da IA</span>
+            <span className="text-sm font-semibold text-slate-300">Análise da IA</span>
           </div>
           <InsightCard
             dicas={dicasIA as DicaItem[]}
@@ -1295,7 +1295,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </section>
       )}
 
-      {/* â”€â”€ Alertas de OrÃ§amento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Alertas de Orçamento */}
       {(() => {
         const alertas = orcamentos
           .filter(o => o.mes === mes && o.ano === ano && o.valor_limite > 0)
@@ -1320,11 +1320,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <section>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-300">âš  Alertas de OrÃ§amento</span>
+                <span className="text-sm font-semibold text-slate-300">Alertas de Orçamento</span>
               </div>
               <button onClick={() => onNovoPagina('orcamentos')}
                 className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                Ver orÃ§amentos <ArrowRight size={12} />
+                Ver orçamentos <ArrowRight size={12} />
               </button>
             </div>
             <div className="space-y-2">
@@ -1344,7 +1344,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
                         style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
                       >
-                        {cat?.icone || 'ðŸ’³'}
+                        {cat?.icone || '??'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-white truncate">{cat?.nome || 'Outros'}</p>
@@ -1370,12 +1370,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
         );
       })()}
 
-      {/* â”€â”€ PrÃ³ximos gastos (7 dias) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Próximos gastos (7 dias) */}
       {proximosGastos.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-slate-300">
-              ðŸ”„ Gastos previstos â€” 7 dias
+              Gastos previstos - 7 dias
             </span>
             <button onClick={() => onNovoPagina('agentes')}
               className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
@@ -1395,12 +1395,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   onClick={() => onNovoPagina('agentes')}
                   className={`glass-card flex items-center gap-3 p-3 w-full text-left ${urgente ? 'border-amber-500/20' : ''}`}
                 >
-                  <div className="text-lg flex-shrink-0">ðŸ”„</div>
+                  <div className="text-lg flex-shrink-0">•</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">{g.descricao}</div>
                     <div className={`text-xs mt-0.5 ${urgente ? 'text-amber-400 font-semibold' : 'text-slate-500'}`}>
-                      {urgente && 'âš  '}
-                      {dataFormatada} â€¢ {g.diasRestantes === 0 ? 'Hoje' : g.diasRestantes === 1 ? 'AmanhÃ£' : `Em ${g.diasRestantes} dias`}
+                      {urgente && 'Atenção: '}
+                      {dataFormatada} • {g.diasRestantes === 0 ? 'Hoje' : g.diasRestantes === 1 ? 'Amanhã' : `Em ${g.diasRestantes} dias`}
                     </div>
                   </div>
                   <div className="text-sm font-bold text-red-400 tabular-nums flex-shrink-0">
@@ -1413,11 +1413,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </section>
       )}
 
-      {/* â”€â”€ Ãšltimas transaÃ§Ãµes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Últimas transações */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-slate-300">
-            {catFiltro ? `TransaÃ§Ãµes Â· ${catFiltro}` : 'Ãšltimas TransaÃ§Ãµes'}
+            {catFiltro ? `Transações • ${catFiltro}` : 'Últimas Transações'}
           </span>
           <button onClick={() => onNovoPagina('transacoes')}
             className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
@@ -1436,14 +1436,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
                   style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                  {cat?.icone || 'ðŸ’³'}
+                  {cat?.icone || '??'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
                   <div className="text-xs text-slate-500">
                     {cat?.nome || 'Outros'}
-                    {t.metodo_pagamento && ` â€¢ ${t.metodo_pagamento}`}
-                    {' â€¢ '}{parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
+                    {' • '}{parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
                 </div>
                 <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
