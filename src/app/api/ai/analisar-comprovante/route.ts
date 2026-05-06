@@ -8,11 +8,18 @@ interface ReceiptData {
   estabelecimento: string;
   valor_total: number | null;
   data: string;
+  horario: string;
   forma_pagamento: string;
   categoria_sugerida: string;
   confianca: number;
   observacoes: string;
   texto_extraido: string;
+  itens_compra: Array<{
+    nome: string;
+    valor: number | null;
+    quantidade?: number | null;
+    unidade?: string | null;
+  }>;
 }
 
 function isMultipart(req: NextRequest) {
@@ -32,6 +39,8 @@ function jsonFromText(text: string) {
 }
 
 function inferCategoryId(data: ReceiptData) {
+  if (data.itens_compra.length > 0) return 'feira_mantimentos';
+
   const source = `${data.categoria_sugerida} ${data.estabelecimento}`.toLowerCase();
   for (const [keyword, categoryId] of Object.entries(PALAVRAS_CHAVE_CATEGORIAS)) {
     if (source.includes(keyword)) return categoryId;
@@ -46,11 +55,28 @@ function normalizeReceiptData(input?: Record<string, unknown> | null): ReceiptDa
     estabelecimento: typeof input?.estabelecimento === 'string' ? input.estabelecimento : '',
     valor_total: typeof input?.valor_total === 'number' ? input.valor_total : null,
     data: typeof input?.data === 'string' ? input.data : '',
+    horario: typeof input?.horario === 'string' ? input.horario : '',
     forma_pagamento: typeof input?.forma_pagamento === 'string' ? input.forma_pagamento : '',
     categoria_sugerida: typeof input?.categoria_sugerida === 'string' ? input.categoria_sugerida : '',
     confianca: typeof input?.confianca === 'number' ? input.confianca : 0,
     observacoes: typeof input?.observacoes === 'string' ? input.observacoes : '',
     texto_extraido: typeof input?.texto_extraido === 'string' ? input.texto_extraido : '',
+    itens_compra: Array.isArray(input?.itens_compra)
+      ? input.itens_compra.reduce<ReceiptData['itens_compra']>((acc, item) => {
+        if (!item || typeof item !== 'object') return acc;
+        const candidate = item as Record<string, unknown>;
+        const nome = typeof candidate.nome === 'string' ? candidate.nome : '';
+        if (!nome) return acc;
+
+        acc.push({
+          nome,
+          valor: typeof candidate.valor === 'number' ? candidate.valor : null,
+          quantidade: typeof candidate.quantidade === 'number' ? candidate.quantidade : null,
+          unidade: typeof candidate.unidade === 'string' ? candidate.unidade : null,
+        });
+        return acc;
+      }, [])
+      : [],
   };
 }
 
@@ -61,17 +87,21 @@ Retorne apenas JSON valido neste formato:
   "estabelecimento": "",
   "valor_total": null,
   "data": "",
+  "horario": "",
   "forma_pagamento": "",
   "categoria_sugerida": "",
   "confianca": 0,
   "observacoes": "",
-  "texto_extraido": ""
+  "texto_extraido": "",
+  "itens_compra": [{ "nome": "", "valor": null, "quantidade": null, "unidade": "" }]
 }
 
 Regras:
 - Use apenas o texto fornecido.
 - Se nao identificar um campo, use null ou string vazia.
 - Nao invente valores nem datas.
+- Se for uma nota fiscal de mercado/feira com itens discriminados, extraia cada item em "itens_compra".
+- Quando houver itens detalhados de mantimentos, use "categoria_sugerida": "Feira de mantimentos".
 - "confianca" deve ser um numero de 0 a 1.
 - "texto_extraido" deve repetir o texto recebido, sem resumir.
 
@@ -85,15 +115,19 @@ Retorne apenas JSON valido neste formato:
   "estabelecimento": "",
   "valor_total": null,
   "data": "",
+  "horario": "",
   "forma_pagamento": "",
   "categoria_sugerida": "",
   "confianca": 0,
   "observacoes": "",
-  "texto_extraido": ""
+  "texto_extraido": "",
+  "itens_compra": [{ "nome": "", "valor": null, "quantidade": null, "unidade": "" }]
 }
 
 Regras:
 - Nao invente valores, datas ou estabelecimentos.
+- Se a nota fiscal listar produtos de mercado/feira, extraia os itens em "itens_compra".
+- Quando houver itens detalhados de mantimentos, use "categoria_sugerida": "Feira de mantimentos".
 - Se algum campo nao estiver visivel, use null ou string vazia.
 - "confianca" deve ser um numero de 0 a 1.
 - "texto_extraido" deve conter o maximo de texto relevante lido na imagem.
@@ -216,9 +250,11 @@ export async function POST(req: NextRequest) {
       !data.estabelecimento &&
       data.valor_total === null &&
       !data.data &&
+      !data.horario &&
       !data.forma_pagamento &&
       !data.categoria_sugerida &&
-      !data.texto_extraido
+      !data.texto_extraido &&
+      data.itens_compra.length === 0
     ) {
       return NextResponse.json(
         { success: false, error: 'Nao foi possivel identificar dados suficientes no comprovante enviado.' },

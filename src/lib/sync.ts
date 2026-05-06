@@ -142,11 +142,17 @@ function mapTransacao(t: Transacao) {
     descricao: t.descricao,
     categoria_id: t.categoria_id,
     data: t.data,
+    horario: t.horario,
     metodo_pagamento: t.metodo_pagamento,
     conta_id: t.conta_id,
+    cartao_id: t.cartao_id,
     parcelas: t.parcelas,
     local: t.local,
     origem: t.origem,
+    comprovante_url: t.comprovante_url,
+    tags: t.tags,
+    observacoes: t.observacoes,
+    itens_compra: t.itens_compra,
     criado_em: t.criado_em,
   };
 }

@@ -119,7 +119,15 @@ export const storageCategoriass = {
       set(KEYS.CATEGORIAS, padrao);
       return padrao;
     }
-    return salvas;
+    const idsSalvos = new Set(salvas.map((categoria) => categoria.id));
+    const faltantes = CATEGORIAS_PADRAO
+      .filter((categoria) => !idsSalvos.has(categoria.id))
+      .map((categoria) => ({ ...categoria, criado_em: new Date().toISOString() }));
+    if (faltantes.length === 0) return salvas;
+
+    const atualizadas = [...salvas, ...faltantes];
+    set(KEYS.CATEGORIAS, atualizadas);
+    return atualizadas;
   },
   replaceAll: (lista: Categoria[]): void => set(KEYS.CATEGORIAS, lista),
   save: (c: Categoria): void => {

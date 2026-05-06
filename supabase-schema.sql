@@ -49,11 +49,17 @@ create table if not exists transacoes (
   descricao          text not null,
   categoria_id       text references categorias(id),
   data               text not null,
+  horario            text,
   metodo_pagamento   text default 'pix',
   conta_id           text,
+  cartao_id          text,
   parcelas           int,
   local              text,
   origem             text default 'manual',
+  comprovante_url    text,
+  tags               jsonb,
+  observacoes        text,
+  itens_compra       jsonb,
   pluggy_id          text,
   pluggy_account_id  text,
   criado_em          timestamptz default now()
@@ -162,6 +168,12 @@ alter table cartoes       add column if not exists pluggy_account_id   text;
 alter table cartoes       add column if not exists pluggy_sync_em      timestamptz;
 alter table transacoes    add column if not exists pluggy_id           text;
 alter table transacoes    add column if not exists pluggy_account_id   text;
+alter table transacoes    add column if not exists horario             text;
+alter table transacoes    add column if not exists cartao_id           text;
+alter table transacoes    add column if not exists comprovante_url     text;
+alter table transacoes    add column if not exists tags                jsonb;
+alter table transacoes    add column if not exists observacoes         text;
+alter table transacoes    add column if not exists itens_compra        jsonb;
 alter table investimentos add column if not exists valor_atual         numeric default 0;
 alter table investimentos add column if not exists data_vencimento     text;
 alter table investimentos add column if not exists pluggy_id           text;

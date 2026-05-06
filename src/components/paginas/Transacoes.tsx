@@ -280,6 +280,16 @@ export default function Transacoes() {
                             {t.parcelas && t.parcelas > 1 && ` • ${(t as Transacao & { parcela_atual?: number }).parcela_atual || 1}/${t.parcelas}x`}
                           </div>
                           {t.local && <div className="text-xs text-slate-600 truncate">📍 {t.local}</div>}
+                          {t.itens_compra && t.itens_compra.length > 0 && (
+                            <div className="mt-1">
+                              <div className="text-[11px] text-emerald-400 font-medium">
+                                {t.itens_compra.length} item(ns) salvos da nota fiscal
+                              </div>
+                              <div className="text-[11px] text-slate-500 truncate">
+                                {t.itens_compra.slice(0, 3).map((item) => item.nome).join(' • ')}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className={`text-sm font-semibold tabular-nums ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>

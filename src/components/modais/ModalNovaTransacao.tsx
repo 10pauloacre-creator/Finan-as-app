@@ -11,6 +11,13 @@ import { formatFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
+interface ItemCompraExtraido {
+  nome: string;
+  valor: number | null;
+  quantidade?: number | null;
+  unidade?: string | null;
+}
+
 interface Props {
   aberto: boolean;
   onFechar: () => void;
@@ -51,6 +58,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   const [sucesso, setSucesso] = useState(false);
   const [erroIA, setErroIA] = useState('');
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [itensCompraIA, setItensCompraIA] = useState<ItemCompraExtraido[]>([]);
   const [duplicataEncontrada, setDuplicataEncontrada] = useState<Transacao | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +66,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       if (transacaoEditar) {
+        setItensCompraIA(transacaoEditar.itens_compra || []);
         setForm({
           descricao: transacaoEditar.descricao,
           valor: transacaoEditar.valor.toString(),
@@ -75,6 +84,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       } else {
         setForm(getFormVazio(tipoInicial));
         setFotoPreview(null);
+        setItensCompraIA([]);
       }
     }, 0);
 
@@ -115,17 +125,24 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       const data = await res.json();
 
       if (data.dados) {
-        setForm(f => ({
+        setForm(f => {
+          const categoriaOCR = data.dados.categoria_id || f.categoria_id;
+          return ({
           ...f,
           descricao: data.dados.descricao || data.dados.estabelecimento || f.descricao,
           valor: (data.dados.valor ?? data.dados.valor_total)?.toString() || f.valor,
-          categoria_id: data.dados.categoria_id || f.categoria_id,
+          categoria_id: categoriaOCR,
           data: data.dados.data || f.data,
           horario: data.dados.horario || f.horario,
-          metodo_pagamento: data.dados.metodo_pagamento || data.dados.forma_pagamento || f.metodo_pagamento,
+          metodo_pagamento: categoriaOCR === 'feira_mantimentos'
+            ? 'credito'
+            : data.dados.metodo_pagamento || data.dados.forma_pagamento || f.metodo_pagamento,
           parcelas: data.dados.parcelas?.toString() || f.parcelas,
           local: data.dados.local || f.local,
-        }));
+          conta_id: categoriaOCR === 'feira_mantimentos' ? '' : f.conta_id,
+        });
+        });
+        setItensCompraIA(Array.isArray(data.dados.itens_compra) ? data.dados.itens_compra : []);
       }
     } catch {
       setErroIA('Não foi possível analisar a imagem. Preencha manualmente.');
@@ -149,6 +166,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       origem: 'manual' as const,
       conta_id: form.conta_id || undefined,
       cartao_id: form.cartao_id || undefined,
+      itens_compra: itensCompraIA.length > 0 ? itensCompraIA : undefined,
     };
 
     if (transacaoEditar) {
@@ -333,7 +351,12 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, categoria_id: cat.id }))}
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      categoria_id: cat.id,
+                      metodo_pagamento: cat.id === 'feira_mantimentos' ? 'credito' : f.metodo_pagamento,
+                      conta_id: cat.id === 'feira_mantimentos' ? '' : f.conta_id,
+                    }))}
                     className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-xs transition-all ${
                       form.categoria_id === cat.id
                         ? 'bg-purple-600 border-purple-500 text-white'
@@ -345,6 +368,11 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   </button>
                 ))}
               </div>
+              {form.categoria_id === 'feira_mantimentos' && (
+                <p className="text-[11px] text-amber-400 mt-2">
+                  Feira de mantimentos exige vínculo com um cartão para guardar a nota item a item.
+                </p>
+              )}
             </div>
 
             {/* Método de pagamento */}

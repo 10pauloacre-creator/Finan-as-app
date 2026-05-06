@@ -54,6 +54,13 @@ export interface Categoria {
   criado_em: string;
 }
 
+export interface ItemCompra {
+  nome: string;
+  valor: number | null;
+  quantidade?: number | null;
+  unidade?: string | null;
+}
+
 // ─── Transações ───────────────────────────────────────
 export interface Transacao {
   id: string;
@@ -75,6 +82,7 @@ export interface Transacao {
   comprovante_url?: string;
   origem: OrigemTransacao;
   tags?: string[];
+  itens_compra?: ItemCompra[];
   observacoes?: string;
   criado_em: string;
 }

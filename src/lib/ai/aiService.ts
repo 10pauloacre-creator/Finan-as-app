@@ -377,13 +377,19 @@ Extraia e retorne apenas JSON válido com este formato:
   "estabelecimento": "string | null",
   "valor_total": 0,
   "data": "YYYY-MM-DD | null",
+  "horario": "HH:mm | null",
   "categoria_sugerida": "string | null",
   "forma_pagamento": "pix | debito | credito | dinheiro | transferencia | outro | null",
   "confianca": 0,
-  "observacoes": "string curta"
+  "observacoes": "string curta",
+  "itens_compra": [
+    { "nome": "string", "valor": 0, "quantidade": 1, "unidade": "un | kg | l | null" }
+  ]
 }
 
 Use apenas o texto abaixo. Se faltar dado, use null. Não invente valores.
+Se for uma nota fiscal de mercado/feira com itens discriminados, extraia cada item em "itens_compra".
+Quando houver itens detalhados de mantimentos, use "categoria_sugerida": "Feira de mantimentos".
 
 Texto OCR:
 ${ocrResult.text}`,

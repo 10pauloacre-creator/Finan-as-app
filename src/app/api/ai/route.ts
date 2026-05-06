@@ -192,6 +192,8 @@ Se não conseguir identificar a fatura:
 }
 
 function inferCategoryId(data: Record<string, unknown>) {
+  if (Array.isArray(data.itens_compra) && data.itens_compra.length > 0) return 'feira_mantimentos';
+
   const source = String(data.categoria_sugerida || data.categoria || data.descricao || '').toLowerCase();
 
   for (const [keyword, categoryId] of Object.entries(PALAVRAS_CHAVE_CATEGORIAS)) {
