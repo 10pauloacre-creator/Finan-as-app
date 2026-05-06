@@ -59,7 +59,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['baixo_custo', 'fallback', 'texto'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Modelo gratuito para fallback econômico via OpenRouter.',
+    description: 'Modelo gratuito para fallback economico via OpenRouter.',
     tier: 'free',
   },
   openrouterFast: {
@@ -69,10 +69,12 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     envKey: 'OPENROUTER_API_KEY',
     modelEnv: 'OPENROUTER_FAST_MODEL',
     defaultModel: 'google/gemini-2.5-flash',
-    strengths: ['rapidez', 'chat', 'economico', 'resumo'],
-    supportsVision: false,
+    strengths: ['rapidez', 'chat', 'economico', 'resumo', 'visao'],
+    supportsVision: true,
     supportsChat: true,
-    description: 'Modelo rápido e econômico, padrão para uso diário.',
+    supportsAudio: true,
+    supportsPdf: true,
+    description: 'Modelo rapido e economico, padrao para uso diario.',
     tier: 'fast',
   },
   openrouterReasoning: {
@@ -83,9 +85,11 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     modelEnv: 'OPENROUTER_REASONING_MODEL',
     defaultModel: 'deepseek/deepseek-chat',
     strengths: ['raciocinio', 'analise', 'plano'],
-    supportsVision: false,
+    supportsVision: true,
     supportsChat: true,
-    description: 'Modelo de raciocínio para análises e planejamento mais cuidadoso.',
+    supportsAudio: true,
+    supportsPdf: true,
+    description: 'Modelo de raciocinio para analises e planejamento mais cuidadoso.',
     tier: 'reasoning',
   },
   openrouterPremium: {
@@ -96,9 +100,11 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     modelEnv: 'OPENROUTER_PREMIUM_MODEL',
     defaultModel: 'anthropic/claude-sonnet-4.5',
     strengths: ['profundo', 'premium', 'analise'],
-    supportsVision: false,
+    supportsVision: true,
     supportsChat: true,
-    description: 'Modelo premium reservado para Análise profunda ou seleção manual.',
+    supportsAudio: true,
+    supportsPdf: true,
+    description: 'Modelo premium reservado para analise profunda ou selecao manual.',
     tier: 'premium',
   },
   gemini: {
@@ -113,7 +119,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     supportsChat: true,
     supportsAudio: true,
     supportsPdf: true,
-    description: 'Fallback multimodal legado para imagem, áudio e PDF.',
+    description: 'Fallback multimodal legado para imagem, audio e PDF.',
     tier: 'fallback',
   },
   anthropic: {
@@ -126,7 +132,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['analise', 'texto_longo', 'raciocinio'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Fallback legado para análises textuais.',
+    description: 'Fallback legado para analises textuais.',
     tier: 'fallback',
   },
   groq: {
@@ -139,7 +145,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['rapidez', 'chat', 'classificacao'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Fallback legado muito rápido para chat e classificação.',
+    description: 'Fallback legado muito rapido para chat e classificacao.',
     tier: 'fallback',
   },
   deepseek: {
@@ -152,7 +158,7 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
     strengths: ['raciocinio', 'analise', 'codigo'],
     supportsVision: false,
     supportsChat: true,
-    description: 'Fallback legado para raciocínio e análise estruturada.',
+    description: 'Fallback legado para raciocinio e analise estruturada.',
     tier: 'fallback',
   },
   gemma4: {
@@ -188,8 +194,8 @@ export const AI_MODELS: Record<AIProviderId, AIModelDefinition> = {
 export const AI_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; description: string }> = [
   {
     id: 'automatico',
-    label: 'Automático recomendado',
-    description: 'Modo econômico: prioriza OpenRouter Fast e usa fallback automático.',
+    label: 'Automatico recomendado',
+    description: 'Modo economico: prioriza OpenRouter Fast e usa fallback automatico.',
   },
   ...Object.values(AI_MODELS)
     .filter((model) => model.type !== 'ocr')
@@ -203,8 +209,13 @@ export const AI_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; description
 export const OCR_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; description: string }> = [
   {
     id: 'automatico',
-    label: 'Automático recomendado',
-    description: 'O app prioriza GLM OCR e usa fallback visual quando necessário.',
+    label: 'Automatico recomendado',
+    description: 'O app prioriza OpenRouter Vision e usa fallback visual quando necessario.',
+  },
+  {
+    id: 'openrouterFast',
+    label: 'OpenRouter Vision',
+    description: 'Leitura visual principal de recibos, comprovantes e imagens financeiras.',
   },
   {
     id: 'glmOcr',
@@ -219,7 +230,7 @@ export const OCR_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; descriptio
   {
     id: 'gemini',
     label: 'Gemini Vision',
-    description: 'Boa opção visual para leitura de imagens financeiras.',
+    description: 'Fallback visual legado para leitura de imagens financeiras.',
   },
 ];
 

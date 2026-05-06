@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic, MicOff, ImageIcon, Camera, Send, Bot, CheckCircle2, XCircle,
-  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard,
+  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto } from '@/lib/contexto-financeiro';
@@ -99,7 +99,7 @@ function gerarId() {
 const MSG_BOAS_VINDAS: Mensagem = {
   id: 'boas-vindas',
   papel: 'assistente',
-  texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n• 📄 **PDF** — fatura do cartão de crédito (lança todos os gastos de uma vez!)\n\nVou extrair as informações e você confirma para salvar!',
+  texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n• 📄 **PDF** — fatura do cartão de crédito\n• 📊 **CSV** — exportação de fatura aberta ou extrato\n\nVou extrair as informações e você confirma para salvar!',
   ts: Date.now(),
 };
 
@@ -465,6 +465,7 @@ export default function Assistente() {
   const fileInputRef     = useRef<HTMLInputElement>(null);
   const cameraInputRef   = useRef<HTMLInputElement>(null);
   const pdfInputRef      = useRef<HTMLInputElement>(null);
+  const csvInputRef      = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
@@ -826,6 +827,63 @@ export default function Assistente() {
     }
   }
 
+  async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const tamanhoKB = Math.max(1, Math.round(file.size / 1024));
+    setEnviando(true);
+
+    addMsg({
+      papel: 'user',
+      texto: '',
+      pdfNome: file.name,
+      pdfInfo: `${tamanhoKB} KB`,
+    });
+
+    const aiId = addMsg({
+      papel: 'assistente',
+      texto: '',
+      pdfNome: file.name,
+      carregando: true,
+    });
+
+    try {
+      const fd = new FormData();
+      fd.append('task', 'analisar_csv_financeiro');
+      fd.append('csv', file);
+      const res = await fetch('/api/ai', { method: 'POST', body: fd });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        updateMsg(aiId, {
+          carregando: false,
+          pdfNome: undefined,
+          texto: `❌ ${err.error ?? 'Erro ao processar o CSV.'}`,
+        });
+        return;
+      }
+
+      const data = await res.json() as RespostaPDF;
+      updateMsg(aiId, {
+        carregando: false,
+        pdfNome: undefined,
+        texto: data.resposta,
+        transacoes: data.transacoes,
+        confirmadas: data.transacoes ? new Set() : undefined,
+      });
+    } catch {
+      updateMsg(aiId, {
+        carregando: false,
+        pdfNome: undefined,
+        texto: '❌ Erro ao enviar CSV. Verifique sua conexão.',
+      });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -955,6 +1013,23 @@ export default function Assistente() {
               accept="application/pdf,.pdf"
               className="hidden"
               onChange={handlePDF}
+            />
+
+            <button
+              onClick={() => csvInputRef.current?.click()}
+              disabled={enviando || gravando}
+              className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors disabled:opacity-40 shrink-0"
+              aria-label="Enviar fatura CSV"
+              title="Fatura aberta (CSV)"
+            >
+              <Sheet size={17} />
+            </button>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={handleCSV}
             />
 
             {/* Campo de texto */}

@@ -676,12 +676,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
     });
 
     try {
-      const isPdf = arquivo.type === 'application/pdf' || arquivo.name.toLowerCase().endsWith('.pdf');
+      const lowerName = arquivo.name.toLowerCase();
+      const isPdf = arquivo.type === 'application/pdf' || lowerName.endsWith('.pdf');
+      const isCsv = arquivo.type === 'text/csv' || lowerName.endsWith('.csv');
       const formData = new FormData();
 
       if (isPdf) {
         formData.append('task', 'analisar_pdf_financeiro');
         formData.append('pdf', arquivo);
+      } else if (isCsv) {
+        formData.append('task', 'analisar_csv_financeiro');
+        formData.append('csv', arquivo);
       } else {
         formData.append('task', 'analisar_imagem_financeira');
         formData.append('imagem', arquivo);
@@ -765,7 +770,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       <input
         ref={arquivoCartaoRef}
         type="file"
-        accept="application/pdf,.pdf,image/*"
+        accept="application/pdf,.pdf,text/csv,.csv,image/*"
         className="hidden"
         onChange={handleImportarArquivoCartao}
       />

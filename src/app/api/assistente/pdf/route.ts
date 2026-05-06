@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { runAI } from '@/lib/ai/aiService';
+import type { AIModelId } from '@/lib/ai/aiModels';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const HOJE = () => new Date().toISOString().split('T')[0];
-
-// ── Tipos de resposta ─────────────────────────────────────────────────────────
 
 export interface RespostaPDF {
   tipo: 'lote' | 'conversa';
@@ -17,15 +15,13 @@ export interface RespostaPDF {
   providerUsed?: string;
 }
 
-// ── Prompt ────────────────────────────────────────────────────────────────────
+const PROMPT_FATURA = `Voce e um extrator especializado em faturas de cartao de credito brasileiras.
 
-const PROMPT_FATURA = `Você é um extrator especializado em faturas de cartão de crédito brasileiras.
+Analise este PDF e extraia todas as transacoes e lancamentos da fatura.
 
-Analise este PDF e extraia TODAS as transações/lançamentos da fatura.
-
-Retorne SOMENTE um JSON válido (sem texto, sem markdown):
+Retorne somente um JSON valido:
 {
-  "bancaNome": "Nome do banco/cartão",
+  "bancaNome": "Nome do banco/cartao",
   "mesReferencia": "MM/YYYY",
   "transacoes": [
     {
@@ -33,7 +29,7 @@ Retorne SOMENTE um JSON válido (sem texto, sem markdown):
       "valor": 89.90,
       "descricao": "IFOOD *RESTAURANTE",
       "categoria": "Delivery",
-      "data": "YYYY-MM-DD",
+      "data": "${HOJE()}",
       "hora": null,
       "metodo_pagamento": "credito",
       "parcelas": null,
@@ -43,32 +39,22 @@ Retorne SOMENTE um JSON válido (sem texto, sem markdown):
   ]
 }
 
-REGRAS IMPORTANTES:
-- Extraia CADA linha de lançamento individualmente, incluindo parcelas (ex: 2/12)
-- tipo = "despesa" para compras | tipo = "receita" para estornos/créditos/pagamentos
-- metodo_pagamento sempre = "credito"
-- Se houver parcela (ex: 02/06), coloque o número atual em "parcelas"
-- data no formato YYYY-MM-DD (use o ano da fatura)
-- descricao = exatamente o texto que aparece na fatura (normalize espaços extras)
-- Se não conseguir identificar como fatura: {"erro": "não é uma fatura de cartão"}
+Se nao conseguir identificar a fatura, retorne:
+{"erro":"nao e uma fatura de cartao"}`;
 
-Categorias disponíveis:
-Alimentação, Mercado, Transporte, Saúde, Educação, Lazer, Roupas, Moradia,
-Assinaturas, Contas, Pet, Beleza, Presentes, Farmácia, Delivery, Salário, Outros.
+function extractTextFromSimplePdf(pdfBuffer: Buffer) {
+  const raw = pdfBuffer.toString('latin1');
+  const matches = [...raw.matchAll(/\(([^()]*)\)\s*Tj/g)];
+  const lines = matches
+    .map((match) => match[1].replace(/\\([()\\])/g, '$1').trim())
+    .filter(Boolean);
 
-Mapeamento automático de categorias:
-- iFood / Rappi / UberEats → Delivery
-- Mercadão / Carrefour / Extra / Atacadão / Pão de Açúcar → Mercado
-- Uber / 99 / BlaBlaCar / Shell / Ipiranga → Transporte
-- Netflix / Spotify / Amazon Prime / Disney / Deezer → Assinaturas
-- Drogaria / Farmácia / UltraFarma → Farmácia
-- Hospital / Clínica / Unimed / Hapvida → Saúde
-- Zara / Renner / C&A / Shein / Shopee → Roupas
-- Loja / Magazine / Americanas / Amazon / Mercado Livre → Outros
+  return lines.join('\n').trim();
+}
 
-Hoje é ${HOJE()}.`;
-
-// ── Parser ────────────────────────────────────────────────────────────────────
+function isMultipart(req: NextRequest) {
+  return req.headers.get('content-type')?.toLowerCase().includes('multipart/form-data') ?? false;
+}
 
 interface FaturaExtraida {
   bancaNome?: string;
@@ -80,102 +66,127 @@ interface FaturaExtraida {
 function parseFaturaJSON(raw: string): FaturaExtraida | { erro: string } {
   const clean = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
   const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) return { erro: 'Resposta inválida da IA.' };
+  if (!match) return { erro: 'Resposta invalida da IA.' };
+
   try {
     const parsed = JSON.parse(match[0]) as Record<string, unknown>;
     if (parsed.erro && typeof parsed.erro === 'string') return { erro: parsed.erro };
     if (!Array.isArray(parsed.transacoes) || parsed.transacoes.length === 0) {
-      return { erro: 'Nenhuma transação encontrada na fatura.' };
+      return { erro: 'Nenhuma transacao encontrada na fatura.' };
     }
+
     return {
-      bancaNome:     parsed.bancaNome as string | undefined,
+      bancaNome: parsed.bancaNome as string | undefined,
       mesReferencia: parsed.mesReferencia as string | undefined,
-      transacoes:    parsed.transacoes as TransacaoExtraida[],
+      transacoes: parsed.transacoes as TransacaoExtraida[],
     };
   } catch {
-    return { erro: 'Não consegui interpretar a fatura.' };
+    return { erro: 'Nao consegui interpretar a fatura.' };
   }
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  try {
-    const formData = await req.formData();
-    const requestedModel = String(formData.get('aiModel') || 'automatico');
+  if (!isMultipart(req)) {
+    return NextResponse.json({ error: 'Envie o PDF como multipart/form-data.' }, { status: 400 });
+  }
 
-    if (!process.env.GEMINI_API_KEY) {
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: 'Nao foi possivel ler o PDF enviado.' }, { status: 400 });
+  }
+
+  const pdfFile = formData.get('pdf');
+  const aiModel = String(formData.get('aiModel') || 'automatico') as AIModelId;
+
+  if (!(pdfFile instanceof File)) {
+    return NextResponse.json({ error: 'pdf obrigatorio' }, { status: 400 });
+  }
+
+  if (pdfFile.type !== 'application/pdf') {
+    return NextResponse.json({ error: 'Formato invalido. Envie um arquivo PDF.' }, { status: 400 });
+  }
+
+  const maxBytes = 20 * 1024 * 1024;
+  if (pdfFile.size > maxBytes) {
+    return NextResponse.json({ error: 'Arquivo muito grande. Maximo permitido: 20 MB.' }, { status: 400 });
+  }
+
+  if (!process.env.OPENROUTER_PDF_MODEL) {
+    return NextResponse.json(
+      { error: 'A analise de PDF ainda nao esta disponivel nesta configuracao.' },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer());
+    const base64 = pdfBuffer.toString('base64');
+    let result = await runAI({
+      task: 'analisar_pdf_financeiro',
+      provider: aiModel,
+      mode: aiModel !== 'automatico' ? 'manual' : 'auto',
+      input: { customPrompt: PROMPT_FATURA },
+      attachments: [{ mimeType: 'application/pdf', data: base64, fileName: pdfFile.name }],
+      options: { temperature: 0, maxTokens: 4000 },
+    });
+
+    if (!result.success || !result.answer) {
+      const extractedText = extractTextFromSimplePdf(pdfBuffer);
+      if (extractedText) {
+        result = await runAI({
+          task: 'analisar_pdf_financeiro',
+          provider: aiModel,
+          mode: aiModel !== 'automatico' ? 'manual' : 'auto',
+          input: {
+            customPrompt: `${PROMPT_FATURA}
+
+O parser direto do PDF falhou. Use somente o texto extraido abaixo para montar a resposta em JSON, sem inventar dados:
+${extractedText}`,
+          },
+          options: { temperature: 0, maxTokens: 2000 },
+        });
+      }
+    }
+
+    if (!result.success || !result.answer) {
       return NextResponse.json(
-        {
-          error:
-            requestedModel !== 'automatico' && requestedModel !== 'gemini'
-              ? 'O modelo escolhido não processa PDFs diretamente e o fallback multimodal está indisponível agora.'
-              : 'A IA para PDFs está indisponível no momento. Tente novamente mais tarde.',
-        },
+        { error: result.error || 'Nao foi possivel analisar o PDF agora.' },
         { status: 503 },
       );
     }
-    const pdfFile  = formData.get('pdf') as File | null;
 
-    if (!pdfFile) {
-      return NextResponse.json({ error: 'pdf obrigatório' }, { status: 400 });
-    }
-
-    // Valida tamanho (máx 20 MB)
-    const MAX_BYTES = 20 * 1024 * 1024;
-    if (pdfFile.size > MAX_BYTES) {
-      return NextResponse.json(
-        { error: 'Arquivo muito grande. Máximo permitido: 20 MB.' },
-        { status: 413 },
-      );
-    }
-
-    const buffer = Buffer.from(await pdfFile.arrayBuffer());
-    const base64 = buffer.toString('base64');
-
-    // gemini-1.5-pro tem janela maior para PDFs densos; flash para faturas simples
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0, maxOutputTokens: 8192 },
-    });
-
-    const result = await model.generateContent([
-      { inlineData: { data: base64, mimeType: 'application/pdf' } },
-      PROMPT_FATURA,
-    ]);
-
-    const raw    = result.response.text().trim();
-    const parsed = parseFaturaJSON(raw);
-
+    const parsed = parseFaturaJSON(result.answer);
     if ('erro' in parsed) {
       return NextResponse.json({
         tipo: 'conversa',
-        resposta: `❌ ${parsed.erro} Certifique-se de enviar o PDF da fatura do cartão.`,
-        providerUsed: 'gemini',
+        resposta: `Nao consegui concluir a leitura da fatura. ${parsed.erro}`,
+        providerUsed: result.providerUsed,
       } satisfies RespostaPDF);
     }
 
-    const totalValor    = parsed.transacoes
-      .filter(t => t.tipo === 'despesa')
-      .reduce((s, t) => s + t.valor, 0);
-    const bancaNome     = parsed.bancaNome ?? 'Cartão';
+    const totalValor = parsed.transacoes
+      .filter((tx) => tx.tipo === 'despesa')
+      .reduce((sum, tx) => sum + tx.valor, 0);
+    const bancaNome = parsed.bancaNome ?? 'Cartao';
     const mesReferencia = parsed.mesReferencia ?? '';
-    const count         = parsed.transacoes.length;
-    const despesas      = parsed.transacoes.filter(t => t.tipo === 'despesa').length;
+    const count = parsed.transacoes.length;
+    const despesas = parsed.transacoes.filter((tx) => tx.tipo === 'despesa').length;
 
     return NextResponse.json({
       tipo: 'lote',
-      transacoes:    parsed.transacoes,
+      transacoes: parsed.transacoes,
       totalValor,
       bancaNome,
       mesReferencia,
-      resposta: `Fatura **${bancaNome}**${mesReferencia ? ` — ${mesReferencia}` : ''} analisada!\n\nEncontrei **${count} lançamento${count !== 1 ? 's' : ''}** (${despesas} despesas).\n\nTotal de despesas: **R$ ${totalValor.toFixed(2).replace('.', ',')}**\n\nRevise e confirme cada transação abaixo:`,
-      providerUsed: 'gemini',
+      resposta: `Fatura **${bancaNome}**${mesReferencia ? ` - ${mesReferencia}` : ''} analisada. Encontrei **${count} lancamento${count !== 1 ? 's' : ''}** (${despesas} despesas). Revise antes de salvar.`,
+      providerUsed: result.providerUsed,
     } satisfies RespostaPDF);
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[assistente/pdf]', msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: 'Nao foi possivel analisar o PDF agora. Tente novamente em instantes.' },
+      { status: 503 },
+    );
   }
 }

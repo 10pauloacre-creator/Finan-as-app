@@ -10,17 +10,17 @@ export interface TaskProfile {
 export const TASK_PROFILES: Record<AITask, TaskProfile> = {
   categorizar_transacao: {
     preferredProviders: ['openrouterFast', 'openrouterFree', 'openrouterReasoning', 'groq', 'gemini'],
-    description: 'Classificar transações com resposta curta em JSON.',
+    description: 'Classificar transacoes com resposta curta em JSON.',
     output: 'json',
   },
   resumo_mensal: {
     preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterPremium', 'gemini', 'anthropic'],
-    description: 'Gerar resumo mensal claro em português do Brasil.',
+    description: 'Gerar resumo mensal claro em portugues do Brasil.',
     output: 'json',
   },
   plano_economia: {
     preferredProviders: ['openrouterReasoning', 'openrouterPremium', 'openrouterFast', 'anthropic', 'gemini'],
-    description: 'Montar um plano prático, prudente e conservador.',
+    description: 'Montar um plano pratico, prudente e conservador.',
     output: 'text',
   },
   detectar_gastos_incomuns: {
@@ -35,62 +35,62 @@ export const TASK_PROFILES: Record<AITask, TaskProfile> = {
   },
   explicar_grafico: {
     preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'deepseek'],
-    description: 'Explicar um gráfico ou tendência financeira de forma clara.',
+    description: 'Explicar um grafico ou tendencia financeira de forma clara.',
     output: 'text',
   },
   gerar_insights: {
     preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterFree', 'gemini', 'deepseek'],
-    description: 'Gerar insights, recomendações e observações úteis em JSON.',
+    description: 'Gerar insights, recomendacoes e observacoes uteis em JSON.',
     output: 'json',
   },
   analisar_meta: {
     preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'anthropic', 'gemini'],
-    description: 'Analisar metas financeiras e sugerir próximos passos.',
+    description: 'Analisar metas financeiras e sugerir proximos passos.',
     output: 'text',
   },
   analise_profunda: {
     preferredProviders: ['openrouterPremium', 'openrouterReasoning', 'anthropic', 'deepseek'],
-    description: 'Executar uma análise profunda, detalhada e mais custosa.',
+    description: 'Executar uma analise profunda, detalhada e mais custosa.',
     output: 'text',
   },
   estruturar_transacao_de_recibo: {
     preferredProviders: ['openrouterFast', 'openrouterReasoning', 'openrouterFree', 'gemini', 'deepseek'],
-    description: 'Estruturar uma transação de recibo a partir do texto extraído por OCR.',
+    description: 'Estruturar uma transacao de recibo a partir do texto extraido.',
     output: 'json',
   },
   extrair_texto_imagem: {
-    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'glmOcr', 'gemma4', 'gemini'],
     description: 'Extrair texto bruto de imagens de recibos e comprovantes.',
     output: 'text',
     multimodal: 'image',
   },
   analisar_recibo_futuramente: {
-    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'glmOcr', 'gemma4', 'gemini'],
     description: 'Ler comprovantes e extrair dados financeiros.',
     output: 'text',
     multimodal: 'image',
   },
   analisar_imagem_financeira: {
-    preferredProviders: ['glmOcr', 'gemma4', 'gemini'],
-    description: 'Extrair transações de imagens financeiras.',
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'glmOcr', 'gemma4', 'gemini'],
+    description: 'Extrair transacoes de imagens financeiras.',
     output: 'text',
     multimodal: 'image',
   },
   analisar_audio_financeiro: {
-    preferredProviders: ['gemini', 'gemma4', 'openrouterFast', 'openrouterReasoning'],
-    description: 'Transcrever áudio e identificar transações financeiras.',
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'gemini', 'gemma4'],
+    description: 'Transcrever audio e identificar transacoes financeiras.',
     output: 'json',
     multimodal: 'audio',
   },
   analisar_pdf_financeiro: {
-    preferredProviders: ['gemini', 'gemma4', 'openrouterFast', 'openrouterReasoning'],
-    description: 'Ler PDFs financeiros e extrair lançamentos.',
+    preferredProviders: ['openrouterFast', 'openrouterReasoning', 'gemini', 'gemma4'],
+    description: 'Ler PDFs financeiros e extrair lancamentos.',
     output: 'json',
     multimodal: 'pdf',
   },
   agente_financeiro: {
     preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
-    description: 'Análise de agentes especializados com saída em JSON.',
+    description: 'Analise de agentes especializados com saida em JSON.',
     output: 'json',
   },
 };

@@ -13,6 +13,7 @@ import { runOpenRouterProvider } from './providers/openRouterProvider';
 interface AttachmentInput {
   mimeType: string;
   data: string;
+  fileName?: string;
 }
 
 interface AnalyzeReceiptInput {
@@ -154,11 +155,7 @@ async function executeProvider(
     provider === 'openrouterReasoning' ||
     provider === 'openrouterPremium'
   ) {
-    if (attachments?.length) {
-      throw new Error(`O provedor ${provider} ainda não suporta esta tarefa multimodal no app.`);
-    }
-
-    return runOpenRouterProvider({ providerId: provider, system, prompt, temperature, maxTokens });
+    return runOpenRouterProvider({ providerId: provider, system, prompt, temperature, maxTokens, attachments });
   }
 
   if (provider === 'gemini') {
@@ -198,6 +195,30 @@ async function extractTextWithVisionFallback(
   provider: AIProviderId,
   file: File,
 ): Promise<{ provider: AIProviderId; model: string; content: string; raw: unknown }> {
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+  const prompt = [
+    'Extraia o texto desta imagem com maxima fidelidade.',
+    'Nao resuma, nao interprete e nao classifique.',
+    'Preserve valores, datas e nomes como aparecerem.',
+    'Responda apenas com o texto extraido em portugues do Brasil.',
+  ].join('\n');
+
+  if (
+    provider === 'openrouterFree' ||
+    provider === 'openrouterFast' ||
+    provider === 'openrouterReasoning' ||
+    provider === 'openrouterPremium'
+  ) {
+    return runOpenRouterProvider({
+      providerId: provider,
+      system: 'Voce e um leitor OCR preciso.',
+      prompt,
+      temperature: 0,
+      maxTokens: 1800,
+      attachments: [{ mimeType: file.type || 'image/jpeg', data: base64, fileName: file.name }],
+    });
+  }
+
   if (provider === 'glmOcr') {
     return runGlmOcrProvider({ image: await file.arrayBuffer(), providerId: 'glmOcr' });
   }
@@ -206,17 +227,9 @@ async function extractTextWithVisionFallback(
     return runGlmOcrProvider({ image: await file.arrayBuffer(), providerId: 'gemma4' });
   }
 
-  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
-  const prompt = [
-    'Extraia o texto desta imagem com máxima fidelidade.',
-    'Não resuma, não interprete e não classifique.',
-    'Preserve valores, datas e nomes como aparecerem.',
-    'Responda apenas com o texto extraído em português do Brasil.',
-  ].join('\n');
-
   if (provider === 'gemini') {
     return runGeminiProvider({
-      system: 'Você é um leitor OCR preciso.',
+      system: 'Voce e um leitor OCR preciso.',
       prompt,
       temperature: 0,
       maxTokens: 1800,
@@ -224,9 +237,8 @@ async function extractTextWithVisionFallback(
     });
   }
 
-  throw new Error(`O provedor ${provider} não está habilitado para OCR de imagem.`);
+  throw new Error(`O provedor ${provider} nao esta habilitado para OCR de imagem.`);
 }
-
 export async function runOCR({
   file,
   provider = 'automatico',
@@ -484,3 +496,7 @@ export async function runAI({
     error: 'Não foi possível consultar a IA agora. Tente novamente em instantes.',
   };
 }
+
+
+
+

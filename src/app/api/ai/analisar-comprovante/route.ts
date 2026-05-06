@@ -1,111 +1,255 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { runAI } from '@/lib/ai/aiService';
+import { type AIModelId } from '@/lib/ai/aiModels';
+import { callOpenRouterVision } from '@/lib/ai/providers/openRouterProvider';
 import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+interface ReceiptData {
+  estabelecimento: string;
+  valor_total: number | null;
+  data: string;
+  forma_pagamento: string;
+  categoria_sugerida: string;
+  confianca: number;
+  observacoes: string;
+  texto_extraido: string;
+}
 
-export async function POST(req: NextRequest) {
+function isMultipart(req: NextRequest) {
+  return req.headers.get('content-type')?.toLowerCase().includes('multipart/form-data') ?? false;
+}
+
+function jsonFromText(text: string) {
+  const clean = text.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+
   try {
-    const formData = await req.formData();
-    const requestedModel = String(formData.get('aiModel') || 'automatico');
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        {
-          erro:
-            requestedModel !== 'automatico' && requestedModel !== 'gemini'
-              ? 'O modelo escolhido não lê comprovantes diretamente e o fallback multimodal está indisponível agora.'
-              : 'A IA de leitura de comprovantes está indisponível no momento.',
-        },
-        { status: 503 },
-      );
-    }
-    const foto     = formData.get('foto') as File;
+function inferCategoryId(data: ReceiptData) {
+  const source = `${data.categoria_sugerida} ${data.estabelecimento}`.toLowerCase();
+  for (const [keyword, categoryId] of Object.entries(PALAVRAS_CHAVE_CATEGORIAS)) {
+    if (source.includes(keyword)) return categoryId;
+  }
 
-    if (!foto) {
-      return NextResponse.json({ erro: 'Nenhuma foto enviada' }, { status: 400 });
-    }
+  if (data.forma_pagamento === 'pix') return 'pix_enviado';
+  return undefined;
+}
 
-    const bytes    = await foto.arrayBuffer();
-    const base64   = Buffer.from(bytes).toString('base64');
-    const mimeType = foto.type || 'image/jpeg';
+function normalizeReceiptData(input?: Record<string, unknown> | null): ReceiptData {
+  return {
+    estabelecimento: typeof input?.estabelecimento === 'string' ? input.estabelecimento : '',
+    valor_total: typeof input?.valor_total === 'number' ? input.valor_total : null,
+    data: typeof input?.data === 'string' ? input.data : '',
+    forma_pagamento: typeof input?.forma_pagamento === 'string' ? input.forma_pagamento : '',
+    categoria_sugerida: typeof input?.categoria_sugerida === 'string' ? input.categoria_sugerida : '',
+    confianca: typeof input?.confianca === 'number' ? input.confianca : 0,
+    observacoes: typeof input?.observacoes === 'string' ? input.observacoes : '',
+    texto_extraido: typeof input?.texto_extraido === 'string' ? input.texto_extraido : '',
+  };
+}
 
-    const prompt = `Você é um assistente financeiro brasileiro. Analise esta imagem de comprovante, recibo ou extrato bancário e extraia as informações de transação.
-
-Retorne SOMENTE um JSON válido no formato abaixo, sem texto extra:
-
+function buildStructuredPrompt(textoExtraido: string) {
+  return `Voce recebeu texto extraido de um comprovante, recibo ou nota fiscal.
+Retorne apenas JSON valido neste formato:
 {
-  "descricao": "nome do estabelecimento ou descrição da transação",
-  "valor": 00.00,
-  "data": "YYYY-MM-DD",
-  "horario": "HH:mm",
-  "metodo_pagamento": "pix" | "debito" | "credito" | "dinheiro" | "transferencia" | "outro",
-  "parcelas": 1,
-  "local": "nome do local se visível",
-  "tipo": "despesa" | "receita",
-  "categoria_sugerida": "categoria em português",
-  "destinatario": "nome do destinatário se for Pix/TED"
+  "estabelecimento": "",
+  "valor_total": null,
+  "data": "",
+  "forma_pagamento": "",
+  "categoria_sugerida": "",
+  "confianca": 0,
+  "observacoes": "",
+  "texto_extraido": ""
 }
 
 Regras:
-- Se não encontrar algum campo, use null
-- Data no formato YYYY-MM-DD
-- Valor como número decimal (ex: 47.50, não "47,50")
-- Parcelas como número inteiro
-- Se for comprovante de Pix enviado: tipo = "despesa", metodo_pagamento = "pix"
-- Se for comprovante de Pix recebido: tipo = "receita", metodo_pagamento = "pix"
-- RESPONDA APENAS JSON, sem markdown.`;
+- Use apenas o texto fornecido.
+- Se nao identificar um campo, use null ou string vazia.
+- Nao invente valores nem datas.
+- "confianca" deve ser um numero de 0 a 1.
+- "texto_extraido" deve repetir o texto recebido, sem resumir.
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-    });
+Texto extraido:
+${textoExtraido}`;
+}
 
-    const result  = await model.generateContent([
-      { inlineData: { data: base64, mimeType } },
-      prompt,
-    ]);
+const RECEIPT_VISION_PROMPT = `Analise a imagem de comprovante, recibo ou nota fiscal.
+Retorne apenas JSON valido neste formato:
+{
+  "estabelecimento": "",
+  "valor_total": null,
+  "data": "",
+  "forma_pagamento": "",
+  "categoria_sugerida": "",
+  "confianca": 0,
+  "observacoes": "",
+  "texto_extraido": ""
+}
 
-    const texto = result.response.text().trim();
+Regras:
+- Nao invente valores, datas ou estabelecimentos.
+- Se algum campo nao estiver visivel, use null ou string vazia.
+- "confianca" deve ser um numero de 0 a 1.
+- "texto_extraido" deve conter o maximo de texto relevante lido na imagem.
+- Responda apenas com JSON, sem markdown.`;
 
-    let dadosExtraidos: Record<string, unknown> = {};
-    try {
-      const jsonLimpo = texto.replace(/```json\n?|\n?```/g, '').trim();
-      dadosExtraidos = JSON.parse(jsonLimpo);
-    } catch {
+export async function POST(req: NextRequest) {
+  if (!isMultipart(req)) {
+    return NextResponse.json(
+      { success: false, error: 'Envie o comprovante como multipart/form-data.' },
+      { status: 400 },
+    );
+  }
+
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Nao foi possivel ler o envio do comprovante.' },
+      { status: 400 },
+    );
+  }
+
+  const foto = formData.get('foto');
+  const textoExtraidoManual = String(formData.get('texto_extraido') || '').trim();
+  const financialProvider = String(formData.get('financialProvider') || formData.get('aiModel') || 'automatico') as AIModelId;
+  const mode = financialProvider !== 'automatico' ? 'manual' : 'auto';
+
+  if (!(foto instanceof File) && !textoExtraidoManual) {
+    return NextResponse.json(
+      { success: false, error: 'Envie uma imagem do comprovante ou um texto extraido para analise.' },
+      { status: 400 },
+    );
+  }
+
+  if (foto instanceof File) {
+    if (!foto.type.startsWith('image/')) {
       return NextResponse.json(
-        { erro: 'Não foi possível interpretar a resposta da IA' },
+        { success: false, error: 'Formato invalido. Envie uma imagem JPG, PNG ou WEBP.' },
+        { status: 400 },
+      );
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (foto.size > maxBytes) {
+      return NextResponse.json(
+        { success: false, error: 'Imagem muito grande. O limite atual e 10 MB.' },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (!textoExtraidoManual && !process.env.OPENROUTER_VISION_MODEL) {
+    return NextResponse.json(
+      { success: false, error: 'Nao ha modelo multimodal configurado para leitura de comprovantes.' },
+      { status: 503 },
+    );
+  }
+
+  try {
+    let textoExtraido = textoExtraidoManual;
+    let visionJson: Record<string, unknown> | null = null;
+    let visionModelUsed: string | undefined;
+
+    if (foto instanceof File) {
+      const visionResult = await callOpenRouterVision({
+        providerId: 'openrouterFast',
+        system: 'Voce e um assistente financeiro prudente especializado em leitura de comprovantes.',
+        prompt: RECEIPT_VISION_PROMPT,
+        temperature: 0.1,
+        maxTokens: 1400,
+        attachment: {
+          mimeType: foto.type || 'image/jpeg',
+          data: Buffer.from(await foto.arrayBuffer()).toString('base64'),
+          fileName: foto.name,
+        },
+      });
+
+      visionModelUsed = visionResult.model;
+      visionJson = jsonFromText(visionResult.content);
+      if (!textoExtraido && typeof visionJson?.texto_extraido === 'string') {
+        textoExtraido = visionJson.texto_extraido;
+      }
+    }
+
+    let structuredJson = visionJson;
+    let modelUsed = visionModelUsed;
+    const providerUsed = 'openrouter';
+    let fallbackUsed = false;
+
+    if (textoExtraido) {
+      const structured = await runAI({
+        task: 'estruturar_transacao_de_recibo',
+        provider: financialProvider,
+        mode,
+        input: {
+          customPrompt: buildStructuredPrompt(textoExtraido),
+        },
+        options: { temperature: 0.1, maxTokens: 700 },
+      });
+
+      if (!structured.success || !structured.answer) {
+        return NextResponse.json(
+          { success: false, error: structured.error || 'Nao foi possivel estruturar os dados do comprovante agora.' },
+          { status: 503 },
+        );
+      }
+
+      structuredJson = jsonFromText(structured.answer) || structuredJson;
+      modelUsed = structured.modelUsed || modelUsed;
+      fallbackUsed = structured.fallbackUsed;
+    }
+
+    const data = normalizeReceiptData(structuredJson);
+    if (!data.texto_extraido) {
+      data.texto_extraido = textoExtraido;
+    }
+
+    if (
+      !data.estabelecimento &&
+      data.valor_total === null &&
+      !data.data &&
+      !data.forma_pagamento &&
+      !data.categoria_sugerida &&
+      !data.texto_extraido
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Nao foi possivel identificar dados suficientes no comprovante enviado.' },
         { status: 422 },
       );
     }
 
-    // Mapeia categoria sugerida para categoria do sistema
-    const categoriaSugerida = String(
-      dadosExtraidos.categoria_sugerida || dadosExtraidos.descricao || '',
-    ).toLowerCase();
-    let categoria_id: string | undefined;
-
-    for (const [palavra, catId] of Object.entries(PALAVRAS_CHAVE_CATEGORIAS)) {
-      if (categoriaSugerida.includes(palavra)) {
-        categoria_id = catId;
-        break;
-      }
-    }
-
-    if (!categoria_id && dadosExtraidos.tipo === 'receita') {
-      categoria_id = 'pix_recebido';
-    }
-    if (!categoria_id && dadosExtraidos.metodo_pagamento === 'pix') {
-      categoria_id = 'pix_enviado';
-    }
+    const categoria_id = inferCategoryId(data);
 
     return NextResponse.json({
-      dados: { ...dadosExtraidos, categoria_id },
-      texto_original: texto,
-      providerUsed: 'gemini',
+      success: true,
+      providerUsed,
+      modelUsed: modelUsed || process.env.OPENROUTER_VISION_MODEL || '',
+      fallbackUsed,
+      revisaoObrigatoria: true,
+      data,
+      dados: { ...data, categoria_id },
     });
   } catch (error) {
-    console.error('Erro ao analisar comprovante:', error);
-    return NextResponse.json({ erro: 'Erro interno ao processar imagem' }, { status: 500 });
+    const message = error instanceof Error ? error.message : '';
+
+    if (message.includes('OPENROUTER_VISION_MODEL')) {
+      return NextResponse.json(
+        { success: false, error: 'Nao ha modelo multimodal configurado para leitura de comprovantes.' },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, error: 'Nao foi possivel analisar o comprovante agora. Tente novamente em instantes.' },
+      { status: 503 },
+    );
   }
 }
