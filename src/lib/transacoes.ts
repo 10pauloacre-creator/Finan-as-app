@@ -24,12 +24,20 @@ function getTotalParcelas(transacao: Pick<Transacao, 'parcelas'>) {
   return Math.max(transacao.parcelas || 1, 1);
 }
 
+function getParcelasJaLiquidadas(transacao: Pick<Transacao, 'parcela_atual' | 'parcelas'>) {
+  return Math.max(Math.min(transacao.parcela_atual || 0, getTotalParcelas(transacao)), 0);
+}
+
+function getParcelasRestantesPlanejadas(transacao: Pick<Transacao, 'parcelas' | 'parcela_atual'>) {
+  return Math.max(getTotalParcelas(transacao) - getParcelasJaLiquidadas(transacao), 0);
+}
+
 export function getValorTotalPlanejado(transacao: Pick<Transacao, 'valor' | 'parcelas'>) {
   return transacao.valor * getTotalParcelas(transacao);
 }
 
 export function getDataOcorrenciaNoMes(
-  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas' | 'parcela_atual'>,
   mes: number,
   ano: number,
 ) {
@@ -43,22 +51,23 @@ export function getDataOcorrenciaNoMes(
   if (deslocamento < 0) return null;
 
   const totalParcelas = getTotalParcelas(transacao);
+  const parcelasRestantes = getParcelasRestantesPlanejadas(transacao);
   const parcelada = totalParcelas > 1;
 
   if (transacao.classificacao === 'fixa') {
-    if (parcelada && deslocamento >= totalParcelas) return null;
+    if (parcelada && deslocamento >= parcelasRestantes) return null;
     return ocorrencia;
   }
 
   if (parcelada) {
-    return deslocamento < totalParcelas ? ocorrencia : null;
+    return deslocamento < parcelasRestantes ? ocorrencia : null;
   }
 
   return dataBase.getFullYear() === ano && dataBase.getMonth() === mesIndex ? ocorrencia : null;
 }
 
 export function contarOcorrenciasAteData(
-  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas' | 'parcela_atual'>,
   referencia = startOfTodayLocal(),
 ) {
   const dataReferencia = inicioDoDia(referencia);
@@ -66,6 +75,7 @@ export function contarOcorrenciasAteData(
   if (dataBase > dataReferencia) return 0;
 
   const totalParcelas = getTotalParcelas(transacao);
+  const parcelasRestantes = getParcelasRestantesPlanejadas(transacao);
   const parcelada = totalParcelas > 1;
 
   if (transacao.classificacao !== 'fixa' && !parcelada) {
@@ -77,7 +87,7 @@ export function contarOcorrenciasAteData(
 
   while (true) {
     if (transacao.classificacao !== 'fixa' && deslocamento > 0 && !parcelada) break;
-    if (parcelada && deslocamento >= totalParcelas) break;
+    if (parcelada && deslocamento >= parcelasRestantes) break;
 
     const ocorrencia = criarDataNoMes(
       dataBase.getFullYear(),
@@ -96,7 +106,7 @@ export function contarOcorrenciasAteData(
 }
 
 export function transacaoJaOcorreuAteData(
-  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas' | 'parcela_atual'>,
   referencia = startOfTodayLocal(),
 ) {
   const dataReferencia = inicioDoDia(referencia);
@@ -120,7 +130,7 @@ export function transacaoJaOcorreuAteData(
 }
 
 export function transacaoContaNoMesAteData(
-  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas' | 'parcela_atual'>,
   mes: number,
   ano: number,
   referencia = startOfTodayLocal(),
@@ -135,12 +145,12 @@ export function transacaoContaNoMesAteData(
   return ocorrencia <= dataReferencia;
 }
 
-export function calcularDataFinalParcelamento(transacao: Pick<Transacao, 'data' | 'parcelas'>) {
-  const totalParcelas = getTotalParcelas(transacao);
+export function calcularDataFinalParcelamento(transacao: Pick<Transacao, 'data' | 'parcelas' | 'parcela_atual'>) {
+  const totalParcelasRestantes = Math.max(getParcelasRestantesPlanejadas(transacao), 1);
   const dataBase = parseFinancialDate(transacao.data);
   return criarDataNoMes(
     dataBase.getFullYear(),
-    dataBase.getMonth() + Math.max(totalParcelas - 1, 0),
+    dataBase.getMonth() + Math.max(totalParcelasRestantes - 1, 0),
     dataBase.getDate(),
   );
 }
@@ -152,16 +162,17 @@ export function calcularParcelamentoInfo(
   const totalParcelas = getTotalParcelas(transacao);
   if (totalParcelas <= 1) return null;
 
-  const parcelaAtual = transacao.parcela_atual
-    ? Math.min(transacao.parcela_atual, totalParcelas)
-    : Math.min(contarOcorrenciasAteData(transacao, referencia), totalParcelas);
-  const parcelasRestantes = Math.max(totalParcelas - parcelaAtual, 0);
+  const parcelasLiquidadasAntes = getParcelasJaLiquidadas(transacao);
+  const ocorrenciasDesdeInicio = Math.min(contarOcorrenciasAteData(transacao, referencia), getParcelasRestantesPlanejadas(transacao));
+  const parcelasLiquidadasAgora = Math.min(parcelasLiquidadasAntes + ocorrenciasDesdeInicio, totalParcelas);
+  const parcelasRestantes = Math.max(totalParcelas - parcelasLiquidadasAgora, 0);
   const valorParcela = transacao.valor;
   const valorTotal = valorParcela * totalParcelas;
   const valorRestante = parcelasRestantes * valorParcela;
 
   return {
-    parcelaAtual,
+    parcelaAtual: parcelasLiquidadasAgora,
+    parcelasLiquidadasAntes,
     totalParcelas,
     parcelasRestantes,
     valorParcela,

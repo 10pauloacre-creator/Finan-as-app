@@ -686,8 +686,15 @@ ${extractedText}`,
       return Response.json({ success: false, error: 'CSV obrigatório.' }, { status: 400 });
     }
 
-    const text = await csv.text();
-    const parsed = parseCsvFinanceiro(text);
+    const buffer = Buffer.from(await csv.arrayBuffer());
+    const utf8Text = buffer.toString('utf8');
+    let parsed = parseCsvFinanceiro(utf8Text);
+
+    if (!parsed.transacoes.length) {
+      const latin1Text = buffer.toString('latin1');
+      parsed = parseCsvFinanceiro(latin1Text);
+    }
+
     if (!parsed.transacoes.length) {
       return Response.json({ success: false, error: 'Não encontrei lançamentos válidos nesse CSV.' }, { status: 422 });
     }

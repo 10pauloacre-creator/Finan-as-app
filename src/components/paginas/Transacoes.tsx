@@ -105,6 +105,7 @@ function ModalDetalheTransacao({
   const hoje = startOfTodayLocal();
   const parcelamento = calcularParcelamentoInfo(transacao, hoje);
   const gastoAnual = calcularGastoRecorrenteAnual(transacao);
+  const ehReceita = transacao.tipo === 'receita';
   const dataFinalParcelamento = transacao.parcelas && transacao.parcelas > 1
     ? calcularDataFinalParcelamento(transacao)
     : null;
@@ -122,10 +123,10 @@ function ModalDetalheTransacao({
             <button
               type="button"
               onClick={onEditar}
-              className="inline-flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300 hover:bg-purple-500/20"
+              className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-2 text-purple-300 hover:bg-purple-500/20"
+              title="Editar"
             >
               <Edit size={14} />
-              Editar
             </button>
             <button onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:text-white">
               <X size={20} />
@@ -199,11 +200,11 @@ function ModalDetalheTransacao({
                   <div className="mt-1 text-sm font-semibold text-white">{parcelamento.totalParcelas}x</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">Ja ocorreu</div>
-                  <div className="mt-1 text-sm font-semibold text-white">{parcelamento.parcelaAtual}x</div>
+                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Ja recebido' : 'Ja pago'}</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{parcelamento.parcelasLiquidadasAntes}/{parcelamento.totalParcelas}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">Faltam</div>
+                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Faltam receber' : 'Faltam pagar'}</div>
                   <div className="mt-1 text-sm font-semibold text-amber-300">{parcelamento.parcelasRestantes}x</div>
                 </div>
                 <div>
@@ -211,7 +212,7 @@ function ModalDetalheTransacao({
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(parcelamento.valorParcela)}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">Valor restante</div>
+                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Valor a receber' : 'Valor restante'}</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(parcelamento.valorRestante)}</div>
                 </div>
                 <div>
@@ -222,7 +223,7 @@ function ModalDetalheTransacao({
                 </div>
               </div>
               <p className="mt-3 text-xs text-slate-400">
-                Valor total planejado: {formatarMoeda(parcelamento.valorTotal)}.
+                Parcela atual em aberto: {Math.min(parcelamento.parcelasLiquidadasAntes + 1, parcelamento.totalParcelas)}/{parcelamento.totalParcelas}. Valor total planejado: {formatarMoeda(parcelamento.valorTotal)}.
                 {dataFinalParcelamento ? ` Ultima previsao em ${dataFinalParcelamento.toLocaleDateString('pt-BR')}.` : ''}
               </p>
             </div>

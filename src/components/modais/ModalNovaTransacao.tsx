@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Camera, Brain, Loader2, CheckCircle } from 'lucide-react';
+import { X, Camera, Brain, Loader2, CheckCircle, Trash2 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { ClassificacaoTransacao, MetodoPagamento, TipoTransacao, Transacao, BANCO_INFO } from '@/types';
@@ -25,26 +25,46 @@ interface Props {
   tipoInicial?: TipoTransacao;
 }
 
+type FormState = {
+  descricao: string;
+  valor: string;
+  tipo: TipoTransacao;
+  classificacao: ClassificacaoTransacao;
+  categoria_id: string;
+  data: string;
+  horario: string;
+  metodo_pagamento: MetodoPagamento;
+  parcelas: string;
+  parcela_atual: string;
+  local: string;
+  observacoes: string;
+  conta_id: string;
+  cartao_id: string;
+};
+
 const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
-  { valor: 'pix', label: 'Pix', icone: '⚡' },
-  { valor: 'debito', label: 'Débito', icone: '💳' },
-  { valor: 'credito', label: 'Crédito', icone: '💳' },
-  { valor: 'dinheiro', label: 'Dinheiro', icone: '💵' },
-  { valor: 'transferencia', label: 'TED/DOC', icone: '🏦' },
-  { valor: 'outro', label: 'Outro', icone: '📋' },
+  { valor: 'pix', label: 'Pix', icone: 'PIX' },
+  { valor: 'debito', label: 'Debito', icone: 'DB' },
+  { valor: 'credito', label: 'Credito', icone: 'CR' },
+  { valor: 'emprestimo', label: 'Emprestimo', icone: 'EMP' },
+  { valor: 'financiamento', label: 'Financiamento', icone: 'FIN' },
+  { valor: 'dinheiro', label: 'Dinheiro', icone: 'R$' },
+  { valor: 'transferencia', label: 'TED/DOC', icone: 'TED' },
+  { valor: 'outro', label: 'Outro', icone: 'OUT' },
 ];
 
-function getFormVazio(tipo: TipoTransacao = 'despesa') {
+function getFormVazio(tipo: TipoTransacao = 'despesa'): FormState {
   return {
     descricao: '',
     valor: '',
     tipo,
-    classificacao: 'padrao' as ClassificacaoTransacao,
+    classificacao: 'padrao',
     categoria_id: '',
     data: formatFinancialDate(new Date()),
     horario: '',
-    metodo_pagamento: 'pix' as MetodoPagamento,
+    metodo_pagamento: 'pix',
     parcelas: '1',
+    parcela_atual: '0',
     local: '',
     observacoes: '',
     conta_id: '',
@@ -53,8 +73,19 @@ function getFormVazio(tipo: TipoTransacao = 'despesa') {
 }
 
 export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa' }: Props) {
-  const { categorias, contas, cartoes, transacoes, adicionarTransacao, editarTransacao, config, atualizarConfig } = useFinanceiroStore();
-  const [form, setForm] = useState(() => getFormVazio(tipoInicial));
+  const {
+    categorias,
+    contas,
+    cartoes,
+    transacoes,
+    adicionarTransacao,
+    editarTransacao,
+    excluirTransacao,
+    config,
+    atualizarConfig,
+  } = useFinanceiroStore();
+
+  const [form, setForm] = useState<FormState>(() => getFormVazio(tipoInicial));
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroIA, setErroIA] = useState('');
@@ -63,7 +94,6 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   const [duplicataEncontrada, setDuplicataEncontrada] = useState<Transacao | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Preenche form ao editar
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       if (transacaoEditar) {
@@ -78,6 +108,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
           horario: transacaoEditar.horario || '',
           metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
           parcelas: transacaoEditar.parcelas?.toString() || '1',
+          parcela_atual: transacaoEditar.parcela_atual?.toString() || '0',
           local: transacaoEditar.local || '',
           observacoes: transacaoEditar.observacoes || '',
           conta_id: transacaoEditar.conta_id || '',
@@ -93,11 +124,12 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     return () => window.clearTimeout(timeout);
   }, [transacaoEditar, aberto, tipoInicial]);
 
-  // Categorias filtradas pelo tipo
-  const categoriasFiltradas = categorias.filter(c => c.tipo === form.tipo || c.tipo === 'transferencia');
-
-  const mostrarContaSelector = ['pix', 'debito', 'transferencia'].includes(form.metodo_pagamento);
+  const categoriasFiltradas = categorias.filter((categoria) => categoria.tipo === form.tipo || categoria.tipo === 'transferencia');
+  const mostrarContaSelector = ['pix', 'debito', 'transferencia', 'emprestimo', 'financiamento'].includes(form.metodo_pagamento);
   const mostrarCartaoSelector = form.metodo_pagamento === 'credito';
+  const usaControleDeSerie =
+    (form.tipo === 'despesa' && ['emprestimo', 'financiamento'].includes(form.metodo_pagamento))
+    || (form.tipo === 'receita' && form.classificacao === 'fixa');
   const contaObrigatoria = mostrarContaSelector && contas.length > 0;
   const cartaoObrigatorio = mostrarCartaoSelector && cartoes.length > 0;
   const formularioValido = Boolean(form.descricao && form.valor && form.categoria_id)
@@ -109,7 +141,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = ev => setFotoPreview(ev.target?.result as string);
+    reader.onload = (ev) => setFotoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
 
     setAnalisandoIA(true);
@@ -127,27 +159,27 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       const data = await res.json();
 
       if (data.dados) {
-        setForm(f => {
-          const categoriaOCR = data.dados.categoria_id || f.categoria_id;
-          return ({
-          ...f,
-          descricao: data.dados.descricao || data.dados.estabelecimento || f.descricao,
-          valor: (data.dados.valor ?? data.dados.valor_total)?.toString() || f.valor,
-          categoria_id: categoriaOCR,
-          data: data.dados.data || f.data,
-          horario: data.dados.horario || f.horario,
-          metodo_pagamento: categoriaOCR === 'feira_mantimentos'
-            ? 'credito'
-            : data.dados.metodo_pagamento || data.dados.forma_pagamento || f.metodo_pagamento,
-          parcelas: data.dados.parcelas?.toString() || f.parcelas,
-          local: data.dados.local || f.local,
-          conta_id: categoriaOCR === 'feira_mantimentos' ? '' : f.conta_id,
-        });
+        setForm((atual) => {
+          const categoriaOCR = data.dados.categoria_id || atual.categoria_id;
+          return {
+            ...atual,
+            descricao: data.dados.descricao || data.dados.estabelecimento || atual.descricao,
+            valor: (data.dados.valor ?? data.dados.valor_total)?.toString() || atual.valor,
+            categoria_id: categoriaOCR,
+            data: data.dados.data || atual.data,
+            horario: data.dados.horario || atual.horario,
+            metodo_pagamento: categoriaOCR === 'feira_mantimentos'
+              ? 'credito'
+              : data.dados.metodo_pagamento || data.dados.forma_pagamento || atual.metodo_pagamento,
+            parcelas: data.dados.parcelas?.toString() || atual.parcelas,
+            local: data.dados.local || atual.local,
+            conta_id: categoriaOCR === 'feira_mantimentos' ? '' : atual.conta_id,
+          };
         });
         setItensCompraIA(Array.isArray(data.dados.itens_compra) ? data.dados.itens_compra : []);
       }
     } catch {
-      setErroIA('Não foi possível analisar a imagem. Preencha manualmente.');
+      setErroIA('Nao foi possivel analisar a imagem. Preencha manualmente.');
     } finally {
       setAnalisandoIA(false);
     }
@@ -163,7 +195,8 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       data: form.data,
       horario: form.horario || undefined,
       metodo_pagamento: form.metodo_pagamento,
-      parcelas: parseInt(form.parcelas) || 1,
+      parcelas: parseInt(form.parcelas, 10) || 1,
+      parcela_atual: parseInt(form.parcela_atual, 10) || 0,
       local: form.local || undefined,
       observacoes: form.observacoes || undefined,
       origem: 'manual' as const,
@@ -189,7 +222,6 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     e.preventDefault();
     if (!formularioValido) return;
 
-    // Only check for duplicates on new transactions
     if (!transacaoEditar) {
       const duplicata = detectarDuplicata(
         {
@@ -209,6 +241,14 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     salvarTransacao();
   }
 
+  function handleExcluir() {
+    if (!transacaoEditar) return;
+    if (confirm('Excluir este lancamento?')) {
+      excluirTransacao(transacaoEditar.id);
+      onFechar();
+    }
+  }
+
   if (!aberto) return null;
 
   const opcoesClassificacao = form.tipo === 'despesa'
@@ -224,44 +264,43 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
         { valor: 'futura', label: 'Receita futura' },
       ]
     : [
-        { valor: 'padrao', label: 'Transferência' },
+        { valor: 'padrao', label: 'Transferencia' },
       ];
+
+  const parcelasNumericas = Math.max(parseInt(form.parcelas || '1', 10), 1);
+  const parcelasLiquidadas = Math.max(Math.min(parseInt(form.parcela_atual || '0', 10), parcelasNumericas), 0);
+  const parcelasRestantes = Math.max(parcelasNumericas - parcelasLiquidadas, 0);
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-        {/* Overlay */}
+      <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onFechar} />
 
-        {/* Modal */}
-        <div className="relative bg-slate-900 border border-slate-700 rounded-t-3xl lg:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
-          {/* Header */}
-          <div className="flex items-center justify-between p-5 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+        <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-slate-700 bg-slate-900 lg:rounded-2xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900 p-5">
             <h2 className="text-lg font-bold text-white">
-              {transacaoEditar ? 'Editar Transação' : 'Nova Transação'}
+              {transacaoEditar ? 'Editar transacao' : 'Nova transacao'}
             </h2>
-            <button onClick={onFechar} className="text-slate-400 hover:text-white p-1 rounded-lg">
+            <button onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:text-white">
               <X size={20} />
             </button>
           </div>
 
-          {/* Sucesso */}
           {sucesso && (
-            <div className="flex items-center justify-center gap-2 p-4 bg-emerald-900/30 text-emerald-400">
+            <div className="flex items-center justify-center gap-2 bg-emerald-900/30 p-4 text-emerald-400">
               <CheckCircle size={18} />
-              <span className="text-sm font-medium">Transação salva!</span>
+              <span className="text-sm font-medium">Transacao salva!</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            {/* Tipo de transação */}
-            <div className="flex bg-slate-800 rounded-xl p-1">
-              {(['despesa', 'receita', 'transferencia'] as TipoTransacao[]).map(tipo => (
+          <form onSubmit={handleSubmit} className="space-y-4 p-5">
+            <div className="flex rounded-xl bg-slate-800 p-1">
+              {(['despesa', 'receita', 'transferencia'] as TipoTransacao[]).map((tipo) => (
                 <button
                   key={tipo}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, tipo, classificacao: 'padrao', categoria_id: '' }))}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
+                  onClick={() => setForm((atual) => ({ ...atual, tipo, classificacao: 'padrao', categoria_id: '' }))}
+                  className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
                     form.tipo === tipo
                       ? tipo === 'despesa'
                         ? 'bg-red-600 text-white'
@@ -271,13 +310,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {tipo === 'despesa' ? '💸 Despesa' : tipo === 'receita' ? '💰 Receita' : '↔️ Transfer.'}
+                  {tipo === 'despesa' ? 'Despesa' : tipo === 'receita' ? 'Receita' : 'Transfer.'}
                 </button>
               ))}
             </div>
 
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">
+              <label className="mb-1 block text-xs text-slate-400">
                 {form.tipo === 'despesa' ? 'Tipo de gasto' : form.tipo === 'receita' ? 'Tipo de receita' : 'Tipo'}
               </label>
               <div className="flex flex-wrap gap-2">
@@ -285,8 +324,8 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   <button
                     key={opcao.valor}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, classificacao: opcao.valor as ClassificacaoTransacao }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    onClick={() => setForm((atual) => ({ ...atual, classificacao: opcao.valor as ClassificacaoTransacao }))}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                       form.classificacao === opcao.valor
                         ? 'bg-purple-600 text-white'
                         : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -296,18 +335,12 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   </button>
                 ))}
               </div>
-              {form.tipo !== 'transferencia' && (
-                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                  Recorrente repete todo mes na mesma data. Antes do dia chegar, o lancamento fica pendente e nao entra no saldo atual.
-                </p>
-              )}
             </div>
 
-            {/* Upload de foto para IA analisar */}
             {!transacaoEditar && (
               <div>
                 <div className="mb-3">
-                  <p className="text-[11px] text-slate-500 mb-2">Leitor OCR</p>
+                  <p className="mb-2 text-[11px] text-slate-500">Leitor OCR</p>
                   <OCRModelSelect
                     value={config.ai_modelo_ocr_padrao || 'automatico'}
                     onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
@@ -325,7 +358,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={analisandoIA}
-                  className="w-full flex items-center justify-center gap-2 border border-dashed border-purple-700 text-purple-400 hover:bg-purple-900/20 rounded-xl py-3 text-sm font-medium transition-all"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-purple-700 py-3 text-sm font-medium text-purple-400 transition-all hover:bg-purple-900/20"
                 >
                   {analisandoIA ? (
                     <>
@@ -336,151 +369,146 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   ) : (
                     <>
                       <Camera size={16} />
-                      📸 Fotografar comprovante (IA preenche sozinha)
+                      Fotografar comprovante
                     </>
                   )}
                 </button>
-                {erroIA && <p className="text-red-400 text-xs mt-1">{erroIA}</p>}
+                {erroIA && <p className="mt-1 text-xs text-red-400">{erroIA}</p>}
                 {fotoPreview && !analisandoIA && (
-                  <div className="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+                  <div className="mt-2 flex items-center gap-1 text-xs text-emerald-400">
                     <CheckCircle size={12} />
-                    Foto carregada — confira os campos abaixo
+                    Foto carregada, confira os campos abaixo
                   </div>
                 )}
               </div>
             )}
 
-            {/* Descrição */}
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Descrição *</label>
+              <label className="mb-1 block text-xs text-slate-400">Descricao *</label>
               <input
                 type="text"
-                placeholder="Ex: Mercadinho, Uber, iFood..."
+                placeholder="Ex: Mercado, aluguel, parcela do carro"
                 value={form.descricao}
-                onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                onChange={(e) => setForm((atual) => ({ ...atual, descricao: e.target.value }))}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                 required
               />
             </div>
 
-            {/* Valor e data */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Valor (R$) *</label>
+                <label className="mb-1 block text-xs text-slate-400">Valor da parcela (R$) *</label>
                 <input
                   type="number"
                   placeholder="0,00"
                   value={form.valor}
-                  onChange={e => setForm(f => ({ ...f, valor: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                  onChange={(e) => setForm((atual) => ({ ...atual, valor: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                   required
                   min="0"
                   step="0.01"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Data</label>
+                <label className="mb-1 block text-xs text-slate-400">Data</label>
                 <input
                   type="date"
                   value={form.data}
-                  onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                  onChange={(e) => setForm((atual) => ({ ...atual, data: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Horario</label>
+                <label className="mb-1 block text-xs text-slate-400">Horario</label>
                 <input
                   type="time"
                   value={form.horario}
-                  onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                  onChange={(e) => setForm((atual) => ({ ...atual, horario: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Regra da data</label>
+                <label className="mb-1 block text-xs text-slate-400">Regra da data</label>
                 <div className="flex h-[42px] items-center rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs text-slate-400">
                   {form.classificacao === 'fixa'
                     ? 'Repete todo mes a partir desta data'
                     : form.classificacao === 'futura'
-                    ? 'So entra no saldo nesta data'
+                    ? 'Entra apenas nesta data'
                     : 'Considera exatamente esta data'}
                 </div>
               </div>
             </div>
 
-            {/* Categoria */}
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Categoria *</label>
-              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
-                {categoriasFiltradas.map(cat => (
+              <label className="mb-1 block text-xs text-slate-400">Categoria *</label>
+              <div className="grid max-h-40 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                {categoriasFiltradas.map((categoria) => (
                   <button
-                    key={cat.id}
+                    key={categoria.id}
                     type="button"
-                    onClick={() => setForm(f => ({
-                      ...f,
-                      categoria_id: cat.id,
-                      metodo_pagamento: cat.id === 'feira_mantimentos' ? 'credito' : f.metodo_pagamento,
-                      conta_id: cat.id === 'feira_mantimentos' ? '' : f.conta_id,
+                    onClick={() => setForm((atual) => ({
+                      ...atual,
+                      categoria_id: categoria.id,
+                      metodo_pagamento: categoria.id === 'feira_mantimentos' ? 'credito' : atual.metodo_pagamento,
+                      conta_id: categoria.id === 'feira_mantimentos' ? '' : atual.conta_id,
                     }))}
-                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-xs transition-all ${
-                      form.categoria_id === cat.id
-                        ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600'
+                    className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs transition-all ${
+                      form.categoria_id === categoria.id
+                        ? 'border-purple-500 bg-purple-600 text-white'
+                        : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'
                     }`}
                   >
-                    <span className="text-lg">{cat.icone}</span>
-                    <span className="truncate w-full text-center text-[10px]">{cat.nome}</span>
+                    <span className="text-lg">{categoria.icone}</span>
+                    <span className="w-full truncate text-center text-[10px]">{categoria.nome}</span>
                   </button>
                 ))}
               </div>
-              {form.categoria_id === 'feira_mantimentos' && (
-                <p className="text-[11px] text-amber-400 mt-2">
-                  Feira de mantimentos exige vínculo com um cartão para guardar a nota item a item.
-                </p>
-              )}
             </div>
 
-            {/* Método de pagamento */}
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Forma de Pagamento</label>
+              <label className="mb-1 block text-xs text-slate-400">Forma de pagamento</label>
               <div className="flex flex-wrap gap-2">
-                {METODOS.map(m => (
+                {METODOS.map((metodo) => (
                   <button
-                    key={m.valor}
+                    key={metodo.valor}
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, metodo_pagamento: m.valor, conta_id: '', cartao_id: '' }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      form.metodo_pagamento === m.valor
+                    onClick={() => setForm((atual) => ({
+                      ...atual,
+                      metodo_pagamento: metodo.valor,
+                      conta_id: '',
+                      cartao_id: '',
+                    }))}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                      form.metodo_pagamento === metodo.valor
                         ? 'bg-purple-600 text-white'
                         : 'bg-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    {m.icone} {m.label}
+                    {metodo.icone} {metodo.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Conta de origem (PIX, débito, transferência) */}
             {mostrarContaSelector && contas.length > 0 && (
               <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Conta de origem</label>
+                <label className="mb-1.5 block text-xs text-slate-400">Conta de origem</label>
                 <div className="flex flex-wrap gap-2">
-                  {contas.map(conta => {
+                  {contas.map((conta) => {
                     const info = BANCO_INFO[conta.banco];
                     const ativo = form.conta_id === conta.id;
                     return (
                       <button
                         key={conta.id}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, conta_id: ativo ? '' : conta.id }))}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                        onClick={() => setForm((atual) => ({ ...atual, conta_id: ativo ? '' : conta.id }))}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
                           ativo
-                            ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
-                            : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
+                            ? 'border-purple-500/30 bg-purple-600/20 text-purple-300'
+                            : 'border-white/10 bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200'
                         }`}
                       >
                         <BankLogo banco={conta.banco} size={20} className="h-5 w-5 object-contain" />
@@ -490,33 +518,32 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.conta_id && (
-                  <p className="text-[11px] text-amber-400 mt-1">Selecione uma conta para continuar.</p>
+                  <p className="mt-1 text-[11px] text-amber-400">Selecione uma conta para continuar.</p>
                 )}
               </div>
             )}
 
-            {/* Cartão de crédito */}
             {mostrarCartaoSelector && cartoes.length > 0 && (
               <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Cartão de crédito</label>
+                <label className="mb-1.5 block text-xs text-slate-400">Cartao de credito</label>
                 <div className="flex flex-wrap gap-2">
-                  {cartoes.map(cartao => {
+                  {cartoes.map((cartao) => {
                     const ativo = form.cartao_id === cartao.id;
                     return (
                       <button
                         key={cartao.id}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, cartao_id: ativo ? '' : cartao.id }))}
-                        className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                        onClick={() => setForm((atual) => ({ ...atual, cartao_id: ativo ? '' : cartao.id }))}
+                        className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
                           ativo
-                            ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
-                            : 'bg-white/[0.04] border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/[0.08]'
+                            ? 'border-purple-500/30 bg-purple-600/20 text-purple-300'
+                            : 'border-white/10 bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-slate-200'
                         }`}
                       >
-                        <BankLogo banco={cartao.banco} size={20} className="h-5 w-5 object-contain mt-0.5" />
+                        <BankLogo banco={cartao.banco} size={20} className="mt-0.5 h-5 w-5 object-contain" />
                         <span className="flex flex-col items-start">
                           <span>{cartao.nome}</span>
-                          <span className={`text-[10px] mt-0.5 ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
+                          <span className={`mt-0.5 text-[10px] ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
                             Fatura: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartao.fatura_atual)}
                           </span>
                         </span>
@@ -525,32 +552,31 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.cartao_id && (
-                  <p className="text-[11px] text-amber-400 mt-1">Selecione um cartão para continuar.</p>
+                  <p className="mt-1 text-[11px] text-amber-400">Selecione um cartao para continuar.</p>
                 )}
               </div>
             )}
 
-            {/* Parcelamento */}
-            {form.tipo === 'despesa' && (
+            {form.tipo === 'despesa' && !usaControleDeSerie && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Parcelamento</label>
+                  <label className="mb-1 block text-xs text-slate-400">Parcelamento</label>
                   <select
                     value={form.parcelas}
-                    onChange={e => setForm(f => ({ ...f, parcelas: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                    onChange={(e) => setForm((atual) => ({ ...atual, parcelas: e.target.value, parcela_atual: '0' }))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                   >
-                    {Array.from({ length: 36 }, (_, i) => i + 1).map(n => (
+                    {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>{n}x</option>
                     ))}
                   </select>
                 </div>
-                {parseInt(form.parcelas) > 1 && form.valor && (
+                {parcelasNumericas > 1 && form.valor && (
                   <div className="flex items-end pb-2.5">
                     <div>
                       <div className="text-xs text-slate-500">Total previsto</div>
-                      <div className="text-purple-400 font-semibold text-sm">
-                        {formatarMoeda(parseFloat(form.valor || '0') * parseInt(form.parcelas, 10))}
+                      <div className="text-sm font-semibold text-purple-400">
+                        {formatarMoeda(parseFloat(form.valor || '0') * parcelasNumericas)}
                       </div>
                     </div>
                   </div>
@@ -558,42 +584,99 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
               </div>
             )}
 
-            {/* Local (opcional) */}
+            {usaControleDeSerie && (
+              <div className="space-y-3 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-400">
+                      {form.tipo === 'receita' ? 'Total de parcelas a receber' : 'Total de parcelas'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.parcelas}
+                      onChange={(e) => setForm((atual) => ({ ...atual, parcelas: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-400">
+                      {form.tipo === 'receita' ? 'Parcelas ja recebidas' : 'Parcelas pagas'}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={parcelasNumericas}
+                      value={form.parcela_atual}
+                      onChange={(e) => setForm((atual) => ({ ...atual, parcela_atual: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+                {form.valor && (
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                      <div className="text-slate-500">Total do contrato</div>
+                      <div className="mt-1 font-semibold text-purple-300">
+                        {formatarMoeda(parseFloat(form.valor || '0') * parcelasNumericas)}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-slate-900/60 px-3 py-2">
+                      <div className="text-slate-500">{form.tipo === 'receita' ? 'Ainda vai receber' : 'Ainda vai pagar'}</div>
+                      <div className="mt-1 font-semibold text-amber-300">
+                        {formatarMoeda(parseFloat(form.valor || '0') * parcelasRestantes)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Local (opcional)</label>
+              <label className="mb-1 block text-xs text-slate-400">Local (opcional)</label>
               <input
                 type="text"
-                placeholder="Ex: Mercadinho do João, Rio Branco-AC"
+                placeholder="Ex: Rio Branco-AC"
                 value={form.local}
-                onChange={e => setForm(f => ({ ...f, local: e.target.value }))}
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                onChange={(e) => setForm((atual) => ({ ...atual, local: e.target.value }))}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
               />
             </div>
 
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Observacoes</label>
+              <label className="mb-1 block text-xs text-slate-400">Observacoes</label>
               <textarea
                 rows={3}
                 placeholder="Anote detalhes importantes sobre este lancamento"
                 value={form.observacoes}
-                onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-                className="w-full resize-none bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                onChange={(e) => setForm((atual) => ({ ...atual, observacoes: e.target.value }))}
+                className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
               />
             </div>
 
-            {/* Botão salvar */}
-            <button
-              type="submit"
-              disabled={sucesso || !formularioValido}
-              className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-900 disabled:text-purple-700 text-white py-3 rounded-xl font-semibold transition-all active:scale-95"
-            >
-              {sucesso ? '✅ Salvo!' : transacaoEditar ? 'Salvar Alterações' : 'Lançar Transação'}
-            </button>
+            <div className="flex gap-3">
+              {transacaoEditar && (
+                <button
+                  type="button"
+                  onClick={handleExcluir}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-semibold text-red-300 transition-all hover:bg-red-500/20"
+                >
+                  <Trash2 size={16} />
+                  Excluir
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={sucesso || !formularioValido}
+                className="flex-1 rounded-xl bg-purple-600 py-3 font-semibold text-white transition-all hover:bg-purple-500 active:scale-95 disabled:bg-purple-900 disabled:text-purple-700"
+              >
+                {sucesso ? 'Salvo!' : transacaoEditar ? 'Salvar alteracoes' : 'Lancar transacao'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
 
-      {/* Modal de duplicata */}
       {duplicataEncontrada && (
         <ModalDuplicata
           transacaoExistente={duplicataEncontrada}
@@ -607,4 +690,3 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     </>
   );
 }
-

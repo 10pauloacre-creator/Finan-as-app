@@ -182,18 +182,25 @@ export default function Cartoes() {
     try {
       const lowerName = arquivo.name.toLowerCase();
       const isPdf = arquivo.type === 'application/pdf' || lowerName.endsWith('.pdf');
+      const isCsv = arquivo.type === 'text/csv' || lowerName.endsWith('.csv');
       const formData = new FormData();
-      const endpoint = isPdf ? '/api/assistente/pdf' : '/api/assistente/imagem';
 
       if (isPdf) {
+        formData.append('task', 'analisar_pdf_financeiro');
         formData.append('pdf', arquivo);
+      } else if (isCsv) {
+        formData.append('task', 'analisar_csv_financeiro');
+        formData.append('csv', arquivo);
       } else {
+        formData.append('task', 'analisar_imagem_financeira');
         formData.append('imagem', arquivo);
         formData.append('legenda', `Lista de lancamentos do cartao ${cartao.nome} do banco ${BANCO_INFO[cartao.banco].nome}. Extraia data, detalhe da compra, parcela e valor.`);
       }
-      formData.append('aiModel', config.ai_modelo_ocr_padrao || 'automatico');
+      formData.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
+      formData.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
+      formData.append('financialProvider', config.ai_modelo_padrao || 'automatico');
 
-      const resposta = await fetch(endpoint, {
+      const resposta = await fetch('/api/ai', {
         method: 'POST',
         body: formData,
       });
@@ -231,7 +238,7 @@ export default function Cartoes() {
           metodo_pagamento: 'credito',
           parcelas: tx.parcelas || undefined,
           local: tx.local || undefined,
-          origem: isPdf ? 'assistente' : 'assistente_imagem',
+          origem: isPdf || isCsv ? 'assistente' : 'assistente_imagem',
           cartao_id: cartao.id,
         });
 
@@ -242,7 +249,7 @@ export default function Cartoes() {
           categoria_id: resolverCategoriaId(tx, categorias),
           data: tx.data,
           tipo: tx.tipo,
-          origem: isPdf ? 'assistente' : 'assistente_imagem',
+          origem: isPdf || isCsv ? 'assistente' : 'assistente_imagem',
           criado_em: new Date().toISOString(),
         });
         importadas += 1;
@@ -282,7 +289,7 @@ export default function Cartoes() {
       <input
         ref={arquivoCartaoRef}
         type="file"
-        accept="application/pdf,.pdf,image/*"
+        accept="application/pdf,.pdf,text/csv,.csv,image/*"
         className="hidden"
         onChange={handleImportarArquivoCartao}
       />

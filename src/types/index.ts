@@ -4,7 +4,7 @@
 
 import type { AIModelId } from '@/lib/ai/catalog';
 
-export type MetodoPagamento = 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'outro';
+export type MetodoPagamento = 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'emprestimo' | 'financiamento' | 'outro';
 export type OrigemTransacao = 'manual' | 'extrato_foto' | 'open_banking' | 'assistente' | 'assistente_audio' | 'assistente_imagem';
 export type TipoTransacao = 'despesa' | 'receita' | 'transferencia';
 export type ClassificacaoTransacao = 'padrao' | 'fixa' | 'futura';
