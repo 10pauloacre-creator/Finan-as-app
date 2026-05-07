@@ -113,7 +113,8 @@ async function sincronizarOperacao(
       id: 'live',
       createdAt: new Date().toISOString(),
     });
-  } catch {
+  } catch (error) {
+    console.error('[sync] falha ao sincronizar operacao', { entity, action, error });
     enqueue(opBase);
   }
 }
@@ -133,7 +134,8 @@ export async function processarFilaDeSincronizacao() {
     try {
       await executarOperacao(op);
       processados += 1;
-    } catch {
+    } catch (error) {
+      console.error('[sync] operacao pendente permaneceu na fila', { op, error });
       restantes.push(op);
     }
   }
@@ -277,6 +279,8 @@ function mapConfig(config: ConfiguracaoApp) {
     pin: config.pin,
     tema: config.tema,
     moeda: config.moeda,
+    ai_modelo_padrao: config.ai_modelo_padrao,
+    ai_modelo_ocr_padrao: config.ai_modelo_ocr_padrao,
     selic_atual: config.selic_atual,
     cdi_atual: config.cdi_atual,
     ipca_atual: config.ipca_atual,

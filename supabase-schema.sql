@@ -127,6 +127,8 @@ create table if not exists configuracoes_app (
   pin                          text,
   tema                         text default 'escuro',
   moeda                        text default 'BRL',
+  ai_modelo_padrao             text,
+  ai_modelo_ocr_padrao         text,
   selic_atual                  numeric,
   cdi_atual                    numeric,
   ipca_atual                   numeric,
@@ -178,6 +180,8 @@ alter table transacoes    add column if not exists comprovante_url     text;
 alter table transacoes    add column if not exists tags                jsonb;
 alter table transacoes    add column if not exists observacoes         text;
 alter table transacoes    add column if not exists itens_compra        jsonb;
+alter table configuracoes_app add column if not exists ai_modelo_padrao     text;
+alter table configuracoes_app add column if not exists ai_modelo_ocr_padrao text;
 alter table investimentos add column if not exists valor_atual         numeric default 0;
 alter table investimentos add column if not exists data_vencimento     text;
 alter table investimentos add column if not exists pluggy_id           text;
@@ -191,3 +195,13 @@ create index if not exists idx_contas_pluggy_item      on contas(pluggy_item_id)
 create index if not exists idx_cartoes_pluggy_item     on cartoes(pluggy_item_id);
 create index if not exists idx_investimentos_pluggy    on investimentos(pluggy_id);
 create index if not exists idx_orcamentos_mes_ano      on orcamentos(mes, ano);
+
+alter publication supabase_realtime add table public.categorias;
+alter publication supabase_realtime add table public.contas;
+alter publication supabase_realtime add table public.cartoes;
+alter publication supabase_realtime add table public.transacoes;
+alter publication supabase_realtime add table public.investimentos;
+alter publication supabase_realtime add table public.metas;
+alter publication supabase_realtime add table public.orcamentos;
+alter publication supabase_realtime add table public.reservas;
+alter publication supabase_realtime add table public.configuracoes_app;

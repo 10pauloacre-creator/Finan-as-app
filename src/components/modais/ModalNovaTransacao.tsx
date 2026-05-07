@@ -508,17 +508,17 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
               </div>
             )}
 
-            {/* Parcelas (só para crédito) */}
-            {form.metodo_pagamento === 'credito' && (
+            {/* Parcelamento */}
+            {form.tipo === 'despesa' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Nº de Parcelas</label>
+                  <label className="text-xs text-slate-400 mb-1 block">Parcelamento</label>
                   <select
                     value={form.parcelas}
                     onChange={e => setForm(f => ({ ...f, parcelas: e.target.value }))}
                     className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
                   >
-                    {Array.from({ length: 24 }, (_, i) => i + 1).map(n => (
+                    {Array.from({ length: 36 }, (_, i) => i + 1).map(n => (
                       <option key={n} value={n}>{n}x</option>
                     ))}
                   </select>
@@ -528,7 +528,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                     <div>
                       <div className="text-xs text-slate-500">Por parcela</div>
                       <div className="text-purple-400 font-semibold text-sm">
-                        {formatarMoeda(parseFloat(form.valor) / parseInt(form.parcelas))}
+                        {formatarMoeda(parseFloat(form.valor) / parseInt(form.parcelas, 10))}
                       </div>
                     </div>
                   </div>
