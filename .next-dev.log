@@ -401,3 +401,8 @@ https://nextjs.org/docs/messages/module-not-found
   fallbackUsed: false
 }
  POST /api/ai 200 in 17.2s (next.js: 20ms, application-code: 17.2s)
+ POST /api/ai 422 in 23ms (next.js: 4ms, application-code: 19ms)
+ POST /api/ai 200 in 150ms (next.js: 143ms, application-code: 7ms)
+ POST /api/ai 200 in 109ms (next.js: 102ms, application-code: 7ms)
+✓ Finished writing to filesystem cache in 14.3s
+✓ Finished writing to filesystem cache in 11.1s

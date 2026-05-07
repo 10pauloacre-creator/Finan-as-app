@@ -84,9 +84,19 @@ const CONFIG_DEFAULT: ConfiguracaoApp = {
 let listenersDeSyncRegistrados = false;
 let syncEmAndamento: Promise<void> | null = null;
 let intervaloDeSync: ReturnType<typeof setInterval> | null = null;
+let supressaoDeRecargaLocal = 0;
 
 function arredondarMoeda(valor: number) {
   return Number(valor.toFixed(2));
+}
+
+function executarSemRecargaLocal<T>(callback: () => T): T {
+  supressaoDeRecargaLocal += 1;
+  try {
+    return callback();
+  } finally {
+    supressaoDeRecargaLocal = Math.max(0, supressaoDeRecargaLocal - 1);
+  }
 }
 
 function aplicarDeltaConta(contas: ContaBancaria[], contaId: string | undefined, delta: number) {
@@ -290,6 +300,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     };
 
     const recarregarDoLocal = () => {
+      if (supressaoDeRecargaLocal > 0) return;
       carregarDoLocal();
     };
 
@@ -354,172 +365,210 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     },
 
     adicionarTransacao: (dados) => {
-      const nova: Transacao = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageTransacoes.save(nova);
-      void syncSalvarTransacao(nova);
+      return executarSemRecargaLocal(() => {
+        const nova: Transacao = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageTransacoes.save(nova);
+        void syncSalvarTransacao(nova);
 
-      set((s) => {
-        const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
+        set((s) => {
+          const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
 
-        return { transacoes: [nova, ...s.transacoes], contas: impacto.contas, cartoes: impacto.cartoes };
+          return { transacoes: [nova, ...s.transacoes], contas: impacto.contas, cartoes: impacto.cartoes };
+        });
+
+        return nova;
       });
-
-      return nova;
     },
 
     editarTransacao: (id, dados) => {
-      const atual = get().transacoes.find((t) => t.id === id);
-      if (!atual) return;
+      executarSemRecargaLocal(() => {
+        const atual = get().transacoes.find((t) => t.id === id);
+        if (!atual) return;
 
-      const atualizada = { ...atual, ...dados };
-      storageTransacoes.save(atualizada);
-      void syncSalvarTransacao(atualizada);
+        const atualizada = { ...atual, ...dados };
+        storageTransacoes.save(atualizada);
+        void syncSalvarTransacao(atualizada);
 
-      set((s) => {
-        const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
-        const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
-        return {
-          transacoes: s.transacoes.map((t) => (t.id === id ? atualizada : t)),
-          contas: reaplicado.contas,
-          cartoes: reaplicado.cartoes,
-        };
+        set((s) => {
+          const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
+          const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
+          return {
+            transacoes: s.transacoes.map((t) => (t.id === id ? atualizada : t)),
+            contas: reaplicado.contas,
+            cartoes: reaplicado.cartoes,
+          };
+        });
       });
     },
 
     excluirTransacao: (id) => {
-      const atual = get().transacoes.find((t) => t.id === id);
-      if (!atual) return;
+      executarSemRecargaLocal(() => {
+        const atual = get().transacoes.find((t) => t.id === id);
+        if (!atual) return;
 
-      storageTransacoes.delete(id);
-      void syncExcluirTransacao(id);
-      set((s) => {
-        const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
-        return {
-          transacoes: s.transacoes.filter((t) => t.id !== id),
-          contas: revertido.contas,
-          cartoes: revertido.cartoes,
-        };
+        storageTransacoes.delete(id);
+        void syncExcluirTransacao(id);
+        set((s) => {
+          const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
+          return {
+            transacoes: s.transacoes.filter((t) => t.id !== id),
+            contas: revertido.contas,
+            cartoes: revertido.cartoes,
+          };
+        });
       });
     },
 
     adicionarCategoria: (dados) => {
-      const nova: Categoria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageCategoriass.save(nova);
-      void syncSalvarCategoria(nova);
-      set((s) => ({ categorias: [...s.categorias, nova] }));
+      executarSemRecargaLocal(() => {
+        const nova: Categoria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageCategoriass.save(nova);
+        void syncSalvarCategoria(nova);
+        set((s) => ({ categorias: [...s.categorias, nova] }));
+      });
     },
 
     atualizarSaldoConta: (id, saldo) => {
-      const lista = get().contas.map((c) => (c.id === id ? { ...c, saldo } : c));
-      const conta = lista.find((c) => c.id === id);
-      if (conta) {
-        storageContas.save(conta);
-        void syncSalvarConta(conta);
-      }
-      set({ contas: lista });
+      executarSemRecargaLocal(() => {
+        const lista = get().contas.map((c) => (c.id === id ? { ...c, saldo } : c));
+        const conta = lista.find((c) => c.id === id);
+        if (conta) {
+          storageContas.save(conta);
+          void syncSalvarConta(conta);
+        }
+        set({ contas: lista });
+      });
     },
 
     adicionarConta: (dados) => {
-      const nova: ContaBancaria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageContas.save(nova);
-      void syncSalvarConta(nova);
-      set((s) => ({ contas: [...s.contas, nova] }));
+      executarSemRecargaLocal(() => {
+        const nova: ContaBancaria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageContas.save(nova);
+        void syncSalvarConta(nova);
+        set((s) => ({ contas: [...s.contas, nova] }));
+      });
     },
 
     excluirConta: (id) => {
-      storageContas.delete(id);
-      void syncExcluirConta(id);
-      set((s) => ({ contas: s.contas.filter((c) => c.id !== id) }));
+      executarSemRecargaLocal(() => {
+        storageContas.delete(id);
+        void syncExcluirConta(id);
+        set((s) => ({ contas: s.contas.filter((c) => c.id !== id) }));
+      });
     },
 
     atualizarFaturaCartao: (id, fatura) => {
-      const lista = get().cartoes.map((c) => (c.id === id ? { ...c, fatura_atual: fatura } : c));
-      const cartao = lista.find((c) => c.id === id);
-      if (cartao) {
-        storageCartoes.save(cartao);
-        void syncSalvarCartao(cartao);
-      }
-      set({ cartoes: lista });
+      executarSemRecargaLocal(() => {
+        const lista = get().cartoes.map((c) => (c.id === id ? { ...c, fatura_atual: fatura } : c));
+        const cartao = lista.find((c) => c.id === id);
+        if (cartao) {
+          storageCartoes.save(cartao);
+          void syncSalvarCartao(cartao);
+        }
+        set({ cartoes: lista });
+      });
     },
 
     adicionarCartao: (dados) => {
-      const novo: CartaoCredito = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageCartoes.save(novo);
-      void syncSalvarCartao(novo);
-      set((s) => ({ cartoes: [...s.cartoes, novo] }));
+      executarSemRecargaLocal(() => {
+        const novo: CartaoCredito = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageCartoes.save(novo);
+        void syncSalvarCartao(novo);
+        set((s) => ({ cartoes: [...s.cartoes, novo] }));
+      });
     },
 
     excluirCartao: (id) => {
-      storageCartoes.delete(id);
-      void syncExcluirCartao(id);
-      set((s) => ({ cartoes: s.cartoes.filter((c) => c.id !== id) }));
+      executarSemRecargaLocal(() => {
+        storageCartoes.delete(id);
+        void syncExcluirCartao(id);
+        set((s) => ({ cartoes: s.cartoes.filter((c) => c.id !== id) }));
+      });
     },
 
     adicionarInvestimento: (dados) => {
-      const novo: Investimento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageInvestimentos.save(novo);
-      void syncSalvarInvestimento(novo);
-      set((s) => ({ investimentos: [novo, ...s.investimentos] }));
+      executarSemRecargaLocal(() => {
+        const novo: Investimento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageInvestimentos.save(novo);
+        void syncSalvarInvestimento(novo);
+        set((s) => ({ investimentos: [novo, ...s.investimentos] }));
+      });
     },
 
     excluirInvestimento: (id) => {
-      storageInvestimentos.delete(id);
-      void syncExcluirInvestimento(id);
-      set((s) => ({ investimentos: s.investimentos.filter((i) => i.id !== id) }));
+      executarSemRecargaLocal(() => {
+        storageInvestimentos.delete(id);
+        void syncExcluirInvestimento(id);
+        set((s) => ({ investimentos: s.investimentos.filter((i) => i.id !== id) }));
+      });
     },
 
     adicionarMeta: (dados) => {
-      const nova: Meta = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageMetas.save(nova);
-      void syncSalvarMeta(nova);
-      set((s) => ({ metas: [nova, ...s.metas] }));
+      executarSemRecargaLocal(() => {
+        const nova: Meta = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageMetas.save(nova);
+        void syncSalvarMeta(nova);
+        set((s) => ({ metas: [nova, ...s.metas] }));
+      });
     },
 
     atualizarMeta: (id, valor_atual) => {
-      const lista = get().metas.map((m) => (m.id === id ? { ...m, valor_atual } : m));
-      const meta = lista.find((m) => m.id === id);
-      if (meta) {
-        storageMetas.save(meta);
-        void syncSalvarMeta(meta);
-      }
-      set({ metas: lista });
+      executarSemRecargaLocal(() => {
+        const lista = get().metas.map((m) => (m.id === id ? { ...m, valor_atual } : m));
+        const meta = lista.find((m) => m.id === id);
+        if (meta) {
+          storageMetas.save(meta);
+          void syncSalvarMeta(meta);
+        }
+        set({ metas: lista });
+      });
     },
 
     excluirMeta: (id) => {
-      storageMetas.delete(id);
-      void syncExcluirMeta(id);
-      set((s) => ({ metas: s.metas.filter((m) => m.id !== id) }));
+      executarSemRecargaLocal(() => {
+        storageMetas.delete(id);
+        void syncExcluirMeta(id);
+        set((s) => ({ metas: s.metas.filter((m) => m.id !== id) }));
+      });
     },
 
     adicionarOrcamento: (dados) => {
-      const novo: Orcamento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
-      storageOrcamentos.save(novo);
-      void syncSalvarOrcamento(novo);
-      set((s) => ({ orcamentos: [...s.orcamentos, novo] }));
+      executarSemRecargaLocal(() => {
+        const novo: Orcamento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        storageOrcamentos.save(novo);
+        void syncSalvarOrcamento(novo);
+        set((s) => ({ orcamentos: [...s.orcamentos, novo] }));
+      });
     },
 
     editarOrcamento: (id, dados) => {
-      const lista = get().orcamentos.map((o) => (o.id === id ? { ...o, ...dados } : o));
-      const item = lista.find((o) => o.id === id);
-      if (item) {
-        storageOrcamentos.save(item);
-        void syncSalvarOrcamento(item);
-      }
-      set({ orcamentos: lista });
+      executarSemRecargaLocal(() => {
+        const lista = get().orcamentos.map((o) => (o.id === id ? { ...o, ...dados } : o));
+        const item = lista.find((o) => o.id === id);
+        if (item) {
+          storageOrcamentos.save(item);
+          void syncSalvarOrcamento(item);
+        }
+        set({ orcamentos: lista });
+      });
     },
 
     excluirOrcamento: (id) => {
-      storageOrcamentos.delete(id);
-      void syncExcluirOrcamento(id);
-      set((s) => ({ orcamentos: s.orcamentos.filter((o) => o.id !== id) }));
+      executarSemRecargaLocal(() => {
+        storageOrcamentos.delete(id);
+        void syncExcluirOrcamento(id);
+        set((s) => ({ orcamentos: s.orcamentos.filter((o) => o.id !== id) }));
+      });
     },
 
     atualizarConfig: (dados) => {
-      const configAtualizada = { ...get().config, ...dados };
-      storageConfig.set(dados);
-      void syncSalvarConfig(configAtualizada);
-      set({
-        ...getEstadoConfig(configAtualizada),
+      executarSemRecargaLocal(() => {
+        const configAtualizada = { ...get().config, ...dados };
+        storageConfig.set(dados);
+        void syncSalvarConfig(configAtualizada);
+        set({
+          ...getEstadoConfig(configAtualizada),
+        });
       });
     },
 

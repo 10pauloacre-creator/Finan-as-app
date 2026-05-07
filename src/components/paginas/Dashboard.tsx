@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
-  ArrowUpRight, ArrowDownLeft, Brain, ChevronDown, FileText, ImageIcon, Loader2,
+  ArrowUpRight, ArrowDownLeft, Brain, ChevronDown, FileText, ImageIcon, Loader2, Edit,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
@@ -15,6 +15,7 @@ import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
+import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useCountUp } from '@/hooks/useCountUp';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
@@ -671,6 +672,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
   const [statusImportacao, setStatusImportacao] = useState<{ cartaoId: string; tipo: 'sucesso' | 'erro' | 'info'; mensagem: string } | null>(null);
   const [carregandoAutomacoes, setCarregandoAutomacoes] = useState(false);
+  const [transacaoEditando, setTransacaoEditando] = useState<Transacao | undefined>();
+  const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const dadosMes = useMemo(() => {
@@ -860,6 +863,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
     });
     return mapa;
   }, [transacoes]);
+
+  function abrirEdicaoTransacao(transacao: Transacao) {
+    setTransacaoEditando(transacao);
+    setModalEdicaoAberto(true);
+  }
 
   const contaExpandida = contas.find((conta) => conta.id === contaExpandidaId) || null;
   const cartaoExpandido = cartoes.find((cartao) => cartao.id === cartaoExpandidoId) || null;
@@ -1159,6 +1167,24 @@ export default function Dashboard({ onNovoPagina }: Props) {
                                 {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => abrirEdicaoTransacao(transacao)}
+                              className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all flex items-center justify-center flex-shrink-0"
+                              aria-label="Editar lançamento"
+                              title="Editar lançamento"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => abrirEdicaoTransacao(transacao)}
+                              className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all flex items-center justify-center flex-shrink-0"
+                              aria-label="Editar lançamento"
+                              title="Editar lançamento"
+                            >
+                              <Edit size={14} />
+                            </button>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
                             </div>
@@ -1506,6 +1532,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
           />
         </section>
       )}
+
+      <ModalNovaTransacao
+        aberto={modalEdicaoAberto}
+        onFechar={() => {
+          setModalEdicaoAberto(false);
+          setTransacaoEditando(undefined);
+        }}
+        transacaoEditar={transacaoEditando}
+        tipoInicial={transacaoEditando?.tipo || 'despesa'}
+      />
 
       {/* Alertas de Orçamento */}
       {(() => {

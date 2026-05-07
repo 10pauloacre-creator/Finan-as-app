@@ -99,6 +99,7 @@ function parseDate(raw: string) {
 
 function inferCategoria(descricao: string) {
   const text = descricao.toLowerCase();
+  if (/(pagamento recebido|estorno|reembolso|chargeback)/.test(text)) return 'Outros';
   if (/(ifood|rappi|ubereats|delivery)/.test(text)) return 'Delivery';
   if (/(mercado|supermercado|atacadao|carrefour|extra)/.test(text)) return 'Mercado';
   if (/(uber|99|combustivel|posto|estacionamento)/.test(text)) return 'Transporte';
@@ -107,6 +108,13 @@ function inferCategoria(descricao: string) {
   if (/(aluguel|condominio|imovel)/.test(text)) return 'Moradia';
   if (/(salario|pix recebido|deposito)/.test(text)) return 'Salario';
   return 'Outros';
+}
+
+function parseInstallmentsFromDescription(descricao: string) {
+  const match = descricao.match(/parcela\s+(\d{1,2})\/(\d{1,2})/i);
+  if (!match) return null;
+  const total = Number(match[2]);
+  return Number.isFinite(total) && total > 0 ? total : null;
 }
 
 export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
@@ -123,7 +131,7 @@ export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
 
   const headerRow = splitCsvLine(lines[0], delimiter).map(normalizeKey);
   const dateKey = findHeaderKey(headerRow, ['data', 'date', 'data_lancamento', 'data_compra', 'posted_date']);
-  const descriptionKey = findHeaderKey(headerRow, ['descricao', 'descricao_transacao', 'historico', 'estabelecimento', 'titulo', 'memo', 'description']);
+  const descriptionKey = findHeaderKey(headerRow, ['descricao', 'descricao_transacao', 'historico', 'estabelecimento', 'titulo', 'title', 'memo', 'description']);
   const amountKey = findHeaderKey(headerRow, ['valor', 'amount', 'valor_rs', 'valor_total', 'price']);
   const debitKey = findHeaderKey(headerRow, ['debito', 'debit', 'saidas', 'valor_debito']);
   const creditKey = findHeaderKey(headerRow, ['credito', 'credit', 'entradas', 'valor_credito']);
@@ -141,7 +149,7 @@ export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
     const data = dateKey ? parseDate(row[dateKey] || '') : null;
     const tipoRaw = typeKey ? normalizeKey(row[typeKey] || '') : '';
     const categoria = categoryKey ? row[categoryKey]?.trim() || inferCategoria(descricao) : inferCategoria(descricao);
-    const parcelas = installmentsKey ? parseMoney(row[installmentsKey] || '') : null;
+    const parcelas = installmentsKey ? parseMoney(row[installmentsKey] || '') : parseInstallmentsFromDescription(descricao);
 
     let valor: number | null = amountKey ? parseMoney(row[amountKey] || '') : null;
     if (valor === null && debitKey) valor = parseMoney(row[debitKey] || '');
@@ -149,12 +157,21 @@ export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
     if (valor === null || !descricao || !data) return [];
 
     let tipo: 'despesa' | 'receita' = 'despesa';
-    if (tipoRaw.includes('receita') || tipoRaw.includes('credito') || tipoRaw.includes('entrada')) {
+    if (
+      tipoRaw.includes('receita') ||
+      tipoRaw.includes('credito') ||
+      tipoRaw.includes('entrada') ||
+      /pagamento recebido|estorno|reembolso|chargeback/i.test(descricao)
+    ) {
       tipo = 'receita';
     } else if (creditKey && !debitKey && valor > 0) {
       tipo = 'receita';
     } else if (valor < 0) {
       tipo = 'despesa';
+      valor = Math.abs(valor);
+    }
+
+    if (tipo === 'receita' && valor < 0) {
       valor = Math.abs(valor);
     }
 
