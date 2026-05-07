@@ -17,6 +17,18 @@ type SyncEntity =
   | 'reservas'
   | 'configuracoes_app';
 
+export const SYNC_TABLES: SyncEntity[] = [
+  'transacoes',
+  'categorias',
+  'contas',
+  'cartoes',
+  'investimentos',
+  'metas',
+  'orcamentos',
+  'reservas',
+  'configuracoes_app',
+];
+
 type PendingSyncOp = {
   id: string;
   entity: SyncEntity;
@@ -178,6 +190,9 @@ function mapConta(c: ContaBancaria) {
     tipo: c.tipo,
     saldo: c.saldo,
     saldo_base: c.saldo_base,
+    pluggy_item_id: c.pluggy_item_id,
+    pluggy_account_id: c.pluggy_account_id,
+    pluggy_sync_em: c.pluggy_sync_em,
     criado_em: c.criado_em,
   };
 }
@@ -192,6 +207,9 @@ function mapCartao(c: CartaoCredito) {
     dia_vencimento: c.dia_vencimento,
     dia_fechamento: c.dia_fechamento,
     bandeira: c.bandeira,
+    pluggy_item_id: c.pluggy_item_id,
+    pluggy_account_id: c.pluggy_account_id,
+    pluggy_sync_em: c.pluggy_sync_em,
     criado_em: c.criado_em,
   };
 }

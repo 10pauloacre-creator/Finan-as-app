@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   Transacao, Categoria, Investimento, Meta, ConfiguracaoApp,
   DicaIA, ContaBancaria, CartaoCredito, Orcamento,
@@ -17,9 +18,9 @@ import {
   syncSalvarMeta, syncExcluirMeta,
   syncSalvarOrcamento, syncExcluirOrcamento,
   syncSalvarConfig,
-  baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao,
+  baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao, SYNC_TABLES,
 } from '@/lib/sync';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { criarDataNoMes, transacaoJaOcorreuAteData } from '@/lib/transacoes';
 
@@ -86,6 +87,8 @@ const CONFIG_DEFAULT: ConfiguracaoApp = {
 let listenersDeSyncRegistrados = false;
 let syncEmAndamento: Promise<void> | null = null;
 let intervaloDeSync: ReturnType<typeof setInterval> | null = null;
+let canalRealtimeDeSync: RealtimeChannel | null = null;
+let timeoutDeSyncRemoto: number | null = null;
 let supressaoDeRecargaLocal = 0;
 
 function arredondarMoeda(valor: number) {
@@ -219,10 +222,12 @@ function normalizarContasComTransacoes(contas: ContaBancaria[], transacoes: Tran
   });
 }
 
-function persistirContasNormalizadas(contas: ContaBancaria[]) {
+function persistirContasNormalizadas(contas: ContaBancaria[], sync = false) {
   contas.forEach((conta) => {
     storageContas.save(conta);
-    void syncSalvarConta(conta);
+    if (sync) {
+      void syncSalvarConta(conta);
+    }
   });
 }
 
@@ -275,46 +280,50 @@ function getEstadoConfig(config: ConfiguracaoApp) {
 
 export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
   const carregarDoLocal = () => {
-    const config = storageConfig.get();
-    const transacoes = storageTransacoes.getAll();
-    const contas = normalizarContasComTransacoes(storageContas.getAll(), transacoes);
-    persistirContasNormalizadas(contas);
+    executarSemRecargaLocal(() => {
+      const config = storageConfig.get();
+      const transacoes = storageTransacoes.getAll();
+      const contas = normalizarContasComTransacoes(storageContas.getAll(), transacoes);
+      persistirContasNormalizadas(contas);
 
-    set({
-      transacoes,
-      categorias: storageCategoriass.getAll(),
-      investimentos: storageInvestimentos.getAll(),
-      metas: storageMetas.getAll(),
-      contas,
-      cartoes: storageCartoes.getAll(),
-      orcamentos: storageOrcamentos.getAll(),
-      ...getEstadoConfig(config),
+      set({
+        transacoes,
+        categorias: storageCategoriass.getAll(),
+        investimentos: storageInvestimentos.getAll(),
+        metas: storageMetas.getAll(),
+        contas,
+        cartoes: storageCartoes.getAll(),
+        orcamentos: storageOrcamentos.getAll(),
+        ...getEstadoConfig(config),
+      });
     });
   };
 
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
-    const contasNormalizadas = normalizarContasComTransacoes(dados.contas, dados.transacoes);
-    storageTransacoes.replaceAll(dados.transacoes);
-    storageCategoriass.replaceAll(dados.categorias);
-    storageContas.replaceAll(contasNormalizadas);
-    storageCartoes.replaceAll(dados.cartoes);
-    storageInvestimentos.replaceAll(dados.investimentos);
-    storageMetas.replaceAll(dados.metas);
-    storageOrcamentos.replaceAll(dados.orcamentos);
-    storageReservas.replaceAll(dados.reservas);
+    executarSemRecargaLocal(() => {
+      const contasNormalizadas = normalizarContasComTransacoes(dados.contas, dados.transacoes);
+      storageTransacoes.replaceAll(dados.transacoes);
+      storageCategoriass.replaceAll(dados.categorias);
+      storageContas.replaceAll(contasNormalizadas);
+      storageCartoes.replaceAll(dados.cartoes);
+      storageInvestimentos.replaceAll(dados.investimentos);
+      storageMetas.replaceAll(dados.metas);
+      storageOrcamentos.replaceAll(dados.orcamentos);
+      storageReservas.replaceAll(dados.reservas);
 
-    const configFinal = dados.config ?? storageConfig.get();
-    if (dados.config) storageConfig.replace(dados.config);
+      const configFinal = dados.config ?? storageConfig.get();
+      if (dados.config) storageConfig.replace(dados.config);
 
-    set({
-      transacoes: dados.transacoes,
-      categorias: dados.categorias,
-      contas: contasNormalizadas,
-      cartoes: dados.cartoes,
-      investimentos: dados.investimentos,
-      metas: dados.metas,
-      orcamentos: dados.orcamentos,
-      ...getEstadoConfig(configFinal),
+      set({
+        transacoes: dados.transacoes,
+        categorias: dados.categorias,
+        contas: contasNormalizadas,
+        cartoes: dados.cartoes,
+        investimentos: dados.investimentos,
+        metas: dados.metas,
+        orcamentos: dados.orcamentos,
+        ...getEstadoConfig(configFinal),
+      });
     });
   };
 
@@ -378,6 +387,49 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       });
     };
 
+    const agendarSyncRemoto = (delay = 900) => {
+      if (timeoutDeSyncRemoto) {
+        clearTimeout(timeoutDeSyncRemoto);
+      }
+
+      timeoutDeSyncRemoto = window.setTimeout(() => {
+        timeoutDeSyncRemoto = null;
+        sincronizarSilenciosamente();
+      }, delay);
+    };
+
+    const registrarCanalRealtime = () => {
+      if (!isSupabaseConfigured() || canalRealtimeDeSync) return;
+
+      const channel = supabase.channel(`financeiro-sync-${Date.now()}`);
+      for (const table of SYNC_TABLES) {
+        channel.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table },
+          () => agendarSyncRemoto(),
+        );
+      }
+
+      canalRealtimeDeSync = channel;
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') return;
+        if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+
+        if (canalRealtimeDeSync === channel) {
+          canalRealtimeDeSync = null;
+        }
+
+        void supabase.removeChannel(channel);
+
+        if (document.visibilityState === 'visible') {
+          window.setTimeout(() => {
+            registrarCanalRealtime();
+            agendarSyncRemoto(300);
+          }, 4_000);
+        }
+      });
+    };
+
     const recarregarDoLocal = () => {
       if (supressaoDeRecargaLocal > 0) return;
       carregarDoLocal();
@@ -389,22 +441,34 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     };
 
     window.addEventListener('online', sincronizarSilenciosamente);
-    window.addEventListener('focus', sincronizarSilenciosamente);
+    window.addEventListener('focus', () => {
+      registrarCanalRealtime();
+      sincronizarSilenciosamente();
+    });
+    window.addEventListener('pageshow', () => {
+      carregarDoLocal();
+      registrarCanalRealtime();
+      agendarSyncRemoto(150);
+    });
     window.addEventListener('storage', handleStorage);
     window.addEventListener(FINANCEIRO_STORAGE_EVENT, recarregarDoLocal as EventListener);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         recarregarDoLocal();
+        registrarCanalRealtime();
         sincronizarSilenciosamente();
       }
     });
+
+    registrarCanalRealtime();
 
     if (intervaloDeSync) clearInterval(intervaloDeSync);
     intervaloDeSync = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       carregarDoLocal();
+      registrarCanalRealtime();
       sincronizarSilenciosamente();
-    }, 45_000);
+    }, 20_000);
   };
 
   return {
@@ -453,7 +517,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const proximasTransacoes = [nova, ...s.transacoes];
           const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
           const contasNormalizadas = normalizarContasComTransacoes(impacto.contas, proximasTransacoes);
-          persistirContasNormalizadas(contasNormalizadas);
+          persistirContasNormalizadas(contasNormalizadas, true);
 
           return { transacoes: proximasTransacoes, contas: contasNormalizadas, cartoes: impacto.cartoes };
         });
@@ -476,7 +540,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
           const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
           const contasNormalizadas = normalizarContasComTransacoes(reaplicado.contas, proximasTransacoes);
-          persistirContasNormalizadas(contasNormalizadas);
+          persistirContasNormalizadas(contasNormalizadas, true);
           return {
             transacoes: proximasTransacoes,
             contas: contasNormalizadas,
@@ -497,7 +561,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const proximasTransacoes = s.transacoes.filter((t) => t.id !== id);
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
           const contasNormalizadas = normalizarContasComTransacoes(revertido.contas, proximasTransacoes);
-          persistirContasNormalizadas(contasNormalizadas);
+          persistirContasNormalizadas(contasNormalizadas, true);
           return {
             transacoes: proximasTransacoes,
             contas: contasNormalizadas,
