@@ -144,6 +144,7 @@ function mapTransacao(t: Transacao) {
     data: t.data,
     horario: t.horario,
     metodo_pagamento: t.metodo_pagamento,
+    classificacao: t.classificacao ?? 'padrao',
     conta_id: t.conta_id,
     cartao_id: t.cartao_id,
     parcelas: t.parcelas,

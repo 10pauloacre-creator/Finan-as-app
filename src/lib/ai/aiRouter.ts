@@ -82,6 +82,17 @@ export function getDefaultProviderMode() {
   return process.env.AI_DEFAULT_PROVIDER === 'manual' ? 'manual' : 'auto';
 }
 
+export function normalizeRequestedProvider(provider?: string) {
+  if (!provider) return undefined;
+
+  const normalized = provider.trim();
+  if (!normalized) return undefined;
+  if (normalized === 'auto' || normalized === 'automatico') return 'automatico';
+  if (normalized === 'openrouter') return 'automatico';
+  if (normalized in AI_MODELS) return normalized as AIProviderId;
+  return undefined;
+}
+
 export function getProviderStatus() {
   return (Object.keys(AI_MODELS) as AIProviderId[]).map((provider) => {
     const model = AI_MODELS[provider];
@@ -139,12 +150,13 @@ export function resolveProviderOrder(task: AITask, requestedProvider?: AIModelId
   const recommended = getRecommendedProviders(task);
   const fallback = parseFallbackOrder();
   const configured = getConfiguredProviders();
-  const defaultProvider = process.env.AI_DEFAULT_PROVIDER;
+  const defaultProvider = normalizeRequestedProvider(process.env.AI_DEFAULT_PROVIDER);
+  const normalizedRequested = normalizeRequestedProvider(requestedProvider);
   const manualProvider =
-    requestedProvider && requestedProvider !== 'automatico'
-      ? requestedProvider
-      : defaultProvider && defaultProvider !== 'auto' && defaultProvider in AI_MODELS
-      ? (defaultProvider as AIProviderId)
+    normalizedRequested && normalizedRequested !== 'automatico'
+      ? normalizedRequested
+      : defaultProvider && defaultProvider !== 'automatico'
+      ? defaultProvider
       : undefined;
 
   const baseOrder = mode === 'manual' && manualProvider

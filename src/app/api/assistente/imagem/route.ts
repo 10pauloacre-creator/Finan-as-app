@@ -7,6 +7,7 @@ const HOJE = () => new Date().toISOString().split('T')[0];
 
 const PROMPT_IMAGEM = (legenda?: string | null) => `Voce e um extrator de dados financeiros de imagens. Analise o comprovante, nota fiscal ou extrato bancario.
 ${legenda ? `Contexto do usuario: "${legenda}"\n` : ''}
+Se a imagem for uma lista de lancamentos de cartao, extraia cada linha com data, detalhe da compra, parcela e valor.
 TRANSACAO UNICA: responda SOMENTE com JSON:
 {"modo":"unico","tipo":"despesa","valor":89.90,"descricao":"iFood - Pizza","categoria":"Delivery","data":"${HOJE()}","hora":"20:30","metodo_pagamento":"credito","parcelas":null,"local":"iFood","banco":null}
 

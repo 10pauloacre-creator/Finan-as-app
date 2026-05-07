@@ -6,7 +6,7 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
-import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import { isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 
 const FILTROS_TIPO = [
   { valor: 'todos',   label: 'Todos'     },
@@ -18,6 +18,35 @@ const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
+type ClassificacaoFiltro = 'todas' | 'padrao' | 'fixa' | 'futura';
+
+const FILTROS_CLASSIFICACAO: { valor: ClassificacaoFiltro; label: string }[] = [
+  { valor: 'todas', label: 'Todas' },
+  { valor: 'padrao', label: 'Normais' },
+  { valor: 'fixa', label: 'Fixas' },
+  { valor: 'futura', label: 'Futuras' },
+];
+
+function getClassificacaoTransacao(transacao: Transacao): Exclude<ClassificacaoFiltro, 'todas'> {
+  return transacao.classificacao || 'padrao';
+}
+
+function getBadgeClassificacao(transacao: Transacao) {
+  const classificacao = getClassificacaoTransacao(transacao);
+  if (classificacao === 'fixa') {
+    return {
+      label: transacao.tipo === 'receita' ? 'Receita fixa' : 'Gasto fixo',
+      className: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
+    };
+  }
+  if (classificacao === 'futura') {
+    return {
+      label: transacao.tipo === 'receita' ? 'Receita futura' : 'Gasto futuro',
+      className: 'bg-amber-500/15 text-amber-300 border-amber-500/20',
+    };
+  }
+  return null;
+}
 
 function formatarDataHeader(dataStr: string): string {
   const d = new Date(dataStr + 'T00:00:00');
@@ -36,9 +65,11 @@ export default function Transacoes() {
   const [filtroMes, setFiltroMes]         = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno]         = useState(new Date().getFullYear());
   const [periodo, setPeriodo]             = useState<PeriodoFiltro>('mes');
+  const [filtroClassificacao, setFiltroClassificacao] = useState<ClassificacaoFiltro>('todas');
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto]     = useState(false);
   const [transacaoEditar, setTransacaoEditar] = useState<Transacao | undefined>();
+  const hoje = startOfTodayLocal();
 
   // Filtragem por período
   const transacoesPorPeriodo = useMemo(() => {
@@ -76,14 +107,15 @@ export default function Transacoes() {
   const transacoesFiltradas = useMemo(() => {
     return transacoesPorPeriodo.filter(t => {
       const tipoOk = filtroTipo === 'todos' || t.tipo === filtroTipo;
+      const classificacaoOk = filtroClassificacao === 'todas' || getClassificacaoTransacao(t) === filtroClassificacao;
       const buscaOk = !busca || t.descricao.toLowerCase().includes(busca.toLowerCase());
       const catOk = !catSelecionada || (() => {
         const cat = categorias.find(c => c.id === t.categoria_id);
         return (cat?.id || 'outros') === catSelecionada;
       })();
-      return tipoOk && buscaOk && catOk;
+      return tipoOk && classificacaoOk && buscaOk && catOk;
     });
-  }, [transacoesPorPeriodo, filtroTipo, busca, catSelecionada, categorias]);
+  }, [transacoesPorPeriodo, filtroTipo, filtroClassificacao, busca, catSelecionada, categorias]);
 
   const totais = useMemo(() => ({
     receitas: transacoesFiltradas.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0),
@@ -236,6 +268,21 @@ export default function Transacoes() {
             </button>
           ))}
         </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {FILTROS_CLASSIFICACAO.map(f => (
+            <button
+              key={f.valor}
+              onClick={() => setFiltroClassificacao(f.valor)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                filtroClassificacao === f.valor
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Lista agrupada por dia */}
@@ -264,6 +311,8 @@ export default function Transacoes() {
                 <div className="space-y-2">
                   {grupo.map(t => {
                     const cat = categorias.find(c => c.id === t.categoria_id);
+                    const badgeClassificacao = getBadgeClassificacao(t);
+                    const eFutura = getClassificacaoTransacao(t) === 'futura' || parseFinancialDate(t.data) > hoje;
                     return (
                       <div key={t.id} className="flex items-center gap-3 bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 group">
                         <div
@@ -280,6 +329,18 @@ export default function Transacoes() {
                             {t.parcelas && t.parcelas > 1 && ` • ${(t as Transacao & { parcela_atual?: number }).parcela_atual || 1}/${t.parcelas}x`}
                           </div>
                           {t.local && <div className="text-xs text-slate-600 truncate">📍 {t.local}</div>}
+                          {badgeClassificacao && (
+                            <div className="mt-1">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeClassificacao.className}`}>
+                                {badgeClassificacao.label}
+                              </span>
+                            </div>
+                          )}
+                          {eFutura && (
+                            <div className="text-[11px] text-amber-400 mt-1">
+                              Prevista para {parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </div>
+                          )}
                           {t.itens_compra && t.itens_compra.length > 0 && (
                             <div className="mt-1">
                               <div className="text-[11px] text-emerald-400 font-medium">

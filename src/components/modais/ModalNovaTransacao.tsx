@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Camera, Brain, Loader2, CheckCircle } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
-import { MetodoPagamento, TipoTransacao, Transacao, BANCO_INFO } from '@/types';
+import { ClassificacaoTransacao, MetodoPagamento, TipoTransacao, Transacao, BANCO_INFO } from '@/types';
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from './ModalDuplicata';
 import { formatFinancialDate } from '@/lib/date';
@@ -39,6 +39,7 @@ function getFormVazio(tipo: TipoTransacao = 'despesa') {
     descricao: '',
     valor: '',
     tipo,
+    classificacao: 'padrao' as ClassificacaoTransacao,
     categoria_id: '',
     data: formatFinancialDate(new Date()),
     horario: '',
@@ -71,6 +72,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
           descricao: transacaoEditar.descricao,
           valor: transacaoEditar.valor.toString(),
           tipo: transacaoEditar.tipo,
+          classificacao: transacaoEditar.classificacao || 'padrao',
           categoria_id: transacaoEditar.categoria_id,
           data: transacaoEditar.data,
           horario: transacaoEditar.horario || '',
@@ -156,6 +158,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       descricao: form.descricao,
       valor: parseFloat(form.valor.replace(',', '.')),
       tipo: form.tipo,
+      classificacao: form.classificacao,
       categoria_id: form.categoria_id,
       data: form.data,
       horario: form.horario || undefined,
@@ -208,6 +211,22 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
   if (!aberto) return null;
 
+  const opcoesClassificacao = form.tipo === 'despesa'
+    ? [
+        { valor: 'padrao', label: 'Gasto normal' },
+        { valor: 'fixa', label: 'Gasto fixo' },
+        { valor: 'futura', label: 'Gasto futuro' },
+      ]
+    : form.tipo === 'receita'
+    ? [
+        { valor: 'padrao', label: 'Receita normal' },
+        { valor: 'fixa', label: 'Receita fixa' },
+        { valor: 'futura', label: 'Receita futura' },
+      ]
+    : [
+        { valor: 'padrao', label: 'Transferência' },
+      ];
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
@@ -241,7 +260,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 <button
                   key={tipo}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, tipo, categoria_id: '' }))}
+                  onClick={() => setForm(f => ({ ...f, tipo, classificacao: 'padrao', categoria_id: '' }))}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
                     form.tipo === tipo
                       ? tipo === 'despesa'
@@ -255,6 +274,28 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   {tipo === 'despesa' ? '💸 Despesa' : tipo === 'receita' ? '💰 Receita' : '↔️ Transfer.'}
                 </button>
               ))}
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">
+                {form.tipo === 'despesa' ? 'Tipo de gasto' : form.tipo === 'receita' ? 'Tipo de receita' : 'Tipo'}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {opcoesClassificacao.map((opcao) => (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, classificacao: opcao.valor as ClassificacaoTransacao }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      form.classificacao === opcao.valor
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {opcao.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Upload de foto para IA analisar */}

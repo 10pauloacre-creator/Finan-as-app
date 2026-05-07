@@ -18,6 +18,9 @@ export interface RespostaPDF {
 const PROMPT_FATURA = `Voce e um extrator especializado em faturas de cartao de credito brasileiras.
 
 Analise este PDF e extraia todas as transacoes e lancamentos da fatura.
+Para cada lancamento, capture obrigatoriamente data, detalhe/descricao da compra, numero de parcelas quando aparecer e valor.
+Ignore totais, limite, pagamento minimo e resumos que nao sejam lancamentos individuais.
+Se houver estorno ou credito identificado, use "tipo":"receita". Compras normais devem usar "tipo":"despesa".
 
 Retorne somente um JSON valido:
 {

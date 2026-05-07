@@ -7,6 +7,7 @@ import type { AIModelId } from '@/lib/ai/catalog';
 export type MetodoPagamento = 'pix' | 'debito' | 'credito' | 'dinheiro' | 'transferencia' | 'outro';
 export type OrigemTransacao = 'manual' | 'extrato_foto' | 'open_banking' | 'assistente' | 'assistente_audio' | 'assistente_imagem';
 export type TipoTransacao = 'despesa' | 'receita' | 'transferencia';
+export type ClassificacaoTransacao = 'padrao' | 'fixa' | 'futura';
 export type TipoInvestimento = 'tesouro_selic' | 'tesouro_ipca' | 'tesouro_prefixado' | 'cdb' | 'lci_lca' | 'acoes' | 'fundos_di' | 'poupanca' | 'cripto' | 'outro';
 export type BandeirCartao = 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard';
 export type TipoConta = 'corrente' | 'poupanca' | 'digital' | 'investimento';
@@ -73,6 +74,7 @@ export interface Transacao {
   data: string;                // YYYY-MM-DD
   horario?: string;            // HH:mm
   tipo: TipoTransacao;
+  classificacao?: ClassificacaoTransacao;
   metodo_pagamento?: MetodoPagamento;
   parcelas?: number;
   parcela_atual?: number;
