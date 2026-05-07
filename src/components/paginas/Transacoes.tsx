@@ -118,10 +118,14 @@ export default function Transacoes() {
     });
   }, [transacoesPorPeriodo, filtroTipo, filtroClassificacao, busca, catSelecionada, categorias]);
 
+  const transacoesRealizadasFiltradas = useMemo(() => (
+    transacoesFiltradas.filter((transacao) => transacaoJaOcorreuAteData(transacao, hoje))
+  ), [transacoesFiltradas, hoje]);
+
   const totais = useMemo(() => ({
-    receitas: transacoesFiltradas.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0),
-    despesas: transacoesFiltradas.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0),
-  }), [transacoesFiltradas]);
+    receitas: transacoesRealizadasFiltradas.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0),
+    despesas: transacoesRealizadasFiltradas.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0),
+  }), [transacoesRealizadasFiltradas]);
 
   const saldo = totais.receitas - totais.despesas;
 
