@@ -236,10 +236,6 @@ export const OCR_MODEL_OPTIONS: Array<{ id: AIModelId; label: string; descriptio
   },
 ];
 
-export function getModelEnvName(provider: AIProviderId) {
-  return AI_MODELS[provider].modelEnv;
-}
-
 export function getModelName(provider: AIProviderId) {
   const definition = AI_MODELS[provider];
   return process.env[definition.modelEnv] || definition.defaultModel;

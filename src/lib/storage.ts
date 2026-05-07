@@ -4,7 +4,7 @@
 
 import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
-import { isSameFinancialMonth, parseFinancialDate } from './date';
+import { isSameFinancialMonth } from './date';
 
 const KEYS = {
   TRANSACOES:   'fin_transacoes',
@@ -248,9 +248,6 @@ export function gerarId(): string {
 }
 export function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-}
-export function formatarData(data: string): string {
-  return parseFinancialDate(data).toLocaleDateString('pt-BR');
 }
 export function mesAtual(): { mes: number; ano: number } {
   const hoje = new Date();
