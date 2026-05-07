@@ -548,9 +548,9 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 {parseInt(form.parcelas) > 1 && form.valor && (
                   <div className="flex items-end pb-2.5">
                     <div>
-                      <div className="text-xs text-slate-500">Por parcela</div>
+                      <div className="text-xs text-slate-500">Total previsto</div>
                       <div className="text-purple-400 font-semibold text-sm">
-                        {formatarMoeda(parseFloat(form.valor) / parseInt(form.parcelas, 10))}
+                        {formatarMoeda(parseFloat(form.valor || '0') * parseInt(form.parcelas, 10))}
                       </div>
                     </div>
                   </div>

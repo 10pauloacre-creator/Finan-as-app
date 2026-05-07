@@ -21,8 +21,8 @@ import {
   baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao, SYNC_TABLES,
 } from '@/lib/sync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { criarDataNoMes, transacaoJaOcorreuAteData } from '@/lib/transacoes';
+import { startOfTodayLocal } from '@/lib/date';
+import { contarOcorrenciasAteData } from '@/lib/transacoes';
 
 interface FinanceiroState {
   transacoes: Transacao[];
@@ -131,19 +131,22 @@ function aplicarDeltaCartao(cartoes: CartaoCredito[], cartaoId: string | undefin
 function aplicarImpactoFinanceiro(
   contas: ContaBancaria[],
   cartoes: CartaoCredito[],
-  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id' | 'data' | 'classificacao'>,
+  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id' | 'data' | 'classificacao' | 'parcelas'>,
   direcao: 1 | -1,
 ) {
   let proximasContas = contas;
   let proximosCartoes = cartoes;
   const hoje = startOfTodayLocal();
 
-  if (!transacaoJaOcorreuAteData(transacao, hoje)) {
+  const ocorrenciasAteHoje = contarOcorrenciasAteData(transacao, hoje);
+  if (ocorrenciasAteHoje <= 0) {
     return { contas: proximasContas, cartoes: proximosCartoes };
   }
 
+  const valorAplicado = transacao.valor * ocorrenciasAteHoje;
+
   if (transacao.cartao_id && transacao.tipo === 'despesa') {
-    proximosCartoes = aplicarDeltaCartao(proximosCartoes, transacao.cartao_id, transacao.valor * direcao);
+    proximosCartoes = aplicarDeltaCartao(proximosCartoes, transacao.cartao_id, valorAplicado * direcao);
     return { contas: proximasContas, cartoes: proximosCartoes };
   }
 
@@ -152,11 +155,11 @@ function aplicarImpactoFinanceiro(
   }
 
   if (transacao.tipo === 'receita') {
-    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, transacao.valor * direcao);
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, valorAplicado * direcao);
   } else if (transacao.tipo === 'despesa') {
-    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -transacao.valor * direcao);
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -valorAplicado * direcao);
   } else if (transacao.tipo === 'transferencia') {
-    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -transacao.valor * direcao);
+    proximasContas = aplicarDeltaConta(proximasContas, transacao.conta_id, -valorAplicado * direcao);
   }
 
   return { contas: proximasContas, cartoes: proximosCartoes };
@@ -175,31 +178,7 @@ function calcularImpactoContaAteData(transacao: Transacao, contaId: string, refe
 
   if (sinal === 0) return 0;
 
-  const dataBase = parseFinancialDate(transacao.data);
-  if (transacao.classificacao !== 'fixa') {
-    return dataBase <= referencia ? transacao.valor * sinal : 0;
-  }
-
-  if (dataBase > referencia) return 0;
-
-  let total = 0;
-  const anoInicio = dataBase.getFullYear();
-  const mesInicio = dataBase.getMonth();
-  const anoFim = referencia.getFullYear();
-  const mesFim = referencia.getMonth();
-
-  for (let ano = anoInicio; ano <= anoFim; ano += 1) {
-    const primeiroMes = ano === anoInicio ? mesInicio : 0;
-    const ultimoMes = ano === anoFim ? mesFim : 11;
-
-    for (let mes = primeiroMes; mes <= ultimoMes; mes += 1) {
-      const ocorrencia = criarDataNoMes(ano, mes, dataBase.getDate());
-      if (ocorrencia < dataBase || ocorrencia > referencia) continue;
-      total += transacao.valor * sinal;
-    }
-  }
-
-  return total;
+  return contarOcorrenciasAteData(transacao, referencia) * transacao.valor * sinal;
 }
 
 function normalizarContasComTransacoes(contas: ContaBancaria[], transacoes: Transacao[]) {

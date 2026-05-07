@@ -99,7 +99,7 @@ function parseDate(raw: string) {
 
 function inferCategoria(descricao: string) {
   const text = descricao.toLowerCase();
-  if (/(pagamento recebido|estorno|reembolso|chargeback)/.test(text)) return 'Outros';
+  if (/(pagamento recebido|pagamento efetuado|estorno|reembolso|chargeback)/.test(text)) return 'Outros';
   if (/(ifood|rappi|ubereats|delivery)/.test(text)) return 'Delivery';
   if (/(mercado|supermercado|atacadao|carrefour|extra)/.test(text)) return 'Mercado';
   if (/(uber|99|combustivel|posto|estacionamento)/.test(text)) return 'Transporte';
@@ -112,8 +112,10 @@ function inferCategoria(descricao: string) {
 
 function parseInstallmentsFromDescription(descricao: string) {
   const match = descricao.match(/parcela\s+(\d{1,2})\/(\d{1,2})/i);
-  if (!match) return null;
-  const total = Number(match[2]);
+  const compactMatch = descricao.match(/(?:^|\D)(\d{1,2})\/(\d{1,2})(?:\D|$)/);
+  const totalRaw = match?.[2] || compactMatch?.[2];
+  if (!totalRaw) return null;
+  const total = Number(totalRaw);
   return Number.isFinite(total) && total > 0 ? total : null;
 }
 
@@ -131,7 +133,19 @@ export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
 
   const headerRow = splitCsvLine(lines[0], delimiter).map(normalizeKey);
   const dateKey = findHeaderKey(headerRow, ['data', 'date', 'data_lancamento', 'data_compra', 'posted_date']);
-  const descriptionKey = findHeaderKey(headerRow, ['descricao', 'descricao_transacao', 'historico', 'estabelecimento', 'titulo', 'title', 'memo', 'description']);
+  const descriptionKey = findHeaderKey(headerRow, [
+    'descricao',
+    'descricao_transacao',
+    'historico',
+    'estabelecimento',
+    'titulo',
+    'title',
+    'memo',
+    'description',
+    'lancamento',
+    'lancto',
+    'transacao',
+  ]);
   const amountKey = findHeaderKey(headerRow, ['valor', 'amount', 'valor_rs', 'valor_total', 'price']);
   const debitKey = findHeaderKey(headerRow, ['debito', 'debit', 'saidas', 'valor_debito']);
   const creditKey = findHeaderKey(headerRow, ['credito', 'credit', 'entradas', 'valor_credito']);
@@ -164,6 +178,8 @@ export function parseCsvFinanceiro(content: string): CsvFinanceiroResult {
       /pagamento recebido|estorno|reembolso|chargeback/i.test(descricao)
     ) {
       tipo = 'receita';
+    } else if (/pagamento efetuado|pagamento fatura|pagamento da fatura/i.test(descricao)) {
+      return [];
     } else if (creditKey && !debitKey && valor > 0) {
       tipo = 'receita';
     } else if (valor < 0) {

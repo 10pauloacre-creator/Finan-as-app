@@ -5,56 +5,138 @@ function inicioDoDia(data: Date) {
   return new Date(data.getFullYear(), data.getMonth(), data.getDate(), 0, 0, 0, 0);
 }
 
+function diferencaMeses(inicio: Date, fim: Date) {
+  return (fim.getFullYear() - inicio.getFullYear()) * 12 + (fim.getMonth() - inicio.getMonth());
+}
+
+function compararMesAno(a: Date, b: Date) {
+  const ano = a.getFullYear() - b.getFullYear();
+  if (ano !== 0) return ano;
+  return a.getMonth() - b.getMonth();
+}
+
 export function criarDataNoMes(ano: number, mesIndex: number, diaBase: number) {
   const ultimoDia = new Date(ano, mesIndex + 1, 0).getDate();
   return new Date(ano, mesIndex, Math.min(diaBase, ultimoDia), 0, 0, 0, 0);
 }
 
+function getTotalParcelas(transacao: Pick<Transacao, 'parcelas'>) {
+  return Math.max(transacao.parcelas || 1, 1);
+}
+
+export function getValorTotalPlanejado(transacao: Pick<Transacao, 'valor' | 'parcelas'>) {
+  return transacao.valor * getTotalParcelas(transacao);
+}
+
+export function getDataOcorrenciaNoMes(
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  mes: number,
+  ano: number,
+) {
+  const mesIndex = mes - 1;
+  const dataBase = parseFinancialDate(transacao.data);
+  const ocorrencia = criarDataNoMes(ano, mesIndex, dataBase.getDate());
+
+  if (ocorrencia < dataBase) return null;
+
+  const deslocamento = diferencaMeses(dataBase, ocorrencia);
+  if (deslocamento < 0) return null;
+
+  const totalParcelas = getTotalParcelas(transacao);
+  const parcelada = totalParcelas > 1;
+
+  if (transacao.classificacao === 'fixa') {
+    if (parcelada && deslocamento >= totalParcelas) return null;
+    return ocorrencia;
+  }
+
+  if (parcelada) {
+    return deslocamento < totalParcelas ? ocorrencia : null;
+  }
+
+  return dataBase.getFullYear() === ano && dataBase.getMonth() === mesIndex ? ocorrencia : null;
+}
+
+export function contarOcorrenciasAteData(
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
+  referencia = startOfTodayLocal(),
+) {
+  const dataReferencia = inicioDoDia(referencia);
+  const dataBase = parseFinancialDate(transacao.data);
+  if (dataBase > dataReferencia) return 0;
+
+  const totalParcelas = getTotalParcelas(transacao);
+  const parcelada = totalParcelas > 1;
+
+  if (transacao.classificacao !== 'fixa' && !parcelada) {
+    return 1;
+  }
+
+  let ocorrencias = 0;
+  let deslocamento = 0;
+
+  while (true) {
+    if (transacao.classificacao !== 'fixa' && deslocamento > 0 && !parcelada) break;
+    if (parcelada && deslocamento >= totalParcelas) break;
+
+    const ocorrencia = criarDataNoMes(
+      dataBase.getFullYear(),
+      dataBase.getMonth() + deslocamento,
+      dataBase.getDate(),
+    );
+
+    if (ocorrencia > dataReferencia) break;
+    if (ocorrencia >= dataBase) ocorrencias += 1;
+
+    deslocamento += 1;
+    if (transacao.classificacao !== 'fixa' && !parcelada) break;
+  }
+
+  return ocorrencias;
+}
+
 export function transacaoJaOcorreuAteData(
-  transacao: Pick<Transacao, 'data' | 'classificacao'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
   referencia = startOfTodayLocal(),
 ) {
   const dataReferencia = inicioDoDia(referencia);
   const dataBase = parseFinancialDate(transacao.data);
 
+  if (getTotalParcelas(transacao) > 1 && transacao.classificacao !== 'fixa') {
+    return dataBase <= dataReferencia;
+  }
+
   if (transacao.classificacao !== 'fixa') {
     return dataBase <= dataReferencia;
   }
 
-  if (dataBase > dataReferencia) return false;
-
-  const ocorrenciaMesAtual = criarDataNoMes(
+  const ocorrenciaMesAtual = getDataOcorrenciaNoMes(
+    transacao,
+    dataReferencia.getMonth() + 1,
     dataReferencia.getFullYear(),
-    dataReferencia.getMonth(),
-    dataBase.getDate(),
   );
 
-  return ocorrenciaMesAtual <= dataReferencia;
+  return Boolean(ocorrenciaMesAtual && ocorrenciaMesAtual <= dataReferencia);
 }
 
 export function transacaoContaNoMesAteData(
-  transacao: Pick<Transacao, 'data' | 'classificacao'>,
+  transacao: Pick<Transacao, 'data' | 'classificacao' | 'parcelas'>,
   mes: number,
   ano: number,
   referencia = startOfTodayLocal(),
 ) {
   const dataReferencia = inicioDoDia(referencia);
-  const mesIndex = mes - 1;
+  const ocorrencia = getDataOcorrenciaNoMes(transacao, mes, ano);
+  if (!ocorrencia) return false;
 
-  if (transacao.classificacao === 'fixa') {
-    const dataBase = parseFinancialDate(transacao.data);
-    const ocorrencia = criarDataNoMes(ano, mesIndex, dataBase.getDate());
-
-    if (ocorrencia < dataBase) return false;
-    return ocorrencia <= dataReferencia;
-  }
-
-  const data = parseFinancialDate(transacao.data);
-  return data.getFullYear() === ano && data.getMonth() === mesIndex && data <= dataReferencia;
+  const comparacaoMes = compararMesAno(ocorrencia, dataReferencia);
+  if (comparacaoMes < 0) return true;
+  if (comparacaoMes > 0) return true;
+  return ocorrencia <= dataReferencia;
 }
 
 export function calcularDataFinalParcelamento(transacao: Pick<Transacao, 'data' | 'parcelas'>) {
-  const totalParcelas = transacao.parcelas || 1;
+  const totalParcelas = getTotalParcelas(transacao);
   const dataBase = parseFinancialDate(transacao.data);
   return criarDataNoMes(
     dataBase.getFullYear(),
@@ -63,39 +145,19 @@ export function calcularDataFinalParcelamento(transacao: Pick<Transacao, 'data' 
   );
 }
 
-function contarParcelasOcorridasAteData(
-  transacao: Pick<Transacao, 'data' | 'parcelas'>,
-  referencia = startOfTodayLocal(),
-) {
-  const totalParcelas = transacao.parcelas || 1;
-  const dataBase = parseFinancialDate(transacao.data);
-  const dataReferencia = inicioDoDia(referencia);
-  let ocorridas = 0;
-
-  for (let indice = 0; indice < totalParcelas; indice += 1) {
-    const ocorrencia = criarDataNoMes(
-      dataBase.getFullYear(),
-      dataBase.getMonth() + indice,
-      dataBase.getDate(),
-    );
-    if (ocorrencia <= dataReferencia) ocorridas += 1;
-  }
-
-  return ocorridas;
-}
-
 export function calcularParcelamentoInfo(
-  transacao: Pick<Transacao, 'data' | 'valor' | 'parcelas' | 'parcela_atual'>,
+  transacao: Pick<Transacao, 'data' | 'valor' | 'parcelas' | 'parcela_atual' | 'classificacao'>,
   referencia = startOfTodayLocal(),
 ) {
-  const totalParcelas = transacao.parcelas || 1;
+  const totalParcelas = getTotalParcelas(transacao);
   if (totalParcelas <= 1) return null;
 
   const parcelaAtual = transacao.parcela_atual
     ? Math.min(transacao.parcela_atual, totalParcelas)
-    : Math.min(contarParcelasOcorridasAteData(transacao, referencia), totalParcelas);
+    : Math.min(contarOcorrenciasAteData(transacao, referencia), totalParcelas);
   const parcelasRestantes = Math.max(totalParcelas - parcelaAtual, 0);
-  const valorParcela = transacao.valor / totalParcelas;
+  const valorParcela = transacao.valor;
+  const valorTotal = valorParcela * totalParcelas;
   const valorRestante = parcelasRestantes * valorParcela;
 
   return {
@@ -103,12 +165,13 @@ export function calcularParcelamentoInfo(
     totalParcelas,
     parcelasRestantes,
     valorParcela,
+    valorTotal,
     valorRestante,
     dataFinal: calcularDataFinalParcelamento(transacao),
   };
 }
 
-export function calcularGastoRecorrenteAnual(transacao: Pick<Transacao, 'tipo' | 'classificacao' | 'valor'>) {
-  if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'fixa') return null;
+export function calcularGastoRecorrenteAnual(transacao: Pick<Transacao, 'tipo' | 'classificacao' | 'valor' | 'parcelas'>) {
+  if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'fixa' || getTotalParcelas(transacao) > 1) return null;
   return transacao.valor * 12;
 }

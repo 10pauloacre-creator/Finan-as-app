@@ -6,11 +6,13 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
-import { isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import {
   calcularDataFinalParcelamento,
   calcularGastoRecorrenteAnual,
   calcularParcelamentoInfo,
+  getDataOcorrenciaNoMes,
+  transacaoContaNoMesAteData,
   transacaoJaOcorreuAteData,
 } from '@/lib/transacoes';
 
@@ -25,6 +27,10 @@ const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set',
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
 type ClassificacaoFiltro = 'todas' | 'padrao' | 'fixa' | 'futura';
+type TransacaoExibicao = {
+  transacao: Transacao;
+  dataExibicao: string;
+};
 
 const FILTROS_CLASSIFICACAO: { valor: ClassificacaoFiltro; label: string }[] = [
   { valor: 'todas', label: 'Todas' },
@@ -131,7 +137,9 @@ function ModalDetalheTransacao({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-3">
               <div className="text-[11px] text-slate-500">Valor total</div>
-              <div className="mt-1 text-sm font-semibold text-red-400 tabular-nums">{formatarMoeda(transacao.valor)}</div>
+              <div className="mt-1 text-sm font-semibold text-red-400 tabular-nums">
+                {formatarMoeda(parcelamento?.valorTotal ?? transacao.valor)}
+              </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <div className="text-[11px] text-slate-500">Data</div>
@@ -199,6 +207,10 @@ function ModalDetalheTransacao({
                   <div className="mt-1 text-sm font-semibold text-amber-300">{parcelamento.parcelasRestantes}x</div>
                 </div>
                 <div>
+                  <div className="text-[11px] text-slate-500">Valor da parcela</div>
+                  <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(parcelamento.valorParcela)}</div>
+                </div>
+                <div>
                   <div className="text-[11px] text-slate-500">Valor restante</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(parcelamento.valorRestante)}</div>
                 </div>
@@ -210,7 +222,7 @@ function ModalDetalheTransacao({
                 </div>
               </div>
               <p className="mt-3 text-xs text-slate-400">
-                Valor medio por parcela: {formatarMoeda(parcelamento.valorParcela)}.
+                Valor total planejado: {formatarMoeda(parcelamento.valorTotal)}.
                 {dataFinalParcelamento ? ` Ultima previsao em ${dataFinalParcelamento.toLocaleDateString('pt-BR')}.` : ''}
               </p>
             </div>
@@ -259,72 +271,100 @@ export default function Transacoes() {
   const [transacaoDetalhe, setTransacaoDetalhe] = useState<Transacao | null>(null);
   const hoje = startOfTodayLocal();
 
-  const transacoesPorPeriodo = useMemo(() => {
+  const transacoesPorPeriodo = useMemo<TransacaoExibicao[]>(() => {
     const agora = new Date();
-    return transacoes.filter((t) => {
+    return transacoes.flatMap((transacao) => {
       if (periodo === 'mes') {
-        return isSameFinancialMonth(t.data, filtroMes, filtroAno);
+        const ocorrencia = getDataOcorrenciaNoMes(transacao, filtroMes, filtroAno);
+        return ocorrencia
+          ? [{ transacao, dataExibicao: formatFinancialDate(ocorrencia) }]
+          : [];
       }
       if (periodo === '3meses') {
         const tresMesesAtras = new Date(agora);
         tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
         tresMesesAtras.setDate(1);
-        return parseFinancialDate(t.data) >= tresMesesAtras;
+        return parseFinancialDate(transacao.data) >= tresMesesAtras
+          ? [{ transacao, dataExibicao: transacao.data }]
+          : [];
       }
-      return true;
+      return [{ transacao, dataExibicao: transacao.data }];
     });
   }, [transacoes, periodo, filtroMes, filtroAno]);
 
   const chipsCategoria = useMemo(() => {
     const mapa: Record<string, { id: string; nome: string; icone: string; cor: string; total: number }> = {};
     transacoesPorPeriodo
-      .filter((t) => t.tipo === 'despesa')
-      .forEach((t) => {
-        const cat = categorias.find((c) => c.id === t.categoria_id);
+      .filter(({ transacao }) => transacao.tipo === 'despesa')
+      .forEach(({ transacao }) => {
+        const cat = categorias.find((c) => c.id === transacao.categoria_id);
         const id = cat?.id || 'outros';
         const nome = cat?.nome || 'Outros';
         if (!mapa[id]) {
           mapa[id] = { id, nome, icone: cat?.icone || '$', cor: cat?.cor || '#6B7280', total: 0 };
         }
-        mapa[id].total += t.valor;
+        mapa[id].total += transacao.valor;
       });
     return Object.values(mapa).sort((a, b) => b.total - a.total);
   }, [transacoesPorPeriodo, categorias]);
 
   const transacoesFiltradas = useMemo(() => {
-    return transacoesPorPeriodo.filter((t) => {
-      const tipoOk = filtroTipo === 'todos' || t.tipo === filtroTipo;
-      const classificacaoOk = filtroClassificacao === 'todas' || getClassificacaoTransacao(t) === filtroClassificacao;
-      const buscaOk = !busca || t.descricao.toLowerCase().includes(busca.toLowerCase());
+    return transacoesPorPeriodo.filter(({ transacao }) => {
+      const tipoOk = filtroTipo === 'todos' || transacao.tipo === filtroTipo;
+      const classificacaoOk = filtroClassificacao === 'todas' || getClassificacaoTransacao(transacao) === filtroClassificacao;
+      const buscaOk = !busca || transacao.descricao.toLowerCase().includes(busca.toLowerCase());
       const catOk = !catSelecionada || (() => {
-        const cat = categorias.find((c) => c.id === t.categoria_id);
+        const cat = categorias.find((c) => c.id === transacao.categoria_id);
         return (cat?.id || 'outros') === catSelecionada;
       })();
       return tipoOk && classificacaoOk && buscaOk && catOk;
     });
   }, [transacoesPorPeriodo, filtroTipo, filtroClassificacao, busca, catSelecionada, categorias]);
 
+  const referenciaTotais = useMemo(() => {
+    if (periodo !== 'mes') return hoje;
+    const referenciaSelecionada = new Date(filtroAno, filtroMes - 1, 1);
+    const comparacaoAno = referenciaSelecionada.getFullYear() - hoje.getFullYear();
+    const comparacaoMes = comparacaoAno === 0 ? referenciaSelecionada.getMonth() - hoje.getMonth() : comparacaoAno;
+
+    if (comparacaoMes < 0) {
+      return new Date(filtroAno, filtroMes, 0, 23, 59, 59, 999);
+    }
+
+    if (comparacaoMes > 0) {
+      return new Date(filtroAno, filtroMes, 0, 23, 59, 59, 999);
+    }
+
+    return hoje;
+  }, [periodo, filtroAno, filtroMes, hoje]);
+
   const transacoesRealizadasFiltradas = useMemo(() => (
-    transacoesFiltradas.filter((transacao) => transacaoJaOcorreuAteData(transacao, hoje))
-  ), [transacoesFiltradas, hoje]);
+    transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
+      if (periodo === 'mes') {
+        const data = parseFinancialDate(dataExibicao);
+        return transacaoContaNoMesAteData(transacao, data.getMonth() + 1, data.getFullYear(), referenciaTotais);
+      }
+      return transacaoJaOcorreuAteData(transacao, referenciaTotais);
+    })
+  ), [transacoesFiltradas, periodo, referenciaTotais]);
 
   const totais = useMemo(() => ({
     receitas: transacoesRealizadasFiltradas
-      .filter((t) => t.tipo === 'receita')
-      .reduce((soma, t) => soma + t.valor, 0),
+      .filter(({ transacao }) => transacao.tipo === 'receita')
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0),
     despesas: transacoesRealizadasFiltradas
-      .filter((t) => t.tipo === 'despesa')
-      .reduce((soma, t) => soma + t.valor, 0),
+      .filter(({ transacao }) => transacao.tipo === 'despesa')
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0),
   }), [transacoesRealizadasFiltradas]);
 
   const saldo = totais.receitas - totais.despesas;
 
   const transacoesAgrupadas = useMemo(() => {
-    const grupos: Record<string, Transacao[]> = {};
-    const ordenadas = [...transacoesFiltradas].sort((a, b) => b.data.localeCompare(a.data));
-    ordenadas.forEach((t) => {
-      if (!grupos[t.data]) grupos[t.data] = [];
-      grupos[t.data].push(t);
+    const grupos: Record<string, TransacaoExibicao[]> = {};
+    const ordenadas = [...transacoesFiltradas].sort((a, b) => b.dataExibicao.localeCompare(a.dataExibicao));
+    ordenadas.forEach((item) => {
+      if (!grupos[item.dataExibicao]) grupos[item.dataExibicao] = [];
+      grupos[item.dataExibicao].push(item);
     });
     return Object.entries(grupos).sort(([a], [b]) => b.localeCompare(a));
   }, [transacoesFiltradas]);
@@ -493,8 +533,8 @@ export default function Transacoes() {
           </div>
         ) : (
           transacoesAgrupadas.map(([data, grupo]) => {
-            const totalDia = grupo.reduce((soma, t) => (
-              t.tipo === 'receita' ? soma + t.valor : soma - t.valor
+            const totalDia = grupo.reduce((soma, { transacao }) => (
+              transacao.tipo === 'receita' ? soma + transacao.valor : soma - transacao.valor
             ), 0);
 
             return (
@@ -508,16 +548,17 @@ export default function Transacoes() {
                   </span>
                 </div>
                 <div className="space-y-2">
-                  {grupo.map((t) => {
+                  {grupo.map(({ transacao: t, dataExibicao }) => {
                     const cat = categorias.find((c) => c.id === t.categoria_id);
                     const conta = contas.find((item) => item.id === t.conta_id);
                     const cartao = cartoes.find((item) => item.id === t.cartao_id);
                     const badgeClassificacao = getBadgeClassificacao(t, hoje);
-                    const eFutura = !transacaoJaOcorreuAteData(t, hoje);
+                    const eFutura = parseFinancialDate(dataExibicao) > hoje;
+                    const parcelamento = calcularParcelamentoInfo(t, parseFinancialDate(dataExibicao));
 
                     return (
                       <button
-                        key={t.id}
+                        key={`${t.id}-${dataExibicao}`}
                         type="button"
                         onClick={() => setTransacaoDetalhe(t)}
                         className="group flex w-full items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left"
@@ -533,7 +574,7 @@ export default function Transacoes() {
                           <div className="text-xs text-slate-500">
                             {cat?.nome || 'Outros'}
                             {t.metodo_pagamento && ` • ${t.metodo_pagamento.toUpperCase()}`}
-                            {t.parcelas && t.parcelas > 1 && ` • ${t.parcelas}x`}
+                            {t.parcelas && t.parcelas > 1 && ` • ${parcelamento?.parcelaAtual || 0}/${t.parcelas}x`}
                             {conta ? ` • ${conta.nome}` : ''}
                             {cartao ? ` • ${cartao.nome}` : ''}
                           </div>
@@ -546,7 +587,7 @@ export default function Transacoes() {
                           )}
                           {eFutura && (
                             <div className="mt-1 text-[11px] text-amber-400">
-                              Prevista para {parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              Prevista para {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </div>
                           )}
                           {t.itens_compra && t.itens_compra.length > 0 && (
