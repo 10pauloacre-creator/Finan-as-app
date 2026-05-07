@@ -86,12 +86,14 @@ function ModalDetalheTransacao({
   conta,
   cartao,
   categoriaNome,
+  onEditar,
   onFechar,
 }: {
   transacao: Transacao;
   conta?: ContaBancaria;
   cartao?: CartaoCredito;
   categoriaNome: string;
+  onEditar: () => void;
   onFechar: () => void;
 }) {
   const hoje = startOfTodayLocal();
@@ -108,11 +110,21 @@ function ModalDetalheTransacao({
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900 p-5">
           <div>
             <h3 className="text-lg font-bold text-white">{transacao.descricao}</h3>
-            <p className="text-xs text-slate-500 mt-1">Detalhes completos da despesa</p>
+            <p className="text-xs text-slate-500 mt-1">Detalhes completos do lancamento</p>
           </div>
-          <button onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:text-white">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEditar}
+              className="inline-flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300 hover:bg-purple-500/20"
+            >
+              <Edit size={14} />
+              Editar
+            </button>
+            <button onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4 p-5">
@@ -600,6 +612,10 @@ export default function Transacoes() {
           conta={contas.find((item) => item.id === transacaoDetalhe.conta_id)}
           cartao={cartoes.find((item) => item.id === transacaoDetalhe.cartao_id)}
           categoriaNome={categorias.find((item) => item.id === transacaoDetalhe.categoria_id)?.nome || 'Outros'}
+          onEditar={() => {
+            setTransacaoDetalhe(null);
+            handleEditar(transacaoDetalhe);
+          }}
           onFechar={() => setTransacaoDetalhe(null)}
         />
       )}

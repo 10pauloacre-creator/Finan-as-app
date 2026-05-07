@@ -389,6 +389,28 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Horario</label>
+                <input
+                  type="time"
+                  value={form.horario}
+                  onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Regra da data</label>
+                <div className="flex h-[42px] items-center rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs text-slate-400">
+                  {form.classificacao === 'fixa'
+                    ? 'Repete todo mes a partir desta data'
+                    : form.classificacao === 'futura'
+                    ? 'So entra no saldo nesta data'
+                    : 'Considera exatamente esta data'}
+                </div>
+              </div>
+            </div>
+
             {/* Categoria */}
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Categoria *</label>
@@ -545,6 +567,17 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 value={form.local}
                 onChange={e => setForm(f => ({ ...f, local: e.target.value }))}
                 className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Observacoes</label>
+              <textarea
+                rows={3}
+                placeholder="Anote detalhes importantes sobre este lancamento"
+                value={form.observacoes}
+                onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
+                className="w-full resize-none bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
               />
             </div>
 
