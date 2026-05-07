@@ -6,6 +6,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Brain, ChevronDown, FileText, ImageIcon, Loader2,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
+import { construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
@@ -258,6 +259,14 @@ function EvolutionChart({ data }: { data: EvoPoint[] }) {
 
 // InsightCard com typewriter
 interface DicaItem { id: string; tipo: 'alerta' | 'conquista' | 'dica'; titulo: string; mensagem: string }
+interface AutomacaoCache {
+  assinatura: string;
+  ts: number;
+  dicas: DicaItem[];
+}
+
+const AUTOMACAO_CACHE_KEY = 'financeiroia_dashboard_automacoes_v1';
+const AUTOMACAO_TTL_MS = 4 * 60 * 60 * 1000;
 function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssistente: () => void }) {
   const [idx, setIdx] = useState(0);
   const [text, setText] = useState('');
@@ -396,6 +405,116 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
       </div>
     </section>
   );
+}
+
+function montarDicasLocais({
+  receitas,
+  despesas,
+  saldo,
+  graficoPizza,
+  quantidadeTransacoes,
+  selicAtual,
+}: {
+  receitas: number;
+  despesas: number;
+  saldo: number;
+  graficoPizza: Array<{ nome: string; valor: number }>;
+  quantidadeTransacoes: number;
+  selicAtual: number | null;
+}): DicaItem[] {
+  const dicas: DicaItem[] = [];
+
+  if (despesas > receitas * 0.9 && receitas > 0) {
+    dicas.push({
+      id: 'local-alerta-gastos',
+      tipo: 'alerta',
+      titulo: 'Gastos acima do ideal',
+      mensagem: `Você usou ${((despesas / receitas) * 100).toFixed(0)}% da sua renda. O ideal é manter abaixo de 80%.`,
+    });
+  }
+
+  if (saldo > 0) {
+    dicas.push({
+      id: 'local-saldo-positivo',
+      tipo: 'conquista',
+      titulo: 'Saldo positivo',
+      mensagem: `Você tem ${formatarMoeda(saldo)} sobrando. ${selicAtual ? `Na Selic (${selicAtual}% a.a.), isso pode render cerca de ${formatarMoeda(saldo * selicAtual / 100 / 12)}/mês.` : 'Considere investir esse valor com segurança.'}`,
+    });
+  }
+
+  if (graficoPizza.length > 0 && despesas > 0) {
+    const topCat = graficoPizza[0];
+    dicas.push({
+      id: 'local-top-categoria',
+      tipo: 'dica',
+      titulo: `Maior gasto: ${topCat.nome}`,
+      mensagem: `${topCat.nome} representa ${((topCat.valor / despesas) * 100).toFixed(0)}% das saídas do mês (${formatarMoeda(topCat.valor)}).`,
+    });
+  }
+
+  if (quantidadeTransacoes >= 25) {
+    dicas.push({
+      id: 'local-volume',
+      tipo: 'dica',
+      titulo: 'Mês com muitos lançamentos',
+      mensagem: `Você já registrou ${quantidadeTransacoes} transações neste mês. Vale revisar padrões e assinaturas recorrentes.`,
+    });
+  }
+
+  return dicas.slice(0, 4);
+}
+
+function tipoDicaPorAutomacao(tipo?: string): DicaItem['tipo'] {
+  if (tipo === 'alerta_orcamento' || tipo === 'revisar_cartao') return 'alerta';
+  if (tipo === 'acompanhar_meta') return 'conquista';
+  return 'dica';
+}
+
+function assinaturaAutomacao(snapshot: ReturnType<typeof construirSnapshotFinanceiro>) {
+  return JSON.stringify({
+    referencia: snapshot.referencia,
+    resumoMensal: snapshot.resumoMensal,
+    top: snapshot.categoriasTop.slice(0, 4),
+    cartoes: snapshot.cartoes.map((cartao) => ({
+      id: cartao.id,
+      faturaAtual: cartao.faturaAtual,
+      limite: cartao.limite,
+    })),
+    metas: snapshot.metas.map((meta) => ({
+      id: meta.id,
+      valorAtual: meta.valorAtual,
+      valorAlvo: meta.valorAlvo,
+    })),
+    orcamentos: snapshot.orcamentos.map((orcamento) => ({
+      id: orcamento.id,
+      gastoAtual: orcamento.gastoAtual,
+      valorLimite: orcamento.valorLimite,
+    })),
+  });
+}
+
+function lerCacheAutomacao(assinatura: string) {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = localStorage.getItem(AUTOMACAO_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AutomacaoCache;
+    if (parsed.assinatura !== assinatura) return null;
+    if (Date.now() - parsed.ts > AUTOMACAO_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function salvarCacheAutomacao(cache: AutomacaoCache) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(AUTOMACAO_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // ignora falhas de storage
+  }
 }
 
 // Dashboard principal
@@ -551,6 +670,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const [cartaoExpandidoId, setCartaoExpandidoId] = useState<string | null>(null);
   const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
   const [statusImportacao, setStatusImportacao] = useState<{ cartaoId: string; tipo: 'sucesso' | 'erro' | 'info'; mensagem: string } | null>(null);
+  const [carregandoAutomacoes, setCarregandoAutomacoes] = useState(false);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const dadosMes = useMemo(() => {
@@ -590,21 +710,105 @@ export default function Dashboard({ onNovoPagina }: Props) {
     return { receitas, despesas, saldo, graficoPizza, areaData, doMes };
   }, [transacoes, categorias, mes, ano]);
 
+  const snapshotProjeto = useMemo(() => construirSnapshotFinanceiro({
+    transacoes,
+    categorias,
+    contas,
+    cartoes,
+    metas,
+    orcamentos,
+  }), [transacoes, categorias, contas, cartoes, metas, orcamentos]);
+
+  const dicasLocais = useMemo(() => montarDicasLocais({
+    receitas: dadosMes.receitas,
+    despesas: dadosMes.despesas,
+    saldo: dadosMes.saldo,
+    graficoPizza: dadosMes.graficoPizza,
+    quantidadeTransacoes: dadosMes.doMes.length,
+    selicAtual,
+  }), [dadosMes, selicAtual]);
+
   useEffect(() => {
-    if (dadosMes.doMes.length === 0) return;
-    const dicas: typeof dicasIA = [];
-    if (dadosMes.despesas > dadosMes.receitas * 0.9 && dadosMes.receitas > 0) {
-      dicas.push({ id: '1', tipo: 'alerta', titulo: 'Gastos acima do ideal', mensagem: `Voc? usou ${((dadosMes.despesas / dadosMes.receitas) * 100).toFixed(0)}% da sua renda. O ideal ? manter abaixo de 80%.`, criado_em: new Date().toISOString() });
+    const criadoEm = new Date().toISOString();
+    setDicasIA(dicasLocais.map((dica) => ({ ...dica, origem: 'local' as const, criado_em: criadoEm })));
+  }, [dicasLocais, setDicasIA]);
+
+  useEffect(() => {
+    if (snapshotProjeto.transacoesRecentes.length === 0 && snapshotProjeto.cartoes.length === 0) return;
+
+    const assinatura = assinaturaAutomacao(snapshotProjeto);
+    const cache = lerCacheAutomacao(assinatura);
+    if (cache) {
+      setDicasIA([
+        ...dicasLocais.map((dica) => ({ ...dica, origem: 'local' as const, criado_em: new Date(cache.ts).toISOString() })),
+        ...cache.dicas.map((dica) => ({ ...dica, origem: 'automacao' as const, criado_em: new Date(cache.ts).toISOString() })),
+      ]);
+      return;
     }
-    if (dadosMes.saldo > 0) {
-      dicas.push({ id: '3', tipo: 'conquista', titulo: 'Saldo positivo!', mensagem: `Você tem ${formatarMoeda(dadosMes.saldo)} sobrando. ${selicAtual ? `Investindo na Selic (${selicAtual}% a.a.) renderiam ${formatarMoeda(dadosMes.saldo * selicAtual / 100 / 12)}/mês.` : 'Considere investir!'}`, criado_em: new Date().toISOString() });
-    }
-    if (dadosMes.graficoPizza.length > 0) {
-      const topCat = dadosMes.graficoPizza[0];
-      dicas.push({ id: '4', tipo: 'dica', titulo: `Maior gasto: ${topCat.nome}`, mensagem: `${topCat.nome} representa ${((topCat.valor / dadosMes.despesas) * 100).toFixed(0)}% dos seus gastos (${formatarMoeda(topCat.valor)}). Analise se é possível reduzir.`, criado_em: new Date().toISOString() });
-    }
-    setDicasIA(dicas);
-  }, [dadosMes, setDicasIA, selicAtual]);
+
+    let ativo = true;
+    const timeout = setTimeout(async () => {
+      setCarregandoAutomacoes(true);
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            task: 'automacao_financeira_interna',
+            provider: config.ai_modelo_padrao || 'automatico',
+            mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
+            input: {
+              question: 'Analise o projeto e sugira automacoes, monitoramentos e alertas importantes.',
+              projectSnapshot: snapshotProjeto,
+            },
+          }),
+        });
+
+        if (!ativo || !res.ok) return;
+        const data = await res.json() as {
+          acoes_sugeridas?: Array<{ tipo?: string; titulo?: string; descricao?: string }>;
+          automacoes_prontas?: Array<{ descricao?: string }>;
+        };
+
+        const automacoes: DicaItem[] = [
+          ...(data.acoes_sugeridas || []).map((acao, index): DicaItem => ({
+            id: `auto-acao-${index}`,
+            tipo: tipoDicaPorAutomacao(acao.tipo),
+            titulo: acao.titulo || 'Ação sugerida',
+            mensagem: acao.descricao || '',
+          })),
+          ...(data.automacoes_prontas || []).map((automacao, index): DicaItem => ({
+            id: `auto-rotina-${index}`,
+            tipo: 'dica',
+            titulo: 'Automação pronta',
+            mensagem: automacao.descricao || '',
+          })),
+        ].filter((dica) => dica.mensagem);
+
+        if (!ativo || automacoes.length === 0) return;
+
+        salvarCacheAutomacao({
+          assinatura,
+          ts: Date.now(),
+          dicas: automacoes,
+        });
+
+        setDicasIA([
+          ...dicasLocais.map((dica) => ({ ...dica, origem: 'local' as const, criado_em: new Date().toISOString() })),
+          ...automacoes.map((dica) => ({ ...dica, origem: 'automacao' as const, criado_em: new Date().toISOString() })),
+        ]);
+      } catch {
+        // Mantem as dicas locais se a IA falhar.
+      } finally {
+        if (ativo) setCarregandoAutomacoes(false);
+      }
+    }, 900);
+
+    return () => {
+      ativo = false;
+      clearTimeout(timeout);
+    };
+  }, [config.ai_modelo_padrao, dicasLocais, setDicasIA, snapshotProjeto]);
 
   // Score de saúde financeira
   const score = useMemo(
@@ -1284,9 +1488,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
       {/* Análise IA com typewriter */}
       {dicasIA.length > 0 && (
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={15} className="text-purple-400" />
-            <span className="text-sm font-semibold text-slate-300">Análise da IA</span>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-purple-400" />
+              <span className="text-sm font-semibold text-slate-300">Análise da IA</span>
+            </div>
+            {carregandoAutomacoes && (
+              <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <Loader2 size={11} className="animate-spin" />
+                Atualizando automações
+              </span>
+            )}
           </div>
           <InsightCard
             dicas={dicasIA as DicaItem[]}

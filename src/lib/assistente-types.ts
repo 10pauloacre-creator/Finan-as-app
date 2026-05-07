@@ -1,3 +1,5 @@
+import type { ItemCompra } from '@/types';
+
 export interface TransacaoExtraida {
   tipo: 'despesa' | 'receita';
   valor: number;
@@ -9,6 +11,10 @@ export interface TransacaoExtraida {
   parcelas?: number | null;
   local?: string | null;
   banco?: string | null;
+  observacoes?: string | null;
+  itens_compra?: ItemCompra[];
+  cartao_id_sugerido?: string | null;
+  cartao_nome_sugerido?: string | null;
 }
 
 export interface RespostaAssistente {

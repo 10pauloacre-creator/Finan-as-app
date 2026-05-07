@@ -158,6 +158,8 @@ export interface DicaIA {
   mensagem: string;
   icone?: string;
   acao?: string;
+  prioridade?: 'alta' | 'media' | 'baixa';
+  origem?: 'local' | 'ia' | 'automacao';
   criado_em: string;
 }
 

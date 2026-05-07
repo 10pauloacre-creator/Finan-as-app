@@ -1,5 +1,11 @@
 import { getLastExecution, getProviderStatus, normalizeRequestedProvider } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
+import {
+  buildAutomationPrompt,
+  buildCardPurchasePrompt,
+  isCardPurchaseListRequest,
+  normalizeSuggestedCard,
+} from '@/lib/ai/internalFinanceEngine';
 import { analisarRecibo, diagnoseProviders, runAI } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
 import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
@@ -218,6 +224,31 @@ function inferCategoryId(data: Record<string, unknown>) {
   return undefined;
 }
 
+function hasExplicitDate(text: string) {
+  return /\b\d{1,2}[\/-]\d{1,2}([\/-]\d{2,4})?\b/.test(text) || /\b(hoje|ontem|amanha|amanhã)\b/i.test(text);
+}
+
+function resolveRelativeDate(text: string) {
+  const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const base = new Date();
+
+  if (normalized.includes('amanha')) {
+    base.setDate(base.getDate() + 1);
+    return base.toISOString().split('T')[0];
+  }
+
+  if (normalized.includes('ontem')) {
+    base.setDate(base.getDate() - 1);
+    return base.toISOString().split('T')[0];
+  }
+
+  if (normalized.includes('hoje')) {
+    return HOJE();
+  }
+
+  return null;
+}
+
 async function handleJsonRequest(body: {
   task?: AITask;
   mode?: 'auto' | 'manual';
@@ -225,6 +256,7 @@ async function handleJsonRequest(body: {
   input?: Record<string, unknown>;
   question?: string;
   financialContext?: unknown;
+  projectSnapshot?: unknown;
   aiModel?: AIModelId;
   action?: string;
 }) {
@@ -234,20 +266,112 @@ async function handleJsonRequest(body: {
         : body.action === 'plano_economia' ? 'plano_economia'
           : body.action === 'analise_profunda' ? 'analise_profunda'
             : body.action === 'alerta_gastos' ? 'detectar_gastos_incomuns'
+              : body.action === 'automacao_interna' ? 'automacao_financeira_interna'
               : 'responder_pergunta_financeira'
   );
 
   const input = body.input || {
     question: body.question,
     financialContext: body.financialContext,
+    projectSnapshot: body.projectSnapshot,
     action: body.action,
   };
+
+  const question = String(input.question || body.question || '').trim();
+  const projectSnapshot = (input.projectSnapshot || body.projectSnapshot || null) as Record<string, unknown> | null;
+  const selectedProvider = body.provider || body.aiModel || 'automatico';
+  const selectedMode = body.mode || (selectedProvider !== 'automatico' ? 'manual' : 'auto');
+
+  if (legacyTask === 'responder_pergunta_financeira' && isCardPurchaseListRequest(question, projectSnapshot as never)) {
+    const result = await runAI({
+      task: 'estruturar_lista_compra_cartao',
+      input: {
+        customPrompt: buildCardPurchasePrompt(question, projectSnapshot as never),
+      },
+      provider: selectedProvider,
+      mode: selectedMode,
+      options: { temperature: 0.1, maxTokens: 1400 },
+    });
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
+    const parsed = jsonFromText(result.answer || '') as {
+      modo?: string;
+      cartao_id_sugerido?: string;
+      cartao_nome_sugerido?: string;
+      transacao?: Record<string, unknown>;
+    } | null;
+    const transacao = parsed?.transacao;
+
+    if (transacao) {
+      const suggestedCard = normalizeSuggestedCard(parsed || {}, projectSnapshot as never);
+      const relativeDate = resolveRelativeDate(question);
+      const normalizedDate = relativeDate || (hasExplicitDate(question) ? String(transacao.data || HOJE()) : HOJE());
+      const normalizedDescription = String(transacao.descricao || '').trim() || 'Compra de mantimentos';
+      const availableCards = Array.isArray((projectSnapshot as { cartoes?: unknown[] } | null)?.cartoes)
+        ? ((projectSnapshot as { cartoes?: Array<{ id: string; banco?: string }> }).cartoes || [])
+        : [];
+      const matchedCard = availableCards.find((card) => card.id === suggestedCard.cardId);
+      return Response.json({
+        success: true,
+        providerUsed: result.providerUsed,
+        modelUsed: result.modelUsed,
+        fallbackUsed: result.fallbackUsed,
+        failedProvider: result.failedProvider,
+        tipo: 'transacao',
+        transacao: {
+          ...transacao,
+          descricao: normalizedDescription,
+          categoria: String(transacao.categoria || 'Feira de mantimentos'),
+          data: normalizedDate,
+          metodo_pagamento: 'credito',
+          banco: String(transacao.banco || matchedCard?.banco || ''),
+          cartao_id_sugerido: suggestedCard.cardId,
+          cartao_nome_sugerido: suggestedCard.cardName,
+        },
+        resposta: suggestedCard.cardName
+          ? `Estruturei a compra no cartão **${suggestedCard.cardName}**. Revise os itens e confirme para lançar na fatura.`
+          : 'Estruturei a compra no cartão. Revise os itens, selecione o cartão correto e confirme para lançar na fatura.',
+        answer: result.answer,
+      });
+    }
+  }
+
+  if (legacyTask === 'automacao_financeira_interna') {
+    const result = await runAI({
+      task: legacyTask,
+      input: {
+        customPrompt: buildAutomationPrompt(projectSnapshot as never, question),
+      },
+      provider: selectedProvider,
+      mode: selectedMode,
+      options: { temperature: 0.2, maxTokens: 1400 },
+    });
+
+    if (!result.success) {
+      return Response.json({ success: false, error: result.error }, { status: 500 });
+    }
+
+    const parsed = jsonFromText(result.answer || '') as Record<string, unknown> | null;
+    return Response.json({
+      success: true,
+      providerUsed: result.providerUsed,
+      modelUsed: result.modelUsed,
+      fallbackUsed: result.fallbackUsed,
+      failedProvider: result.failedProvider,
+      resposta: typeof parsed?.resumo === 'string' ? parsed.resumo : result.answer,
+      answer: result.answer,
+      ...(parsed || {}),
+    });
+  }
 
   const result = await runAI({
     task: legacyTask,
     input: buildTextTaskPayload(legacyTask, input),
-    provider: body.provider || body.aiModel || 'automatico',
-    mode: body.mode || ((body.provider || body.aiModel) && (body.provider || body.aiModel) !== 'automatico' ? 'manual' : 'auto'),
+    provider: selectedProvider,
+    mode: selectedMode,
     options: { temperature: 0.3 },
   });
 

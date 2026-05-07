@@ -345,3 +345,59 @@ https://nextjs.org/docs/messages/module-not-found
   fallbackUsed: false
 }
  POST /api/ai 200 in 1954ms (next.js: 147ms, application-code: 1807ms)
+[ai] {
+  task: 'estruturar_lista_compra_cartao',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 12.7s (next.js: 127ms, application-code: 12.5s)
+[ai] {
+  task: 'automacao_financeira_interna',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 20.6s (next.js: 141ms, application-code: 20.5s)
+[ai] {
+  task: 'estruturar_lista_compra_cartao',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 13.4s (next.js: 202ms, application-code: 13.2s)
+[ai] {
+  task: 'estruturar_lista_compra_cartao',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 9.4s (next.js: 193ms, application-code: 9.2s)
+[ai] {
+  task: 'estruturar_lista_compra_cartao',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 12.8s (next.js: 185ms, application-code: 12.6s)
+[ai] {
+  task: 'gerar_insights',
+  userId: 'anon',
+  providerUsed: 'openrouterFast',
+  modelUsed: 'google/gemini-2.5-flash',
+  fallbackUsed: false
+}
+ POST /api/ai/dicas 200 in 2.6s (next.js: 558ms, application-code: 2.0s)
+[ai] {
+  task: 'automacao_financeira_interna',
+  userId: 'anon',
+  providerUsed: 'openrouterReasoning',
+  modelUsed: 'deepseek/deepseek-chat',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 17.2s (next.js: 20ms, application-code: 17.2s)

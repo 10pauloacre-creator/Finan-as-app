@@ -28,7 +28,9 @@ export type AITask =
   | 'analisar_imagem_financeira'
   | 'analisar_audio_financeiro'
   | 'analisar_pdf_financeiro'
-  | 'agente_financeiro';
+  | 'agente_financeiro'
+  | 'estruturar_lista_compra_cartao'
+  | 'automacao_financeira_interna';
 
 export interface AIModelDefinition {
   id: AIProviderId;

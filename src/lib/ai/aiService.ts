@@ -94,6 +94,8 @@ const DEFAULT_MAX_TOKENS_BY_TASK: Record<AITask, number> = {
   analisar_audio_financeiro: 900,
   analisar_pdf_financeiro: 4000,
   agente_financeiro: 1024,
+  estruturar_lista_compra_cartao: 1400,
+  automacao_financeira_interna: 1400,
 };
 
 function buildPrompt(task: AITask, sanitizedInput: string) {
@@ -136,6 +138,10 @@ function buildPrompt(task: AITask, sanitizedInput: string) {
       return `Tarefa: analisar PDF financeiro e responder em JSON.\nDados adicionais:\n${sanitizedInput}`;
     case 'agente_financeiro':
       return `Tarefa: agir como agente financeiro especializado e responder em JSON.\nDados:\n${sanitizedInput}`;
+    case 'estruturar_lista_compra_cartao':
+      return `Tarefa: estruturar lista textual de compras em um lancamento de cartao com itens detalhados.\nDados:\n${sanitizedInput}`;
+    case 'automacao_financeira_interna':
+      return `Tarefa: cruzar dados do projeto e sugerir automacoes internas em JSON.\nDados:\n${sanitizedInput}`;
     default:
       return sanitizedInput;
   }

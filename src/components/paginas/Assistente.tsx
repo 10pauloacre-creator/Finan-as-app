@@ -6,7 +6,7 @@ import {
   Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { construirContexto } from '@/lib/contexto-financeiro';
+import { construirContexto, construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
 import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Transacao } from '@/types';
@@ -43,13 +43,16 @@ type AcaoAssistente =
   | 'categorizar_transacoes'
   | 'plano_economia'
   | 'analise_profunda'
-  | 'alerta_gastos';
+  | 'alerta_gastos'
+  | 'automacao_interna';
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 
 const CATEGORIA_MAP: Record<string, string> = {
   'alimentação': 'alimentacao', 'alimentacao': 'alimentacao',
   'mercado': 'mercado',
+  'feira de mantimentos': 'feira_mantimentos',
+  'mantimentos': 'feira_mantimentos',
   'transporte': 'transporte',
   'saúde': 'saude',         'saude': 'saude',
   'educação': 'educacao',   'educacao': 'educacao',
@@ -130,6 +133,11 @@ const ACOES_RAPIDAS: Array<{ id: AcaoAssistente; label: string; prompt: string }
     label: 'Gastos fora do padrão',
     prompt: 'Analise meu contexto financeiro e aponte gastos fora do padrão ou concentrações preocupantes.',
   },
+  {
+    id: 'automacao_interna',
+    label: 'Automacoes internas',
+    prompt: 'Cruze os dados do projeto e me entregue alertas, oportunidades e automacoes internas seguras para acompanhar minhas financas.',
+  },
 ];
 
 /* ── Componente TransacaoCard ───────────────────────────────────────────────── */
@@ -149,7 +157,7 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
   const cancelled = status === 'cancelada';
 
   const [contaId, setContaId] = useState('');
-  const [cartaoId, setCartaoId] = useState('');
+  const [cartaoId, setCartaoId] = useState(tx.cartao_id_sugerido || '');
 
   const mostrarContas = !confirmed && !cancelled &&
     (tx.metodo_pagamento === 'pix' || tx.metodo_pagamento === 'debito' ||
@@ -491,7 +499,18 @@ export default function Assistente() {
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
 
-  const { adicionarTransacao, contas, cartoes, transacoes, categorias, config, atualizarConfig } = useFinanceiroStore();
+  const {
+    adicionarTransacao,
+    contas,
+    cartoes,
+    transacoes,
+    categorias,
+    investimentos,
+    metas,
+    orcamentos,
+    config,
+    atualizarConfig,
+  } = useFinanceiroStore();
 
   // State for duplicate modal
   const [duplicataPendente, setDuplicataPendente] = useState<{
@@ -535,9 +554,11 @@ export default function Assistente() {
       metodo_pagamento: mapMetodo(tx.metodo_pagamento),
       parcelas:         tx.parcelas ?? undefined,
       local:            tx.local ?? undefined,
+      observacoes:      tx.observacoes ?? undefined,
+      itens_compra:     tx.itens_compra ?? undefined,
       origem,
       conta_id:         contaId,
-      cartao_id:        cartaoId,
+      cartao_id:        cartaoId || tx.cartao_id_sugerido || undefined,
     });
   }, [adicionarTransacao]);
 
@@ -654,6 +675,15 @@ export default function Assistente() {
 
     try {
       const financialContext = construirContexto({ transacoes, categorias, contas, cartoes });
+      const projectSnapshot = construirSnapshotFinanceiro({
+        transacoes,
+        categorias,
+        contas,
+        cartoes,
+        investimentos,
+        metas,
+        orcamentos,
+      });
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -669,6 +699,8 @@ export default function Assistente() {
               ? 'analise_profunda'
               : action === 'alerta_gastos'
               ? 'detectar_gastos_incomuns'
+              : action === 'automacao_interna'
+              ? 'automacao_financeira_interna'
               : 'responder_pergunta_financeira',
           mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
           provider: config.ai_modelo_padrao || 'automatico',
@@ -676,6 +708,7 @@ export default function Assistente() {
             question: pergunta,
             action,
             financialContext,
+            projectSnapshot,
           },
         }),
       });

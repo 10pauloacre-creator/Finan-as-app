@@ -93,6 +93,16 @@ export const TASK_PROFILES: Record<AITask, TaskProfile> = {
     description: 'Analise de agentes especializados com saida em JSON.',
     output: 'json',
   },
+  estruturar_lista_compra_cartao: {
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
+    description: 'Transformar lista textual de compras em lancamento de cartao com itens detalhados.',
+    output: 'json',
+  },
+  automacao_financeira_interna: {
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
+    description: 'Cruzar dados do projeto para sugerir automacoes e acoes internas com seguranca.',
+    output: 'json',
+  },
 };
 
 export function getTaskProfile(task: AITask) {
