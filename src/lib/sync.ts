@@ -162,6 +162,7 @@ function mapTransacao(t: Transacao) {
     conta_id: t.conta_id,
     cartao_id: t.cartao_id,
     parcelas: t.parcelas,
+    parcela_atual: t.parcela_atual,
     local: t.local,
     origem: t.origem,
     comprovante_url: t.comprovante_url,

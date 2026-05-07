@@ -56,6 +56,7 @@ create table if not exists transacoes (
   conta_id           text,
   cartao_id          text,
   parcelas           int,
+  parcela_atual      int,
   local              text,
   origem             text default 'manual',
   comprovante_url    text,
@@ -176,6 +177,7 @@ alter table transacoes    add column if not exists pluggy_account_id   text;
 alter table transacoes    add column if not exists horario             text;
 alter table transacoes    add column if not exists cartao_id           text;
 alter table transacoes    add column if not exists classificacao       text default 'padrao';
+alter table transacoes    add column if not exists parcela_atual       int;
 alter table transacoes    add column if not exists comprovante_url     text;
 alter table transacoes    add column if not exists tags                jsonb;
 alter table transacoes    add column if not exists observacoes         text;

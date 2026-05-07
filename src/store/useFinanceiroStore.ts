@@ -131,7 +131,7 @@ function aplicarDeltaCartao(cartoes: CartaoCredito[], cartaoId: string | undefin
 function aplicarImpactoFinanceiro(
   contas: ContaBancaria[],
   cartoes: CartaoCredito[],
-  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id' | 'data' | 'classificacao' | 'parcelas'>,
+  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id' | 'data' | 'classificacao' | 'parcelas' | 'parcela_atual'>,
   direcao: 1 | -1,
 ) {
   let proximasContas = contas;
