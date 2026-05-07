@@ -19,6 +19,7 @@ create table if not exists contas (
   nome                text not null,
   tipo                text default 'corrente',
   saldo               numeric default 0,
+  saldo_base          numeric,
   pluggy_item_id      text,
   pluggy_account_id   text,
   pluggy_sync_em      timestamptz,
@@ -164,6 +165,7 @@ create table if not exists emprestimos (
 alter table contas        add column if not exists pluggy_item_id      text;
 alter table contas        add column if not exists pluggy_account_id   text;
 alter table contas        add column if not exists pluggy_sync_em      timestamptz;
+alter table contas        add column if not exists saldo_base          numeric;
 alter table cartoes       add column if not exists pluggy_item_id      text;
 alter table cartoes       add column if not exists pluggy_account_id   text;
 alter table cartoes       add column if not exists pluggy_sync_em      timestamptz;

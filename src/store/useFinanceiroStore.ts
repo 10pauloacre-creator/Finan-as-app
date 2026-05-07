@@ -20,6 +20,7 @@ import {
   baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao,
 } from '@/lib/sync';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 
 interface FinanceiroState {
   transacoes: Transacao[];
@@ -152,6 +153,85 @@ function aplicarImpactoFinanceiro(
   return { contas: proximasContas, cartoes: proximosCartoes };
 }
 
+function calcularImpactoContaLegado(transacao: Transacao, contaId: string) {
+  if (transacao.conta_id !== contaId) return 0;
+  if (transacao.cartao_id && transacao.tipo === 'despesa') return 0;
+
+  if (transacao.tipo === 'receita') return transacao.valor;
+  if (transacao.tipo === 'despesa' || transacao.tipo === 'transferencia') return -transacao.valor;
+  return 0;
+}
+
+function criarDataNoMes(ano: number, mesIndex: number, diaBase: number) {
+  const ultimoDia = new Date(ano, mesIndex + 1, 0).getDate();
+  return new Date(ano, mesIndex, Math.min(diaBase, ultimoDia), 0, 0, 0, 0);
+}
+
+function calcularImpactoContaAteData(transacao: Transacao, contaId: string, referencia: Date) {
+  if (transacao.conta_id !== contaId) return 0;
+  if (transacao.cartao_id && transacao.tipo === 'despesa') return 0;
+
+  const sinal =
+    transacao.tipo === 'receita'
+      ? 1
+      : transacao.tipo === 'despesa' || transacao.tipo === 'transferencia'
+      ? -1
+      : 0;
+
+  if (sinal === 0) return 0;
+
+  const dataBase = parseFinancialDate(transacao.data);
+  if (transacao.classificacao !== 'fixa') {
+    return dataBase <= referencia ? transacao.valor * sinal : 0;
+  }
+
+  if (dataBase > referencia) return 0;
+
+  let total = 0;
+  const anoInicio = dataBase.getFullYear();
+  const mesInicio = dataBase.getMonth();
+  const anoFim = referencia.getFullYear();
+  const mesFim = referencia.getMonth();
+
+  for (let ano = anoInicio; ano <= anoFim; ano += 1) {
+    const primeiroMes = ano === anoInicio ? mesInicio : 0;
+    const ultimoMes = ano === anoFim ? mesFim : 11;
+
+    for (let mes = primeiroMes; mes <= ultimoMes; mes += 1) {
+      const ocorrencia = criarDataNoMes(ano, mes, dataBase.getDate());
+      if (ocorrencia < dataBase || ocorrencia > referencia) continue;
+      total += transacao.valor * sinal;
+    }
+  }
+
+  return total;
+}
+
+function normalizarContasComTransacoes(contas: ContaBancaria[], transacoes: Transacao[]) {
+  const hoje = startOfTodayLocal();
+
+  return contas.map((conta) => {
+    const saldoBase = conta.saldo_base ?? arredondarMoeda(
+      conta.saldo - transacoes.reduce((soma, transacao) => soma + calcularImpactoContaLegado(transacao, conta.id), 0),
+    );
+    const saldoEfetivo = arredondarMoeda(
+      saldoBase + transacoes.reduce((soma, transacao) => soma + calcularImpactoContaAteData(transacao, conta.id, hoje), 0),
+    );
+    return {
+      ...conta,
+      saldo_base: saldoBase,
+      saldo: saldoEfetivo,
+    };
+  });
+}
+
+function persistirContasNormalizadas(contas: ContaBancaria[]) {
+  contas.forEach((conta) => {
+    storageContas.save(conta);
+    void syncSalvarConta(conta);
+  });
+}
+
 function contarRegistrosRemotos(dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) {
   return (
     dados.transacoes.length +
@@ -202,13 +282,16 @@ function getEstadoConfig(config: ConfiguracaoApp) {
 export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
   const carregarDoLocal = () => {
     const config = storageConfig.get();
+    const transacoes = storageTransacoes.getAll();
+    const contas = normalizarContasComTransacoes(storageContas.getAll(), transacoes);
+    persistirContasNormalizadas(contas);
 
     set({
-      transacoes: storageTransacoes.getAll(),
+      transacoes,
       categorias: storageCategoriass.getAll(),
       investimentos: storageInvestimentos.getAll(),
       metas: storageMetas.getAll(),
-      contas: storageContas.getAll(),
+      contas,
       cartoes: storageCartoes.getAll(),
       orcamentos: storageOrcamentos.getAll(),
       ...getEstadoConfig(config),
@@ -216,9 +299,10 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
   };
 
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
+    const contasNormalizadas = normalizarContasComTransacoes(dados.contas, dados.transacoes);
     storageTransacoes.replaceAll(dados.transacoes);
     storageCategoriass.replaceAll(dados.categorias);
-    storageContas.replaceAll(dados.contas);
+    storageContas.replaceAll(contasNormalizadas);
     storageCartoes.replaceAll(dados.cartoes);
     storageInvestimentos.replaceAll(dados.investimentos);
     storageMetas.replaceAll(dados.metas);
@@ -231,7 +315,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     set({
       transacoes: dados.transacoes,
       categorias: dados.categorias,
-      contas: dados.contas,
+      contas: contasNormalizadas,
       cartoes: dados.cartoes,
       investimentos: dados.investimentos,
       metas: dados.metas,
@@ -245,7 +329,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     if (syncEmAndamento) return syncEmAndamento;
 
     syncEmAndamento = (async () => {
-      await processarFilaDeSincronizacao();
+      const fila = await processarFilaDeSincronizacao();
+      if (fila.pendentes > 0) return;
       let dados = await baixarTudoDoSupabase();
 
       if (!contarRegistrosRemotos(dados)) {
@@ -371,9 +456,12 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         void syncSalvarTransacao(nova);
 
         set((s) => {
+          const proximasTransacoes = [nova, ...s.transacoes];
           const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
+          const contasNormalizadas = normalizarContasComTransacoes(impacto.contas, proximasTransacoes);
+          persistirContasNormalizadas(contasNormalizadas);
 
-          return { transacoes: [nova, ...s.transacoes], contas: impacto.contas, cartoes: impacto.cartoes };
+          return { transacoes: proximasTransacoes, contas: contasNormalizadas, cartoes: impacto.cartoes };
         });
 
         return nova;
@@ -390,11 +478,14 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         void syncSalvarTransacao(atualizada);
 
         set((s) => {
+          const proximasTransacoes = s.transacoes.map((t) => (t.id === id ? atualizada : t));
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
           const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
+          const contasNormalizadas = normalizarContasComTransacoes(reaplicado.contas, proximasTransacoes);
+          persistirContasNormalizadas(contasNormalizadas);
           return {
-            transacoes: s.transacoes.map((t) => (t.id === id ? atualizada : t)),
-            contas: reaplicado.contas,
+            transacoes: proximasTransacoes,
+            contas: contasNormalizadas,
             cartoes: reaplicado.cartoes,
           };
         });
@@ -409,10 +500,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         storageTransacoes.delete(id);
         void syncExcluirTransacao(id);
         set((s) => {
+          const proximasTransacoes = s.transacoes.filter((t) => t.id !== id);
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
+          const contasNormalizadas = normalizarContasComTransacoes(revertido.contas, proximasTransacoes);
+          persistirContasNormalizadas(contasNormalizadas);
           return {
-            transacoes: s.transacoes.filter((t) => t.id !== id),
-            contas: revertido.contas,
+            transacoes: proximasTransacoes,
+            contas: contasNormalizadas,
             cartoes: revertido.cartoes,
           };
         });
@@ -430,7 +524,15 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     atualizarSaldoConta: (id, saldo) => {
       executarSemRecargaLocal(() => {
-        const lista = get().contas.map((c) => (c.id === id ? { ...c, saldo } : c));
+        const hoje = startOfTodayLocal();
+        const transacoes = get().transacoes;
+        const lista = get().contas.map((c) => {
+          if (c.id !== id) return c;
+          const impactoAtual = transacoes.reduce((soma, transacao) => (
+            soma + calcularImpactoContaAteData(transacao, id, hoje)
+          ), 0);
+          return { ...c, saldo, saldo_base: arredondarMoeda(saldo - impactoAtual) };
+        });
         const conta = lista.find((c) => c.id === id);
         if (conta) {
           storageContas.save(conta);
@@ -442,7 +544,12 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarConta: (dados) => {
       executarSemRecargaLocal(() => {
-        const nova: ContaBancaria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const nova: ContaBancaria = {
+          ...dados,
+          saldo_base: dados.saldo,
+          id: gerarId(),
+          criado_em: new Date().toISOString(),
+        };
         storageContas.save(nova);
         void syncSalvarConta(nova);
         set((s) => ({ contas: [...s.contas, nova] }));

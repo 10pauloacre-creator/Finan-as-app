@@ -177,6 +177,7 @@ function mapConta(c: ContaBancaria) {
     nome: c.nome,
     tipo: c.tipo,
     saldo: c.saldo,
+    saldo_base: c.saldo_base,
     criado_em: c.criado_em,
   };
 }

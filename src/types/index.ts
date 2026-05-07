@@ -20,6 +20,7 @@ export interface ContaBancaria {
   nome: string;
   tipo: TipoConta;
   saldo: number;
+  saldo_base?: number;
   agencia?: string;
   conta?: string;
   pluggy_item_id?: string;      // ID do item Pluggy (quando conectado via Open Finance)
