@@ -8,7 +8,7 @@ import type {
   Orcamento,
 } from '@/types';
 import { formatarMoeda } from './storage';
-import { isSameFinancialMonth } from './date';
+import { transacaoContaNoMesAteData } from './transacoes';
 
 interface DadosContexto {
   transacoes: Transacao[];
@@ -92,7 +92,9 @@ export function construirSnapshotFinanceiro(dados: DadosContexto): SnapshotFinan
   const mesAtual = hoje.getMonth() + 1;
   const anoAtual = hoje.getFullYear();
 
-  const txMes = dados.transacoes.filter((transacao) => isSameFinancialMonth(transacao.data, mesAtual, anoAtual));
+  const txMes = dados.transacoes.filter((transacao) => (
+    transacaoContaNoMesAteData(transacao, mesAtual, anoAtual, hoje)
+  ));
   const despesasMes = txMes.filter((transacao) => transacao.tipo === 'despesa');
   const receitasMes = txMes.filter((transacao) => transacao.tipo === 'receita');
   const totalDespesas = despesasMes.reduce((soma, transacao) => soma + transacao.valor, 0);

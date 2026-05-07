@@ -7,6 +7,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { transacaoJaOcorreuAteData } from '@/lib/transacoes';
 
 const FILTROS_TIPO = [
   { valor: 'todos',   label: 'Todos'     },
@@ -312,7 +313,7 @@ export default function Transacoes() {
                   {grupo.map(t => {
                     const cat = categorias.find(c => c.id === t.categoria_id);
                     const badgeClassificacao = getBadgeClassificacao(t);
-                    const eFutura = getClassificacaoTransacao(t) === 'futura' || parseFinancialDate(t.data) > hoje;
+                    const eFutura = !transacaoJaOcorreuAteData(t, hoje);
                     return (
                       <div key={t.id} className="flex items-center gap-3 bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 group">
                         <div

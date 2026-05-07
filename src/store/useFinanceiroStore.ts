@@ -21,6 +21,7 @@ import {
 } from '@/lib/sync';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { criarDataNoMes, transacaoJaOcorreuAteData } from '@/lib/transacoes';
 
 interface FinanceiroState {
   transacoes: Transacao[];
@@ -127,11 +128,16 @@ function aplicarDeltaCartao(cartoes: CartaoCredito[], cartaoId: string | undefin
 function aplicarImpactoFinanceiro(
   contas: ContaBancaria[],
   cartoes: CartaoCredito[],
-  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id'>,
+  transacao: Pick<Transacao, 'tipo' | 'valor' | 'conta_id' | 'cartao_id' | 'data' | 'classificacao'>,
   direcao: 1 | -1,
 ) {
   let proximasContas = contas;
   let proximosCartoes = cartoes;
+  const hoje = startOfTodayLocal();
+
+  if (!transacaoJaOcorreuAteData(transacao, hoje)) {
+    return { contas: proximasContas, cartoes: proximosCartoes };
+  }
 
   if (transacao.cartao_id && transacao.tipo === 'despesa') {
     proximosCartoes = aplicarDeltaCartao(proximosCartoes, transacao.cartao_id, transacao.valor * direcao);
@@ -151,20 +157,6 @@ function aplicarImpactoFinanceiro(
   }
 
   return { contas: proximasContas, cartoes: proximosCartoes };
-}
-
-function calcularImpactoContaLegado(transacao: Transacao, contaId: string) {
-  if (transacao.conta_id !== contaId) return 0;
-  if (transacao.cartao_id && transacao.tipo === 'despesa') return 0;
-
-  if (transacao.tipo === 'receita') return transacao.valor;
-  if (transacao.tipo === 'despesa' || transacao.tipo === 'transferencia') return -transacao.valor;
-  return 0;
-}
-
-function criarDataNoMes(ano: number, mesIndex: number, diaBase: number) {
-  const ultimoDia = new Date(ano, mesIndex + 1, 0).getDate();
-  return new Date(ano, mesIndex, Math.min(diaBase, ultimoDia), 0, 0, 0, 0);
 }
 
 function calcularImpactoContaAteData(transacao: Transacao, contaId: string, referencia: Date) {
@@ -212,7 +204,9 @@ function normalizarContasComTransacoes(contas: ContaBancaria[], transacoes: Tran
 
   return contas.map((conta) => {
     const saldoBase = conta.saldo_base ?? arredondarMoeda(
-      conta.saldo - transacoes.reduce((soma, transacao) => soma + calcularImpactoContaLegado(transacao, conta.id), 0),
+      conta.saldo - transacoes.reduce((soma, transacao) => (
+        soma + calcularImpactoContaAteData(transacao, conta.id, hoje)
+      ), 0),
     );
     const saldoEfetivo = arredondarMoeda(
       saldoBase + transacoes.reduce((soma, transacao) => soma + calcularImpactoContaAteData(transacao, conta.id, hoje), 0),
