@@ -46,7 +46,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Formato de audio invalido.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_AUDIO_MODEL?.trim()) {
+  if (!process.env.OPENROUTER_API_KEY?.trim()) {
     return NextResponse.json(
       { error: 'O processamento de audio ainda nao esta disponivel nesta configuracao.' },
       { status: 503 },

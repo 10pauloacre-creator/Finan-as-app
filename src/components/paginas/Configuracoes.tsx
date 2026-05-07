@@ -216,10 +216,15 @@ export default function Configuracoes() {
   const [aiFallbackOrder, setAiFallbackOrder] = useState<string[]>([]);
   const [openRouterInfo, setOpenRouterInfo] = useState<{
     configured: boolean;
+    defaultProvider?: string;
+    defaultProviderRaw?: string;
     fastModel: string;
     reasoningModel: string;
     premiumModel: string;
     freeModel: string;
+    visionModel: string;
+    pdfModel: string;
+    audioModel: string;
   } | null>(null);
   const [lastExecution, setLastExecution] = useState<{
     providerUsed?: string;
@@ -495,17 +500,26 @@ export default function Configuracoes() {
                   {openRouterInfo.configured ? 'Configurado' : 'Não configurado'}
                 </span>
               </div>
+              <p className="text-[11px] text-slate-400">
+                Provedor padrão real: {openRouterInfo.defaultProvider === 'automatico' ? 'Automático' : openRouterInfo.defaultProvider}
+                {openRouterInfo.defaultProviderRaw && openRouterInfo.defaultProviderRaw !== openRouterInfo.defaultProvider
+                  ? ` (alias recebido: ${openRouterInfo.defaultProviderRaw})`
+                  : ''}
+              </p>
               <p className="text-[11px] text-slate-400">Modelo rápido: {openRouterInfo.fastModel}</p>
               <p className="text-[11px] text-slate-400">Modelo de raciocínio: {openRouterInfo.reasoningModel}</p>
               <p className="text-[11px] text-slate-400">Modelo premium: {openRouterInfo.premiumModel}</p>
               <p className="text-[11px] text-slate-400">Modelo gratuito: {openRouterInfo.freeModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo de imagem: {openRouterInfo.visionModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo de PDF: {openRouterInfo.pdfModel}</p>
+              <p className="text-[11px] text-slate-400">Modelo de áudio: {openRouterInfo.audioModel}</p>
             </div>
           )}
 
           {lastExecution?.providerUsed && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 space-y-1">
               <p className="text-[11px] text-slate-500">Última IA usada</p>
-              <p className="text-xs text-slate-200">{lastExecution.providerUsed}</p>
+              <p className="text-xs text-slate-200">{lastExecution.providerUsed === 'automatico' ? 'Automático' : lastExecution.providerUsed}</p>
               {lastExecution.modelUsed && <p className="text-[11px] text-slate-400">Modelo: {lastExecution.modelUsed}</p>}
               <p className="text-[11px] text-slate-400">Fallback usado: {lastExecution.fallbackUsed ? 'Sim' : 'Não'}</p>
               {lastExecution.at && (

@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!textoExtraidoManual && !process.env.OPENROUTER_VISION_MODEL) {
+  if (!textoExtraidoManual && !process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
       { success: false, error: 'Nao ha modelo multimodal configurado para leitura de comprovantes.' },
       { status: 503 },

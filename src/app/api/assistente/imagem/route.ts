@@ -73,7 +73,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Formato de imagem invalido.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_VISION_MODEL) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
       { error: 'A leitura de imagens ainda nao esta disponivel nesta configuracao.' },
       { status: 503 },

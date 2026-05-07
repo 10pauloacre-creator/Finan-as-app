@@ -27,13 +27,22 @@ function createClient() {
   });
 }
 
-function requireModel(envName: 'OPENROUTER_VISION_MODEL' | 'OPENROUTER_PDF_MODEL' | 'OPENROUTER_AUDIO_MODEL') {
-  const model = process.env[envName]?.trim();
-  if (!model) {
-    throw new Error(`${envName} nao configurado.`);
-  }
+function resolveModel(
+  envName: 'OPENROUTER_VISION_MODEL' | 'OPENROUTER_PDF_MODEL' | 'OPENROUTER_AUDIO_MODEL',
+) {
+  const direct = process.env[envName]?.trim();
+  if (direct) return direct;
 
-  return model;
+  const fast = process.env.OPENROUTER_FAST_MODEL?.trim();
+  if (fast) return fast;
+
+  const reasoning = process.env.OPENROUTER_REASONING_MODEL?.trim();
+  if (reasoning) return reasoning;
+
+  const premium = process.env.OPENROUTER_PREMIUM_MODEL?.trim();
+  if (premium) return premium;
+
+  throw new Error(`${envName} nao configurado e nenhum modelo OpenRouter alternativo foi encontrado.`);
 }
 
 function asDataUrl(mimeType: string, data: string) {
@@ -95,7 +104,7 @@ export async function callOpenRouterText(input: OpenRouterInput) {
 
 export async function callOpenRouterVision(input: OpenRouterInput & { attachment: OpenRouterAttachment }) {
   const client = createClient();
-  const modelName = requireModel('OPENROUTER_VISION_MODEL');
+  const modelName = resolveModel('OPENROUTER_VISION_MODEL');
   const result = await client.chat.completions.create({
     model: modelName,
     temperature: input.temperature,
@@ -126,7 +135,7 @@ export async function callOpenRouterVision(input: OpenRouterInput & { attachment
 }
 
 export async function callOpenRouterPdf(input: OpenRouterInput & { attachment: OpenRouterAttachment }) {
-  const modelName = requireModel('OPENROUTER_PDF_MODEL');
+  const modelName = resolveModel('OPENROUTER_PDF_MODEL');
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -181,7 +190,7 @@ export async function callOpenRouterPdf(input: OpenRouterInput & { attachment: O
 }
 
 export async function callOpenRouterAudio(input: OpenRouterInput & { attachment: OpenRouterAttachment }) {
-  const modelName = requireModel('OPENROUTER_AUDIO_MODEL');
+  const modelName = resolveModel('OPENROUTER_AUDIO_MODEL');
   const response = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
     method: 'POST',
     headers: {

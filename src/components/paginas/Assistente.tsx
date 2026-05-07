@@ -74,10 +74,11 @@ function mapCategoria(nome: string, tipo: 'despesa' | 'receita'): string {
 }
 
 function mapMetodo(m: string): MetodoPagamento {
-  if (m === 'pix')      return 'pix';
-  if (m === 'credito')  return 'credito';
-  if (m === 'debito')   return 'debito';
-  if (m === 'dinheiro') return 'dinheiro';
+  const normalized = m.toLowerCase().trim();
+  if (normalized === 'pix') return 'pix';
+  if (normalized === 'credito' || normalized === 'crédito' || normalized.includes('cartao') || normalized.includes('cartão')) return 'credito';
+  if (normalized === 'debito' || normalized === 'débito') return 'debito';
+  if (normalized === 'dinheiro' || normalized === 'especie' || normalized === 'espécie') return 'dinheiro';
   return 'pix';
 }
 
@@ -154,6 +155,9 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
     (tx.metodo_pagamento === 'pix' || tx.metodo_pagamento === 'debito' ||
      tx.metodo_pagamento === 'nao_informado' || !tx.metodo_pagamento);
   const mostrarCartoes = !confirmed && !cancelled && tx.metodo_pagamento === 'credito';
+  const contaObrigatoria = mostrarContas && contas.length > 0 && isDespesa;
+  const cartaoObrigatorio = mostrarCartoes && cartoes.length > 0 && isDespesa;
+  const podeConfirmar = (!contaObrigatoria || Boolean(contaId)) && (!cartaoObrigatorio || Boolean(cartaoId));
 
   return (
     <div className={`mt-3 rounded-xl border overflow-hidden transition-all
@@ -203,7 +207,9 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
       {/* Seletor de conta bancária */}
       {mostrarContas && contas.length > 0 && (
         <div className="px-4 pb-3 space-y-1.5">
-          <p className="text-[11px] text-slate-500">Conta de origem (opcional)</p>
+          <p className="text-[11px] text-slate-500">
+            Conta de origem {contaObrigatoria ? '(obrigatoria para salvar)' : '(opcional)'}
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {contas.map(conta => {
               const info = BANCO_INFO[conta.banco];
@@ -260,8 +266,9 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
       {!confirmed && !cancelled && (
         <div className="flex gap-2 px-4 pb-3">
           <button
+            disabled={!podeConfirmar}
             onClick={() => onConfirmar(contaId || undefined, cartaoId || undefined)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 text-xs font-semibold transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-500/30 text-emerald-400 text-xs font-semibold transition-colors"
           >
             <CheckCircle2 size={14} />
             Confirmar
@@ -273,6 +280,13 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
             <XCircle size={14} />
             Cancelar
           </button>
+        </div>
+      )}
+      {!confirmed && !cancelled && !podeConfirmar && (
+        <div className="px-4 pb-3">
+          <p className="text-[11px] text-amber-300/90">
+            Selecione {cartaoObrigatorio ? 'um cartão de crédito' : 'uma conta bancária'} antes de confirmar esta transação.
+          </p>
         </div>
       )}
     </div>
@@ -398,12 +412,14 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
               const total     = msg.transacoes!.length;
               const confirmed = msg.confirmadas?.size ?? 0;
               const allDone   = confirmed === total;
+              const pendingTransactions = msg.transacoes!.filter((_, index) => !msg.confirmadas?.has(index));
+              const canBulkConfirm = pendingTransactions.every((tx) => tx.metodo_pagamento !== 'credito' && tx.metodo_pagamento !== 'pix' && tx.metodo_pagamento !== 'debito');
               return (
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className="text-[11px] text-slate-500">
                     {confirmed}/{total} confirmados
                   </span>
-                  {!allDone && (
+                  {!allDone && canBulkConfirm && (
                     <button
                       onClick={() => {
                         for (let i = 0; i < total; i++) {
@@ -415,6 +431,11 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
                       <CheckCircle2 size={11} />
                       Confirmar todos
                     </button>
+                  )}
+                  {!allDone && !canBulkConfirm && (
+                    <span className="text-[11px] text-amber-300/90">
+                      Revise conta ou cartao em cada lancamento antes de salvar.
+                    </span>
                   )}
                   {allDone && (
                     <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">

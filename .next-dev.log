@@ -279,3 +279,69 @@ https://nextjs.org/docs/messages/module-not-found
 ✓ Compiled in 210ms
 ✓ Compiled in 2s
 ✓ Compiled in 595ms
+ GET /api/ai?check=1 200 in 12.1s (next.js: 254ms, application-code: 11.8s)
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterFast',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterReasoning',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterFree',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:error] {
+  task: 'analisar_pdf_financeiro',
+  userId: 'anon',
+  errors: [
+    'openrouterFast: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}',
+    'openrouterReasoning: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}',
+    'openrouterFree: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+  ]
+}
+ POST /api/ai 500 in 504ms (next.js: 7ms, application-code: 497ms)
+[ai] {
+  task: 'analisar_imagem_financeira',
+  userId: 'anon',
+  providerUsed: 'openrouterFast',
+  modelUsed: 'google/gemini-2.5-flash',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 3.4s (next.js: 6ms, application-code: 3.4s)
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterFast',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterReasoning',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:fallback] {
+  task: 'analisar_pdf_financeiro',
+  provider: 'openrouterFree',
+  message: '400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+}
+[ai:error] {
+  task: 'analisar_pdf_financeiro',
+  userId: 'anon',
+  errors: [
+    'openrouterFast: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}',
+    'openrouterReasoning: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}',
+    'openrouterFree: 400 {"error":{"message":"Failed to parse tmp-valid.pdf","code":400,"metadata":{"provider_name":null}},"user_id":"user_3DK4QZrbDMilZiPwLMEwFMYkWm3"}'
+  ]
+}
+[ai] {
+  task: 'analisar_pdf_financeiro',
+  userId: 'anon',
+  providerUsed: 'openrouterFast',
+  modelUsed: 'google/gemini-2.5-flash',
+  fallbackUsed: false
+}
+ POST /api/ai 200 in 1954ms (next.js: 147ms, application-code: 1807ms)

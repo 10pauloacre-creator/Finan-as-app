@@ -116,7 +116,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Arquivo muito grande. Maximo permitido: 20 MB.' }, { status: 400 });
   }
 
-  if (!process.env.OPENROUTER_PDF_MODEL) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
       { error: 'A analise de PDF ainda nao esta disponivel nesta configuracao.' },
       { status: 503 },

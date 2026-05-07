@@ -1,4 +1,4 @@
-import { getLastExecution, getProviderStatus } from '@/lib/ai/aiRouter';
+import { getLastExecution, getProviderStatus, normalizeRequestedProvider } from '@/lib/ai/aiRouter';
 import { AIModelId, AITask } from '@/lib/ai/aiModels';
 import { analisarRecibo, diagnoseProviders, runAI } from '@/lib/ai/aiService';
 import { sanitizeFinancialData } from '@/lib/ai/sanitizeFinancialData';
@@ -143,7 +143,10 @@ ${safeInput}`,
 
 function imagePrompt(legenda?: string | null) {
   return `Você é um extrator de dados financeiros de imagens.
-${legenda ? `Contexto do usuário: "${legenda}"\n` : ''}TRANSAÇÃO ÚNICA: responda SOMENTE com JSON:
+${legenda ? `Contexto do usuário: "${legenda}"\n` : ''}Se o comprovante, nota fiscal ou imagem mencionar cartão, fatura, crédito, final do cartão ou parcela, use "metodo_pagamento":"credito".
+Se a imagem trouxer itens detalhados de mercado/feira, extraia uma transação principal e preserve a categoria como "Feira de mantimentos" quando fizer sentido.
+
+TRANSAÇÃO ÚNICA: responda SOMENTE com JSON:
 {"modo":"unico","tipo":"despesa","valor":89.90,"descricao":"iFood - Pizza","categoria":"Delivery","data":"${HOJE()}","hora":"20:30","metodo_pagamento":"credito","parcelas":null,"local":"iFood","banco":null}
 
 EXTRATO COM MÚLTIPLAS TRANSAÇÕES: responda SOMENTE com JSON:
@@ -189,6 +192,16 @@ Retorne SOMENTE um JSON válido:
 
 Se não conseguir identificar a fatura:
 {"erro":"nao e uma fatura de cartao"}`;
+}
+
+function extractTextFromSimplePdf(pdfBuffer: Buffer) {
+  const raw = pdfBuffer.toString('latin1');
+  const matches = [...raw.matchAll(/\(([^()]*)\)\s*Tj/g)];
+  const lines = matches
+    .map((match) => match[1].replace(/\\([()\\])/g, '$1').trim())
+    .filter(Boolean);
+
+  return lines.join('\n').trim();
 }
 
 function inferCategoryId(data: Record<string, unknown>) {
@@ -465,18 +478,37 @@ async function handleFormDataRequest(formData: FormData) {
       return Response.json({ success: false, error: 'PDF obrigatório.' }, { status: 400 });
     }
 
-    const result = await runAI({
+    const pdfBuffer = Buffer.from(await pdf.arrayBuffer());
+    let result = await runAI({
       task: 'analisar_pdf_financeiro',
       provider,
       mode,
       input: { customPrompt: pdfPrompt() },
       attachments: [{
         mimeType: 'application/pdf',
-        data: Buffer.from(await pdf.arrayBuffer()).toString('base64'),
+        data: pdfBuffer.toString('base64'),
         fileName: pdf.name,
       }],
       options: { temperature: 0, maxTokens: 4000 },
     });
+
+    if (!result.success || !result.answer) {
+      const extractedText = extractTextFromSimplePdf(pdfBuffer);
+      if (extractedText) {
+        result = await runAI({
+          task: 'analisar_pdf_financeiro',
+          provider,
+          mode,
+          input: {
+            customPrompt: `${pdfPrompt()}
+
+O parser direto do PDF falhou. Use somente o texto extraido abaixo para montar a resposta em JSON, sem inventar dados:
+${extractedText}`,
+          },
+          options: { temperature: 0, maxTokens: 2000 },
+        });
+      }
+    }
 
     if (!result.success) {
       return Response.json({ success: false, error: result.error }, { status: 500 });
@@ -559,20 +591,28 @@ export async function GET(req: Request) {
   const diagnostics = shouldCheck ? await diagnoseProviders() : undefined;
   const models = getProviderStatus();
   const lastExecution = getLastExecution();
+  const defaultProviderRaw = process.env.AI_DEFAULT_PROVIDER || 'automatico';
+  const defaultProviderResolved = normalizeRequestedProvider(defaultProviderRaw) || 'automatico';
 
   return Response.json({
     success: true,
-    defaultProvider: process.env.AI_DEFAULT_PROVIDER || 'auto',
+    defaultProvider: defaultProviderResolved,
+    defaultProviderRaw,
     fallbackOrder: (process.env.AI_FALLBACK_ORDER || 'openrouterFast,openrouterFree,openrouterReasoning,gemini,groq,deepseek,gemma4,anthropic')
       .split(',')
       .map((item) => item.trim()),
     models,
     openrouter: {
       configured: Boolean(process.env.OPENROUTER_API_KEY),
+      defaultProvider: defaultProviderResolved,
+      defaultProviderRaw,
       fastModel: process.env.OPENROUTER_FAST_MODEL || 'google/gemini-2.5-flash',
       reasoningModel: process.env.OPENROUTER_REASONING_MODEL || 'deepseek/deepseek-chat',
       premiumModel: process.env.OPENROUTER_PREMIUM_MODEL || 'anthropic/claude-sonnet-4.5',
       freeModel: process.env.OPENROUTER_FREE_MODEL || 'openrouter/free',
+      visionModel: process.env.OPENROUTER_VISION_MODEL || process.env.OPENROUTER_FAST_MODEL || 'google/gemini-2.5-flash',
+      pdfModel: process.env.OPENROUTER_PDF_MODEL || process.env.OPENROUTER_FAST_MODEL || 'google/gemini-2.5-flash',
+      audioModel: process.env.OPENROUTER_AUDIO_MODEL || process.env.OPENROUTER_FAST_MODEL || 'google/gemini-2.5-flash',
     },
     lastExecution,
     diagnostics,
