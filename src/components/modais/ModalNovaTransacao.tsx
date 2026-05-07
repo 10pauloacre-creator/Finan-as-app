@@ -214,13 +214,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   const opcoesClassificacao = form.tipo === 'despesa'
     ? [
         { valor: 'padrao', label: 'Gasto normal' },
-        { valor: 'fixa', label: 'Gasto fixo' },
+        { valor: 'fixa', label: 'Gasto recorrente' },
         { valor: 'futura', label: 'Gasto futuro' },
       ]
     : form.tipo === 'receita'
     ? [
         { valor: 'padrao', label: 'Receita normal' },
-        { valor: 'fixa', label: 'Receita fixa' },
+        { valor: 'fixa', label: 'Receita recorrente' },
         { valor: 'futura', label: 'Receita futura' },
       ]
     : [
@@ -296,6 +296,11 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   </button>
                 ))}
               </div>
+              {form.tipo !== 'transferencia' && (
+                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                  Recorrente repete todo mes na mesma data. Antes do dia chegar, o lancamento fica pendente e nao entra no saldo atual.
+                </p>
+              )}
             </div>
 
             {/* Upload de foto para IA analisar */}

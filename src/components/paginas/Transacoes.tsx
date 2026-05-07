@@ -32,11 +32,14 @@ function getClassificacaoTransacao(transacao: Transacao): Exclude<ClassificacaoF
   return transacao.classificacao || 'padrao';
 }
 
-function getBadgeClassificacao(transacao: Transacao) {
+function getBadgeClassificacao(transacao: Transacao, hoje: Date) {
   const classificacao = getClassificacaoTransacao(transacao);
+  const realizada = transacaoJaOcorreuAteData(transacao, hoje);
   if (classificacao === 'fixa') {
     return {
-      label: transacao.tipo === 'receita' ? 'Receita fixa' : 'Gasto fixo',
+      label: transacao.tipo === 'receita'
+        ? (realizada ? 'Receita recorrente' : 'Receita recorrente pendente')
+        : (realizada ? 'Gasto recorrente' : 'Gasto recorrente pendente'),
       className: 'bg-blue-500/15 text-blue-300 border-blue-500/20',
     };
   }
@@ -288,6 +291,9 @@ export default function Transacoes() {
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-slate-500">
+          Fixa significa recorrente. Se a data do mês ainda não chegou, ela aparece como pendente e não entra nos totais.
+        </p>
       </div>
 
       {/* Lista agrupada por dia */}
@@ -316,7 +322,7 @@ export default function Transacoes() {
                 <div className="space-y-2">
                   {grupo.map(t => {
                     const cat = categorias.find(c => c.id === t.categoria_id);
-                    const badgeClassificacao = getBadgeClassificacao(t);
+                    const badgeClassificacao = getBadgeClassificacao(t, hoje);
                     const eFutura = !transacaoJaOcorreuAteData(t, hoje);
                     return (
                       <div key={t.id} className="flex items-center gap-3 bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 group">
