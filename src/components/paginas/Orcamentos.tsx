@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { Plus, Target, X, AlertTriangle, CheckCircle, TrendingUp, Palette, Smile } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
-import { isSameFinancialMonth } from '@/lib/date';
+import { startOfTodayLocal } from '@/lib/date';
+import { transacaoContaNoMesAteData } from '@/lib/transacoes';
 
 // Paleta de cores para novas categorias
 const CORES_PRESET = [
@@ -21,7 +22,7 @@ const ICONES_PRESET = [
 ];
 
 export default function Orcamentos() {
-  const hoje = new Date();
+  const hoje = useMemo(() => startOfTodayLocal(), []);
   const [mes, setMes] = useState(hoje.getMonth() + 1);
   const [ano, setAno] = useState(hoje.getFullYear());
 
@@ -58,11 +59,11 @@ export default function Orcamentos() {
     const map = new Map<string, number>();
     transacoes
       .filter(t => {
-        return t.tipo === 'despesa' && isSameFinancialMonth(t.data, mes, ano);
+        return t.tipo === 'despesa' && transacaoContaNoMesAteData(t, mes, ano, hoje);
       })
       .forEach(t => map.set(t.categoria_id, (map.get(t.categoria_id) ?? 0) + t.valor));
     return map;
-  }, [transacoes, mes, ano]);
+  }, [transacoes, mes, ano, hoje]);
 
   const resumo = useMemo(() => {
     const totalOrcado = orcamentosMes.reduce((s, o) => s + o.valor_limite, 0);

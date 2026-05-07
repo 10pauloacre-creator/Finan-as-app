@@ -4,7 +4,8 @@
 import { useMemo, useState } from 'react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
-import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { transacaoContaNoMesAteData } from '@/lib/transacoes';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line
@@ -64,8 +65,9 @@ function contextoMes(
   mes: number,
   ano: number,
 ): string {
+  const referencia = startOfTodayLocal();
   const txMes = transacoes.filter(t => {
-    return isSameFinancialMonth(t.data, mes, ano);
+    return transacaoContaNoMesAteData(t, mes, ano, referencia);
   });
 
   const despesasMes = txMes.filter(t => t.tipo === 'despesa');
@@ -370,10 +372,11 @@ export default function Relatorios() {
   const [abaAtiva, setAbaAtiva] = useState<'graficos' | 'relatorio'>('graficos');
 
   const dadosAnuais = useMemo(() => {
+    const referencia = startOfTodayLocal();
     return MESES.map((nome, i) => {
       const mes = i + 1;
       const doMes = transacoes.filter(t => {
-        return isSameFinancialMonth(t.data, mes, anoSel);
+        return transacaoContaNoMesAteData(t, mes, anoSel, referencia);
       });
       const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
       const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
@@ -383,8 +386,9 @@ export default function Relatorios() {
 
   const mesAtualNum = new Date().getMonth() + 1;
   const dadosMesAtual = useMemo(() => {
+    const referencia = startOfTodayLocal();
     return transacoes.filter(t => {
-      return isSameFinancialMonth(t.data, mesAtualNum, anoSel);
+      return transacaoContaNoMesAteData(t, mesAtualNum, anoSel, referencia);
     });
   }, [transacoes, mesAtualNum, anoSel]);
 

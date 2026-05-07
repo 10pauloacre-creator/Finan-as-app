@@ -7,7 +7,8 @@ import { construirContexto } from '@/lib/contexto-financeiro';
 import { calcularPrevisao, GastoPrevisto } from '@/lib/previsao';
 import { calcularScore } from '@/lib/score-financeiro';
 import { formatarMoeda } from '@/lib/storage';
-import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { transacaoContaNoMesAteData } from '@/lib/transacoes';
 import AIModelSelect from '@/components/ui/AIModelSelect';
 import type { AIModelId } from '@/lib/ai/catalog';
 
@@ -335,7 +336,7 @@ function EvolucaoScore() {
   const [mostrarFatores, setMostrarFatores] = useState(false);
 
   const historicoScore = useMemo(() => {
-    const hoje = new Date();
+    const hoje = startOfTodayLocal();
     const resultado: { mes: string; mesNum: number; anoNum: number; score: number; nivel: string }[] = [];
 
     for (let i = 5; i >= 0; i--) {
@@ -344,7 +345,7 @@ function EvolucaoScore() {
       const anoNum = data.getFullYear();
 
       const txMes = transacoes.filter(t => {
-        return isSameFinancialMonth(t.data, mesNum, anoNum);
+        return transacaoContaNoMesAteData(t, mesNum, anoNum, hoje);
       });
 
       const orcMes = orcamentos.filter(o => o.mes === mesNum && o.ano === anoNum);
@@ -370,11 +371,11 @@ function EvolucaoScore() {
   }, [transacoes, orcamentos, contas, cartoes, metas]);
 
   const scoreMesAtual = useMemo(() => {
-    const hoje = new Date();
+    const hoje = startOfTodayLocal();
     const mes = hoje.getMonth() + 1;
     const ano = hoje.getFullYear();
     const txMes = transacoes.filter(t => {
-      return isSameFinancialMonth(t.data, mes, ano);
+      return transacaoContaNoMesAteData(t, mes, ano, hoje);
     });
     const orcMes = orcamentos.filter(o => o.mes === mes && o.ano === ano);
     return calcularScore({ transacoes: txMes, orcamentos: orcMes, contas, cartoes, metas });

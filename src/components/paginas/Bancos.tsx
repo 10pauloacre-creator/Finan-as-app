@@ -12,7 +12,8 @@ import ModalPluggyConnect from '@/components/modais/ModalPluggyConnect';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import type { SyncResult } from '@/app/api/pluggy/sync/route';
-import { isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { transacaoContaNoMesAteData } from '@/lib/transacoes';
 
 const TIPOS_CONTA: TipoConta[] = ['corrente', 'poupanca', 'digital', 'investimento'];
 
@@ -38,11 +39,12 @@ export default function Bancos() {
     tipo: 'corrente' as TipoConta,
     saldo: '',
   });
+  const hoje = startOfTodayLocal();
 
   // Transações do mês por conta
   const transacoesPorConta = useMemo(() => {
     const doMes = transacoes.filter(t => {
-      return isSameFinancialMonth(t.data, mes, ano);
+      return transacaoContaNoMesAteData(t, mes, ano, hoje);
     });
     const mapa: Record<string, typeof doMes> = {};
     doMes.forEach(t => {
@@ -50,7 +52,7 @@ export default function Bancos() {
       mapa[chave] = [...(mapa[chave] || []), t];
     });
     return mapa;
-  }, [transacoes, mes, ano]);
+  }, [transacoes, mes, ano, hoje]);
 
   // Items Pluggy conectados (unique item IDs)
   const itemsConectados = useMemo(() => {

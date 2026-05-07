@@ -6,7 +6,8 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { calcularPrevisao } from '@/lib/previsao';
 import { formatarMoeda } from '@/lib/storage';
 import type { Transacao } from '@/types';
-import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate } from '@/lib/date';
+import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { transacaoContaNoMesAteData } from '@/lib/transacoes';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_NOMES = [
@@ -29,7 +30,7 @@ interface DiaInfo {
 
 export default function Calendario() {
   const { transacoes, categorias } = useFinanceiroStore();
-  const hoje = new Date();
+  const hoje = useMemo(() => startOfTodayLocal(), []);
 
   const [mesSel, setMesSel] = useState(hoje.getMonth() + 1);
   const [anoSel, setAnoSel] = useState(hoje.getFullYear());
@@ -131,12 +132,12 @@ export default function Calendario() {
   // Resumo do mes
   const resumoMes = useMemo(() => {
     const txMes = transacoes.filter(t => {
-      return isSameFinancialMonth(t.data, mesSel, anoSel);
+      return transacaoContaNoMesAteData(t, mesSel, anoSel, hoje);
     });
     const receitas = txMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
     const despesas = txMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
     return { qtd: txMes.length, receitas, despesas, saldo: receitas - despesas };
-  }, [transacoes, mesSel, anoSel]);
+  }, [transacoes, mesSel, anoSel, hoje]);
 
   const diaDetalhe = diaSelecionado
     ? diasCalendario.find(d => d.data === diaSelecionado)
