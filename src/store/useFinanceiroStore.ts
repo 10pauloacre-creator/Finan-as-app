@@ -55,6 +55,7 @@ interface FinanceiroState {
 
   atualizarFaturaCartao: (id: string, fatura: number) => void;
   adicionarCartao: (c: Omit<CartaoCredito, 'id' | 'criado_em'>) => void;
+  editarCartao: (id: string, dados: Partial<CartaoCredito>) => void;
   excluirCartao: (id: string) => void;
 
   adicionarInvestimento: (inv: Omit<Investimento, 'id' | 'criado_em'>) => void;
@@ -675,6 +676,21 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         storageCartoes.save(novo);
         void syncSalvarCartao(novo);
         set((s) => ({ cartoes: [...s.cartoes, novo] }));
+      });
+    },
+
+    editarCartao: (id, dados) => {
+      executarSemRecargaLocal(() => {
+        const lista = get().cartoes.map((cartao) => {
+          if (cartao.id !== id) return cartao;
+          return { ...cartao, ...dados, id: cartao.id, criado_em: cartao.criado_em };
+        });
+        const cartao = lista.find((item) => item.id === id);
+        if (cartao) {
+          storageCartoes.save(cartao);
+          void syncSalvarCartao(cartao);
+        }
+        set({ cartoes: lista });
       });
     },
 

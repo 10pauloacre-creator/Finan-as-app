@@ -9,6 +9,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, BandeirCartao, CartaoCredito, Categoria, Transacao } from '@/types';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 import { parseFinancialDate } from '@/lib/date';
+import { getDataOcorrenciaNoMes } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
@@ -29,6 +30,8 @@ type DadosMes = {
   label: string;
   ano: string;
   total: number;
+  total_previsto: number;
+  total_debitado: number;
   tipo: 'passado' | 'atual' | 'futuro';
   por_cartao: { id: string; nome: string; banco: BancoSlug; valor: number }[];
 };
@@ -63,20 +66,8 @@ function tlBuildPath(pts: { x: number; y: number }[]): string {
 
 function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]): DadosMes[] {
   const hoje = tlMesAtual();
-
-  let maxFuturo = 2;
-  transacoes.forEach((tx) => {
-    if (!tx.cartao_id || !tx.parcelas || tx.parcelas <= 1) return;
-    const parcelaAtual = tx.parcela_atual || 1;
-    const primeiroMes = tlAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
-    const ultimoMes = tlAddMeses(primeiroMes, tx.parcelas - 1);
-    if (ultimoMes > hoje) {
-      const [y1, m1] = hoje.split('-').map(Number);
-      const [y2, m2] = ultimoMes.split('-').map(Number);
-      const diff = (y2 - y1) * 12 + (m2 - m1);
-      maxFuturo = Math.max(maxFuturo, Math.min(diff, 6));
-    }
-  });
+  const referenciaHoje = new Date();
+  const maxFuturo = 5;
 
   const todosMeses: string[] = [];
   for (let i = -3; i <= maxFuturo; i++) todosMeses.push(tlAddMeses(hoje, i));
@@ -84,25 +75,22 @@ function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]
   return todosMeses.map((mes) => {
     const [year, month] = mes.split('-').map(Number);
     const tipo: DadosMes['tipo'] = mes < hoje ? 'passado' : mes === hoje ? 'atual' : 'futuro';
+    let totalPrevisto = 0;
+    let totalDebitado = 0;
 
     const por_cartao = cartoes.map((cartao) => {
-      let valor = 0;
-      if (tipo === 'atual') {
-        valor = cartao.fatura_atual;
-      } else if (tipo === 'passado') {
-        transacoes.forEach((tx) => {
-          if (tx.cartao_id !== cartao.id || !tx.data.startsWith(mes)) return;
-          valor += tx.tipo === 'despesa' ? tx.valor : -tx.valor;
-        });
-      } else {
-        transacoes.forEach((tx) => {
-          if (tx.cartao_id !== cartao.id || !tx.parcelas || tx.parcelas <= 1) return;
-          const parcelaAtual = tx.parcela_atual || 1;
-          const primeiroMes = tlAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
-          const ultimoMes = tlAddMeses(primeiroMes, tx.parcelas - 1);
-          if (mes >= primeiroMes && mes <= ultimoMes) valor += tx.valor;
-        });
-      }
+      const valor = transacoes.reduce((soma, tx) => {
+        if (tx.cartao_id !== cartao.id) return soma;
+        const ocorrencia = getDataOcorrenciaNoMes(tx, month, year);
+        if (!ocorrencia) return soma;
+        const delta = tx.tipo === 'despesa' ? tx.valor : -tx.valor;
+        if (ocorrencia > referenciaHoje) {
+          totalPrevisto += delta;
+        } else {
+          totalDebitado += delta;
+        }
+        return soma + delta;
+      }, 0);
       return { id: cartao.id, nome: cartao.nome, banco: cartao.banco, valor: Math.max(0, valor) };
     });
 
@@ -111,6 +99,8 @@ function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]
       label: MESES_PT[month - 1],
       ano: String(year),
       total: Math.max(0, por_cartao.reduce((s, c) => s + c.valor, 0)),
+      total_previsto: Math.max(0, totalPrevisto),
+      total_debitado: Math.max(0, totalDebitado),
       tipo,
       por_cartao,
     };
@@ -149,8 +139,8 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
 
   return (
     <div className="glass-card p-5">
-      <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos por Mês</h3>
-      <p className="text-[11px] text-slate-600 mb-4">Meses passados, atual e parcelas futuras de todos os cartões</p>
+      <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos dos Próximos Meses</h3>
+      <p className="text-[11px] text-slate-600 mb-4">Inclui já debitadas, previstas, recorrentes, futuras e parceladas de todos os cartões</p>
 
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
         <div className="relative" style={{ width: totalW, height: TL_CARD_H }}>
@@ -245,9 +235,23 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
         <div className="mt-4 pt-4 border-t border-white/10">
           <div className="text-xs text-slate-500 mb-3">
             {mesSel.label} {mesSel.ano}
-            {mesSel.tipo === 'futuro' && ' — projeção de parcelas'}
-            {mesSel.tipo === 'passado' && ' — lançamentos do mês'}
-            {mesSel.tipo === 'atual' && ' — fatura atual'}
+            {mesSel.tipo === 'futuro' && ' — projeção do mês'}
+            {mesSel.tipo === 'passado' && ' — total do mês'}
+            {mesSel.tipo === 'atual' && ' — total do mês atual'}
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="rounded-xl bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Total de despesas</div>
+              <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mesSel.total)}</div>
+            </div>
+            <div className="rounded-xl bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Já debitadas</div>
+              <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mesSel.total_debitado)}</div>
+            </div>
+            <div className="rounded-xl bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Previstas</div>
+              <div className="mt-1 text-sm font-semibold text-amber-300 tabular-nums">{formatarMoeda(mesSel.total_previsto)}</div>
+            </div>
           </div>
           <div className="space-y-2">
             {mesSel.por_cartao
@@ -275,6 +279,14 @@ type StatusImportacao = {
   cartaoId: string;
   tipo: 'info' | 'sucesso' | 'erro';
   mensagem: string;
+};
+
+type FiltroLancamentoCartao = 'todos' | 'previstas' | 'debitadas';
+
+type LancamentoCartaoExibicao = {
+  transacao: Transacao;
+  dataExibicao: string;
+  status: 'prevista' | 'debitada';
 };
 
 type RespostaImportacao = {
@@ -344,14 +356,6 @@ function calcularTotalFatura(transacoesExtraidas: TransacaoExtraida[]) {
   ), 0));
 }
 
-function ordenarTransacoesPorData(lista: Transacao[]) {
-  return [...lista].sort((a, b) => {
-    const chaveA = `${a.data}T${a.horario || '00:00'}:${a.id}`;
-    const chaveB = `${b.data}T${b.horario || '00:00'}:${b.id}`;
-    return chaveA < chaveB ? 1 : -1;
-  });
-}
-
 function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inicio: Date; fim: Date } {
   const hoje = new Date();
   const diaHoje = hoje.getDate();
@@ -393,6 +397,46 @@ function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inici
   };
 }
 
+function construirLancamentosDaFatura(
+  cartaoId: string,
+  transacoes: Transacao[],
+  inicio: Date,
+  fim: Date,
+  referencia = new Date(),
+) {
+  const mesesPeriodo: Array<{ mes: number; ano: number }> = [];
+  const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
+  const ultimo = new Date(fim.getFullYear(), fim.getMonth(), 1);
+
+  while (cursor <= ultimo) {
+    mesesPeriodo.push({ mes: cursor.getMonth() + 1, ano: cursor.getFullYear() });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const lista: LancamentoCartaoExibicao[] = [];
+
+  transacoes.forEach((transacao) => {
+    if (transacao.cartao_id !== cartaoId) return;
+
+    mesesPeriodo.forEach(({ mes, ano }) => {
+      const ocorrencia = getDataOcorrenciaNoMes(transacao, mes, ano);
+      if (!ocorrencia || ocorrencia < inicio || ocorrencia > fim) return;
+
+      lista.push({
+        transacao,
+        dataExibicao: ocorrencia.toISOString().slice(0, 10),
+        status: ocorrencia > referencia ? 'prevista' : 'debitada',
+      });
+    });
+  });
+
+  return lista.sort((a, b) => {
+    const chaveA = `${a.dataExibicao}T${a.transacao.horario || '00:00'}:${a.transacao.id}`;
+    const chaveB = `${b.dataExibicao}T${b.transacao.horario || '00:00'}:${b.transacao.id}`;
+    return chaveA < chaveB ? 1 : -1;
+  });
+}
+
 export default function Cartoes() {
   const {
     cartoes,
@@ -400,16 +444,19 @@ export default function Cartoes() {
     transacoes,
     config,
     adicionarCartao,
+    editarCartao,
     excluirCartao,
     atualizarFaturaCartao,
     adicionarTransacao,
   } = useFinanceiroStore();
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [cartaoEmEdicao, setCartaoEmEdicao] = useState<CartaoCredito | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaFatura, setNovaFatura] = useState('');
   const [cartaoExpandidoId, setCartaoExpandidoId] = useState<string | null>(null);
   const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
   const [statusImportacao, setStatusImportacao] = useState<StatusImportacao | null>(null);
+  const [filtroLancamentos, setFiltroLancamentos] = useState<FiltroLancamentoCartao>('todos');
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -433,7 +480,7 @@ export default function Cartoes() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    adicionarCartao({
+    const payload = {
       banco: form.banco,
       nome: form.nome || `${BANCO_INFO[form.banco].nome} ${form.bandeira}`,
       limite: parseFloat(form.limite) || 0,
@@ -441,7 +488,14 @@ export default function Cartoes() {
       dia_vencimento: parseInt(form.dia_vencimento, 10) || 15,
       dia_fechamento: parseInt(form.dia_fechamento, 10) || 8,
       bandeira: form.bandeira,
-    });
+    };
+
+    if (cartaoEmEdicao) {
+      editarCartao(cartaoEmEdicao.id, payload);
+    } else {
+      adicionarCartao(payload);
+    }
+
     setForm({
       banco: 'nubank',
       nome: '',
@@ -451,7 +505,36 @@ export default function Cartoes() {
       dia_fechamento: '8',
       bandeira: 'mastercard',
     });
+    setCartaoEmEdicao(null);
     setMostrarForm(false);
+  }
+
+  function abrirEdicaoCartao(cartao: CartaoCredito) {
+    setCartaoEmEdicao(cartao);
+    setForm({
+      banco: cartao.banco,
+      nome: cartao.nome,
+      limite: String(cartao.limite),
+      fatura_atual: String(cartao.fatura_atual),
+      dia_vencimento: String(cartao.dia_vencimento),
+      dia_fechamento: String(cartao.dia_fechamento),
+      bandeira: cartao.bandeira,
+    });
+    setMostrarForm(true);
+  }
+
+  function fecharFormularioCartao() {
+    setMostrarForm(false);
+    setCartaoEmEdicao(null);
+    setForm({
+      banco: 'nubank',
+      nome: '',
+      limite: '',
+      fatura_atual: '',
+      dia_vencimento: '15',
+      dia_fechamento: '8',
+      bandeira: 'mastercard',
+    });
   }
 
   function salvarFatura(id: string) {
@@ -600,10 +683,16 @@ export default function Cartoes() {
           </p>
         </div>
         <button
-          onClick={() => setMostrarForm((valorAtual) => !valorAtual)}
+          onClick={() => {
+            if (mostrarForm) {
+              fecharFormularioCartao();
+            } else {
+              setMostrarForm(true);
+            }
+          }}
           className="btn-primary flex items-center gap-2 text-white px-3 py-2 rounded-xl text-sm font-medium"
         >
-          <Plus size={16} /> Novo CartÃ£o
+          <Plus size={16} /> {mostrarForm ? 'Fechar' : 'Novo Cartão'}
         </button>
       </div>
 
@@ -651,7 +740,7 @@ export default function Cartoes() {
 
       {mostrarForm && (
         <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4 border-purple-500/30">
-          <h3 className="text-sm font-semibold text-purple-300">Novo CartÃ£o</h3>
+          <h3 className="text-sm font-semibold text-purple-300">{cartaoEmEdicao ? 'Editar cartão' : 'Novo cartão'}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-400 mb-1 block">Banco *</label>
@@ -744,7 +833,7 @@ export default function Cartoes() {
             </button>
             <button
               type="button"
-              onClick={() => setMostrarForm(false)}
+              onClick={fecharFormularioCartao}
               className="px-4 bg-white/5 text-slate-400 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors"
             >
               Cancelar
@@ -765,15 +854,24 @@ export default function Cartoes() {
           const expandido = cartaoExpandidoId === cartao.id;
           const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
           const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento, cartao.dia_vencimento);
-          const txFatura = (transacoesPorCartao[cartao.id] || []).filter((tx) => {
-            const d = parseFinancialDate(tx.data);
-            return d >= inicioFatura && d <= fimFatura;
-          });
-          const lista = ordenarTransacoesPorData(txFatura);
-          const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
-          const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
-          const baseLancamentos = compras.reduce((soma, transacao) => soma + transacao.valor, 0)
-            - estornos.reduce((soma, transacao) => soma + transacao.valor, 0);
+          const listaCompleta = construirLancamentosDaFatura(cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura);
+          const lista = listaCompleta.filter((item) => (
+            filtroLancamentos === 'todos'
+              ? true
+              : filtroLancamentos === 'previstas'
+              ? item.status === 'prevista'
+              : item.status === 'debitada'
+          ));
+          const compras = listaCompleta.filter((item) => item.transacao.tipo === 'despesa');
+          const estornos = listaCompleta.filter((item) => item.transacao.tipo === 'receita');
+          const baseLancamentos = compras.reduce((soma, item) => soma + item.transacao.valor, 0)
+            - estornos.reduce((soma, item) => soma + item.transacao.valor, 0);
+          const totalPrevistas = listaCompleta
+            .filter((item) => item.status === 'prevista' && item.transacao.tipo === 'despesa')
+            .reduce((soma, item) => soma + item.transacao.valor, 0);
+          const totalDebitado = listaCompleta
+            .filter((item) => item.status === 'debitada' && item.transacao.tipo === 'despesa')
+            .reduce((soma, item) => soma + item.transacao.valor, 0);
 
           return (
             <div key={cartao.id} className={`glass-card overflow-hidden ${urgente ? 'border-red-500/30' : ''}`}>
@@ -823,11 +921,10 @@ export default function Cartoes() {
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
-                        setEditandoId(cartao.id);
-                        setNovaFatura(cartao.fatura_atual.toString());
+                        abrirEdicaoCartao(cartao);
                       }}
                       className="text-slate-500 hover:text-purple-400 p-1.5 rounded-lg hover:bg-purple-900/20 transition-colors"
-                      aria-label="Editar fatura"
+                      aria-label="Editar cartão"
                     >
                       <Pencil size={14} />
                     </button>
@@ -852,7 +949,21 @@ export default function Cartoes() {
                   <div className="mb-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-xs text-slate-500 mb-1">Fatura Atual</div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                          <span>Fatura Atual</span>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEditandoId(cartao.id);
+                              setNovaFatura(cartao.fatura_atual.toString());
+                            }}
+                            className="rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-purple-300"
+                            aria-label="Ajustar fatura total"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                        </div>
                         {!emEdicao && (
                           <div className="mb-1 text-[11px] text-slate-500">
                             Soma dos lancamentos: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
@@ -997,7 +1108,7 @@ export default function Cartoes() {
                       <div className="rounded-xl bg-white/[0.03] p-3">
                         <div className="text-[11px] text-slate-500">Estornos / crÃ©ditos</div>
                         <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">
-                          {formatarMoeda(estornos.reduce((soma, transacao) => soma + transacao.valor, 0))}
+                          {formatarMoeda(estornos.reduce((soma, item) => soma + item.transacao.valor, 0))}
                         </div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
@@ -1010,11 +1121,47 @@ export default function Cartoes() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Total do mês</div>
+                        <div className="text-sm font-semibold text-white mt-1 tabular-nums">{formatarMoeda(baseLancamentos)}</div>
+                      </div>
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Já debitadas</div>
+                        <div className="text-sm font-semibold text-emerald-300 mt-1 tabular-nums">{formatarMoeda(totalDebitado)}</div>
+                      </div>
+                      <div className="rounded-xl bg-white/[0.03] p-3">
+                        <div className="text-[11px] text-slate-500">Previstas</div>
+                        <div className="text-sm font-semibold text-amber-300 mt-1 tabular-nums">{formatarMoeda(totalPrevistas)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                      {([
+                        { valor: 'todos', label: 'Todos' },
+                        { valor: 'previstas', label: 'Previstas' },
+                        { valor: 'debitadas', label: 'Já debitadas' },
+                      ] as const).map((filtro) => (
+                        <button
+                          key={filtro.valor}
+                          type="button"
+                          onClick={() => setFiltroLancamentos(filtro.valor)}
+                          className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            filtroLancamentos === filtro.valor
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                          }`}
+                        >
+                          {filtro.label}
+                        </button>
+                      ))}
+                    </div>
+
                     <div className="space-y-2">
-                      {lista.slice(0, 12).map((transacao) => {
+                      {lista.slice(0, 12).map(({ transacao, dataExibicao, status }) => {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
                         return (
-                          <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
+                          <div key={`${transacao.id}-${dataExibicao}`} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
                             <div
                               className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
                               style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)' }}
@@ -1024,9 +1171,10 @@ export default function Cartoes() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
                                 {categoria?.nome ? ` • ${categoria.nome}` : ''}
+                                {` • ${status === 'prevista' ? 'prevista' : 'já debitada'}`}
                               </div>
                             </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
