@@ -569,11 +569,19 @@ export default function Transacoes() {
         if (transacao.cartao_id && transacao.classificacao !== 'fixa') {
           const cartao = cartoes.find((c) => c.id === transacao.cartao_id);
           const diaFechamento = cartao?.dia_fechamento ?? 8;
+          const diaVencimento = cartao?.dia_vencimento ?? 15;
           const [txAno, txMes, txDia] = transacao.data.split('-').map(Number);
-          let faturaAno = txAno;
-          let faturaMes = txMes;
+          // Step 1: determine the closing month
+          let closingAno = txAno;
+          let closingMes = txMes;
           if (txDia > diaFechamento) {
-            // Após o fechamento → entra na fatura do mês seguinte
+            closingMes += 1;
+            if (closingMes > 12) { closingMes = 1; closingAno += 1; }
+          }
+          // Step 2: when vencimento < fechamento, payment is in the month AFTER closing
+          let faturaAno = closingAno;
+          let faturaMes = closingMes;
+          if (diaVencimento < diaFechamento) {
             faturaMes += 1;
             if (faturaMes > 12) { faturaMes = 1; faturaAno += 1; }
           }

@@ -352,11 +352,33 @@ function ordenarTransacoesPorData(lista: Transacao[]) {
   });
 }
 
-function getPeriodoFatura(diaFechamento: number): { inicio: Date; fim: Date } {
+function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inicio: Date; fim: Date } {
   const hoje = new Date();
   const diaHoje = hoje.getDate();
   const ano = hoje.getFullYear();
   const mes = hoje.getMonth(); // 0-based
+
+  // When diaVencimento < diaFechamento, payment falls in the NEXT month after closing.
+  // e.g.: closes day 30, due day 5 → April purchases paid in May's invoice.
+  // We determine which invoice is "current" based on whether today is before or after vencimento.
+  if (diaVencimento < diaFechamento) {
+    if (diaHoje <= diaVencimento) {
+      // Before this month's due date → show the invoice that closed last month (pending payment)
+      // That invoice covers: (2 months ago day fechamento+1) to (last month day fechamento)
+      return {
+        inicio: new Date(ano, mes - 2, diaFechamento + 1),
+        fim: new Date(ano, mes - 1, diaFechamento),
+      };
+    }
+    // After this month's due date → show the invoice currently being built
+    // That invoice covers: (last month day fechamento+1) to (this month day fechamento)
+    return {
+      inicio: new Date(ano, mes - 1, diaFechamento + 1),
+      fim: new Date(ano, mes, diaFechamento),
+    };
+  }
+
+  // Standard case: diaVencimento >= diaFechamento → payment in same month as closing
   if (diaHoje <= diaFechamento) {
     // Período ainda aberto: iniciou no mês anterior, fecha este mês
     return {
@@ -742,7 +764,7 @@ export default function Cartoes() {
           const urgente = diasVencimento <= 5 && cartao.fatura_atual > 0;
           const expandido = cartaoExpandidoId === cartao.id;
           const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
-          const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento);
+          const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento, cartao.dia_vencimento);
           const txFatura = (transacoesPorCartao[cartao.id] || []).filter((tx) => {
             const d = parseFinancialDate(tx.data);
             return d >= inicioFatura && d <= fimFatura;
