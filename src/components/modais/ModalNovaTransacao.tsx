@@ -96,48 +96,61 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   const [itensCompraIA, setItensCompraIA] = useState<ItemCompraExtraido[]>([]);
   const [duplicataEncontrada, setDuplicataEncontrada] = useState<Transacao | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const ultimoContextoRef = useRef<string>('');
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      if (transacaoEditar) {
-        setItensCompraIA(transacaoEditar.itens_compra || []);
-        setForm({
-          descricao: transacaoEditar.descricao,
-          valor: transacaoEditar.valor.toString(),
-          tipo: transacaoEditar.tipo,
-          classificacao: transacaoEditar.classificacao || 'padrao',
-          categoria_id: transacaoEditar.categoria_id,
-          data: transacaoEditar.data,
-          data_cobranca: transacaoEditar.tipo === 'despesa'
-            ? (
-                transacaoEditar.data_cobranca
-                || (
-                  transacaoEditar.cartao_id
-                    ? getDataCobrancaCartao(
-                        transacaoEditar,
-                        cartoes.find((cartao) => cartao.id === transacaoEditar.cartao_id),
-                      )
-                    : transacaoEditar.data
-                )
-              )
-            : '',
-          horario: transacaoEditar.horario || '',
-          metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
-          parcelas: transacaoEditar.parcelas?.toString() || '1',
-          parcela_atual: transacaoEditar.parcela_atual?.toString() || '0',
-          local: transacaoEditar.local || '',
-          observacoes: transacaoEditar.observacoes || '',
-          conta_id: transacaoEditar.conta_id || '',
-          cartao_id: transacaoEditar.cartao_id || '',
-        });
-      } else {
-        setForm(getFormVazio(tipoInicial));
-        setFotoPreview(null);
-        setItensCompraIA([]);
-      }
-    }, 0);
+    if (!aberto) {
+      ultimoContextoRef.current = '';
+      return;
+    }
 
-    return () => window.clearTimeout(timeout);
+    const contextoAtual = transacaoEditar
+      ? `edit:${transacaoEditar.id}`
+      : `novo:${tipoInicial}`;
+
+    if (ultimoContextoRef.current === contextoAtual) {
+      return;
+    }
+
+    ultimoContextoRef.current = contextoAtual;
+
+    if (transacaoEditar) {
+      setItensCompraIA(transacaoEditar.itens_compra || []);
+      setForm({
+        descricao: transacaoEditar.descricao,
+        valor: transacaoEditar.valor.toString(),
+        tipo: transacaoEditar.tipo,
+        classificacao: transacaoEditar.classificacao || 'padrao',
+        categoria_id: transacaoEditar.categoria_id,
+        data: transacaoEditar.data,
+        data_cobranca: transacaoEditar.tipo === 'despesa'
+          ? (
+              transacaoEditar.data_cobranca
+              || (
+                transacaoEditar.cartao_id
+                  ? getDataCobrancaCartao(
+                      transacaoEditar,
+                      cartoes.find((cartao) => cartao.id === transacaoEditar.cartao_id),
+                    )
+                  : transacaoEditar.data
+              )
+            )
+          : '',
+        horario: transacaoEditar.horario || '',
+        metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
+        parcelas: transacaoEditar.parcelas?.toString() || '1',
+        parcela_atual: transacaoEditar.parcela_atual?.toString() || '0',
+        local: transacaoEditar.local || '',
+        observacoes: transacaoEditar.observacoes || '',
+        conta_id: transacaoEditar.conta_id || '',
+        cartao_id: transacaoEditar.cartao_id || '',
+      });
+      return;
+    }
+
+    setForm(getFormVazio(tipoInicial));
+    setFotoPreview(null);
+    setItensCompraIA([]);
   }, [transacaoEditar, aberto, tipoInicial, cartoes]);
 
   const categoriaSelecionada = categorias.find((categoria) => categoria.id === form.categoria_id);
