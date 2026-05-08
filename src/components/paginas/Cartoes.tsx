@@ -11,6 +11,13 @@ import type { TransacaoExtraida } from '@/lib/assistente-types';
 import { parseFinancialDate } from '@/lib/date';
 import { formatFinancialDate } from '@/lib/date';
 import { getDataCobrancaCartaoParaData, getDataOcorrenciaNoMes } from '@/lib/transacoes';
+import {
+  existeValorNaFaturaDoMes,
+  getDataCobrancaPorReferencia,
+  getChaveFaturaMes,
+  getDescricaoPeriodoReferencia,
+  solicitarPeriodoReferenciaCartao,
+} from '@/lib/importacao-cartao';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
@@ -358,12 +365,6 @@ function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
   ))?.id || categorias.find((categoria) => categoria.tipo === tx.tipo)?.id || '';
 }
 
-function calcularTotalFatura(transacoesExtraidas: TransacaoExtraida[]) {
-  return Math.max(0, transacoesExtraidas.reduce((soma, tx) => (
-    soma + (tx.tipo === 'despesa' ? tx.valor : -tx.valor)
-  ), 0));
-}
-
 function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inicio: Date; fim: Date } {
   const hoje = new Date();
   const diaHoje = hoje.getDate();
@@ -579,6 +580,13 @@ export default function Cartoes() {
 
     const cartao = cartoes.find((item) => item.id === cartaoImportandoId);
     if (!cartao) return;
+    const periodoReferencia = solicitarPeriodoReferenciaCartao(cartao, arquivo.name);
+    if (!periodoReferencia) {
+      setCartaoImportandoId(null);
+      return;
+    }
+    const dataCobrancaReferencia = getDataCobrancaPorReferencia(cartao, periodoReferencia);
+    const memoriaChave = `cartao:${cartao.id}:importacao`;
 
     setStatusImportacao({
       cartaoId: cartao.id,
@@ -606,6 +614,8 @@ export default function Cartoes() {
       formData.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
       formData.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
       formData.append('financialProvider', config.ai_modelo_padrao || 'automatico');
+      formData.append('periodo_referencia', periodoReferencia);
+      formData.append('memoria_chave', memoriaChave);
 
       const resposta = await fetch('/api/ai', {
         method: 'POST',
@@ -624,16 +634,21 @@ export default function Cartoes() {
 
       const existentes = [...(transacoesPorCartao[cartao.id] || [])];
       let importadas = 0;
+      let ignoradasPorDuplicidade = 0;
 
       extraidas.forEach((tx) => {
-        const duplicada = existentes.some((existente) => (
-          existente.data === tx.data
-          && existente.tipo === tx.tipo
-          && Math.abs(existente.valor - tx.valor) < 0.01
-          && normalizarTexto(existente.descricao) === normalizarTexto(tx.descricao)
-        ));
+        const duplicada = tx.tipo === 'despesa'
+          ? existeValorNaFaturaDoMes(existentes, cartao, tx.valor, dataCobrancaReferencia)
+          : existentes.some((existente) => (
+              existente.tipo === tx.tipo
+              && Math.abs(existente.valor - tx.valor) < 0.01
+              && getChaveFaturaMes(existente.data_cobranca || existente.data) === getChaveFaturaMes(dataCobrancaReferencia)
+            ));
 
-        if (duplicada) return;
+        if (duplicada) {
+          ignoradasPorDuplicidade += 1;
+          return;
+        }
 
         adicionarTransacao({
           valor: tx.valor,
@@ -644,6 +659,7 @@ export default function Cartoes() {
           tipo: tx.tipo,
           metodo_pagamento: 'credito',
           parcelas: tx.parcelas || undefined,
+          data_cobranca: dataCobrancaReferencia,
           local: tx.local || undefined,
           origem: isPdf || isCsv ? 'assistente' : 'assistente_imagem',
           cartao_id: cartao.id,
@@ -655,6 +671,7 @@ export default function Cartoes() {
           descricao: tx.descricao,
           categoria_id: resolverCategoriaId(tx, categorias),
           data: tx.data,
+          data_cobranca: dataCobrancaReferencia,
           tipo: tx.tipo,
           origem: isPdf || isCsv ? 'assistente' : 'assistente_imagem',
           criado_em: new Date().toISOString(),
@@ -662,18 +679,13 @@ export default function Cartoes() {
         importadas += 1;
       });
 
-      const totalFatura = typeof data.totalValor === 'number'
-        ? data.totalValor
-        : calcularTotalFatura(extraidas);
-
-      atualizarFaturaCartao(cartao.id, totalFatura);
       setCartaoExpandidoId(cartao.id);
       setStatusImportacao({
         cartaoId: cartao.id,
         tipo: 'sucesso',
         mensagem: importadas > 0
-          ? `Fatura atualizada para ${formatarMoeda(totalFatura)} e ${importadas} lancamento${importadas > 1 ? 's foram' : ' foi'} incluido${importadas > 1 ? 's' : ''} no cartao.`
-          : `Fatura atualizada para ${formatarMoeda(totalFatura)}. Os lancamentos desse arquivo ja estavam cadastrados.`,
+          ? `${importadas} novo${importadas > 1 ? 's' : ''} lancamento${importadas > 1 ? 's foram' : ' foi'} incluido${importadas > 1 ? 's' : ''} na fatura de ${getDescricaoPeriodoReferencia(periodoReferencia)}.${ignoradasPorDuplicidade > 0 ? ` ${ignoradasPorDuplicidade} cobranca${ignoradasPorDuplicidade > 1 ? 's foram' : ' foi'} ignorada${ignoradasPorDuplicidade > 1 ? 's' : ''} por ja existir${ignoradasPorDuplicidade > 1 ? 'em' : ''} nesse mes pelo valor exato.` : ''}`
+          : `Nenhum novo lancamento foi incluido. As cobrancas desse arquivo ja existiam na fatura de ${getDescricaoPeriodoReferencia(periodoReferencia)} pelo valor exato.`,
       });
     } catch (error) {
       setStatusImportacao({

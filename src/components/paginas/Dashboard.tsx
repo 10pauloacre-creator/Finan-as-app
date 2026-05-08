@@ -13,6 +13,13 @@ import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { getDataCobrancaCartao, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import {
+  existeValorNaFaturaDoMes,
+  getDataCobrancaPorReferencia,
+  getChaveFaturaMes,
+  getDescricaoPeriodoReferencia,
+  solicitarPeriodoReferenciaCartao,
+} from '@/lib/importacao-cartao';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
@@ -640,12 +647,6 @@ function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
   ))?.id || categorias.find((categoria) => categoria.tipo === tx.tipo)?.id || '';
 }
 
-function calcularTotalFatura(transacoesExtraidas: TransacaoExtraida[]) {
-  return transacoesExtraidas.reduce((soma, tx) => (
-    soma + (tx.tipo === 'despesa' ? tx.valor : -tx.valor)
-  ), 0);
-}
-
 function diasAte(dia: number) {
   const hoje = new Date().getDate();
   return dia >= hoje ? dia - hoje : 30 - hoje + dia;
@@ -655,7 +656,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const {
     transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual,
     config, atualizarConfig,
-    adicionarTransacao, atualizarFaturaCartao,
+    adicionarTransacao,
   } = useFinanceiroStore();
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
@@ -962,6 +963,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
     const cartao = cartoes.find((item) => item.id === cartaoImportandoId);
     if (!cartao) return;
+    const periodoReferencia = solicitarPeriodoReferenciaCartao(cartao, arquivo.name);
+    if (!periodoReferencia) {
+      setCartaoImportandoId(null);
+      return;
+    }
+    const dataCobrancaReferencia = getDataCobrancaPorReferencia(cartao, periodoReferencia);
+    const memoriaChave = `cartao:${cartao.id}:importacao`;
 
     setStatusImportacao({
       cartaoId: cartao.id,
@@ -989,6 +997,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
       formData.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
       formData.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
       formData.append('financialProvider', config.ai_modelo_padrao || 'automatico');
+      formData.append('periodo_referencia', periodoReferencia);
+      formData.append('memoria_chave', memoriaChave);
 
       const resposta = await fetch('/api/ai', {
         method: 'POST',
@@ -1008,16 +1018,21 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
       const existentes = transacoes.filter((transacao) => transacao.cartao_id === cartao.id);
       let importadas = 0;
+      let ignoradasPorDuplicidade = 0;
 
       extraidas.forEach((tx) => {
-        const duplicada = existentes.some((existente) => (
-          existente.data === tx.data &&
-          existente.tipo === tx.tipo &&
-          Math.abs(existente.valor - tx.valor) < 0.01 &&
-          normalizarTexto(existente.descricao) === normalizarTexto(tx.descricao)
-        ));
+        const duplicada = tx.tipo === 'despesa'
+          ? existeValorNaFaturaDoMes(existentes, cartao, tx.valor, dataCobrancaReferencia)
+          : existentes.some((existente) => (
+              existente.tipo === tx.tipo
+              && Math.abs(existente.valor - tx.valor) < 0.01
+              && getChaveFaturaMes(existente.data_cobranca || existente.data) === getChaveFaturaMes(dataCobrancaReferencia)
+            ));
 
-        if (duplicada) return;
+        if (duplicada) {
+          ignoradasPorDuplicidade += 1;
+          return;
+        }
 
         adicionarTransacao({
           valor: tx.valor,
@@ -1028,6 +1043,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
           tipo: tx.tipo,
           metodo_pagamento: 'credito',
           parcelas: tx.parcelas || undefined,
+          data_cobranca: dataCobrancaReferencia,
           local: tx.local || undefined,
           origem: 'assistente_imagem',
           cartao_id: cartao.id,
@@ -1035,18 +1051,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
         importadas += 1;
       });
 
-      const totalFatura = typeof payload.totalValor === 'number'
-        ? payload.totalValor
-        : Math.max(0, calcularTotalFatura(extraidas));
-
-      atualizarFaturaCartao(cartao.id, totalFatura);
       setCartaoExpandidoId(cartao.id);
       setStatusImportacao({
         cartaoId: cartao.id,
         tipo: 'sucesso',
         mensagem: importadas > 0
-          ? `Fatura atualizada para ${formatarMoeda(totalFatura)} e ${importadas} compra${importadas > 1 ? 's foram' : ' foi'} importada${importadas > 1 ? 's' : ''}.`
-          : `Fatura atualizada para ${formatarMoeda(totalFatura)}. As compras j? estavam no app.`,
+          ? `${importadas} nova${importadas > 1 ? 's' : ''} compra${importadas > 1 ? 's foram' : ' foi'} importada${importadas > 1 ? 's' : ''} na fatura de ${getDescricaoPeriodoReferencia(periodoReferencia)}.${ignoradasPorDuplicidade > 0 ? ` ${ignoradasPorDuplicidade} cobranca${ignoradasPorDuplicidade > 1 ? 's foram' : ' foi'} ignorada${ignoradasPorDuplicidade > 1 ? 's' : ''} por ja existir${ignoradasPorDuplicidade > 1 ? 'em' : ''} nesse mes pelo valor exato.` : ''}`
+          : `Nenhuma nova compra foi importada. As cobrancas desse arquivo ja existiam na fatura de ${getDescricaoPeriodoReferencia(periodoReferencia)} pelo valor exato.`,
       });
     } catch (error) {
       setStatusImportacao({

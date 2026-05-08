@@ -12,6 +12,33 @@ import { PALAVRAS_CHAVE_CATEGORIAS } from '@/lib/categorias-padrao';
 import { parseCsvFinanceiro } from '@/lib/csv-financeiro';
 
 const HOJE = () => new Date().toISOString().split('T')[0];
+const TTL_MEMORIA_IMPORTACAO_24H = 24 * 60 * 60 * 1000;
+const memoriaImportacaoArquivos = new Map<string, { periodo: string; updatedAt: number }>();
+
+function lerMemoriaImportacaoArquivo(chave?: string | null) {
+  if (!chave) return null;
+  const registro = memoriaImportacaoArquivos.get(chave);
+  if (!registro) return null;
+  if (Date.now() - registro.updatedAt > TTL_MEMORIA_IMPORTACAO_24H) {
+    memoriaImportacaoArquivos.delete(chave);
+    return null;
+  }
+  return registro;
+}
+
+function salvarMemoriaImportacaoArquivo(chave: string, periodo: string) {
+  memoriaImportacaoArquivos.set(chave, {
+    periodo,
+    updatedAt: Date.now(),
+  });
+}
+
+function descreverPeriodoImportacao(periodo?: string | null) {
+  if (periodo === 'mes_passado') return 'mes passado (fatura ja paga)';
+  if (periodo === 'proximo_mes') return 'proximo mes (gastos apos o fechamento)';
+  if (periodo === 'mes_atual') return 'mes atual (atualizar apenas novos gastos)';
+  return null;
+}
 
 function jsonFromText(text: string) {
   const clean = text.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
@@ -147,7 +174,7 @@ ${safeInput}`,
   };
 }
 
-function imagePrompt(legenda?: string | null) {
+function imagePrompt(legenda?: string | null, periodoReferencia?: string | null, memoria24h?: string | null) {
   return `Você é um extrator de dados financeiros de imagens.
 ${legenda ? `Contexto do usuário: "${legenda}"\n` : ''}Se o comprovante, nota fiscal ou imagem mencionar cartão, fatura, crédito, final do cartão ou parcela, use "metodo_pagamento":"credito".
 Se a imagem trouxer itens detalhados de mercado/feira, extraia uma transação principal e preserve a categoria como "Feira de mantimentos" quando fizer sentido.
@@ -198,6 +225,18 @@ Retorne SOMENTE um JSON válido:
 
 Se não conseguir identificar a fatura:
 {"erro":"nao e uma fatura de cartao"}`;
+}
+
+function enrichImportPrompt(basePrompt: string, periodoReferencia?: string | null, memoria24h?: string | null) {
+  if (!periodoReferencia && !memoria24h) return basePrompt;
+
+  const contexto = [
+    periodoReferencia ? `Referencia informada para esta leitura: ${periodoReferencia}.` : '',
+    memoria24h ? `Memoria ativa de 24h para importacoes semelhantes: ${memoria24h}.` : '',
+    'Use esse contexto apenas para entender a competencia da fatura ou do extrato, sem inventar lancamentos.',
+  ].filter(Boolean).join('\n');
+
+  return `${contexto}\n\n${basePrompt}`;
 }
 
 function extractTextFromSimplePdf(pdfBuffer: Buffer) {
@@ -433,6 +472,13 @@ async function handleFormDataRequest(formData: FormData) {
   const task = String(formData.get('task') || '');
   const provider = String(formData.get('provider') || formData.get('aiModel') || 'automatico') as AIModelId;
   const mode = String(formData.get('mode') || (provider !== 'automatico' ? 'manual' : 'auto')) as 'auto' | 'manual';
+  const memoriaChave = String(formData.get('memoria_chave') || '').trim();
+  const periodoReferenciaRaw = String(formData.get('periodo_referencia') || '').trim();
+  if (memoriaChave && periodoReferenciaRaw) {
+    salvarMemoriaImportacaoArquivo(memoriaChave, periodoReferenciaRaw);
+  }
+  const periodoReferencia = descreverPeriodoImportacao(periodoReferenciaRaw);
+  const memoria24h = descreverPeriodoImportacao(lerMemoriaImportacaoArquivo(memoriaChave)?.periodo);
 
   if (task === 'analisar_recibo_futuramente') {
     const foto = formData.get('foto') as File | null;
@@ -478,7 +524,7 @@ async function handleFormDataRequest(formData: FormData) {
       task: 'analisar_imagem_financeira',
       provider,
       mode,
-      input: { customPrompt: imagePrompt(legenda || null) },
+      input: { customPrompt: enrichImportPrompt(imagePrompt(legenda || null), periodoReferencia, memoria24h) },
       attachments: [{
         mimeType: imagem.type || 'image/jpeg',
         data: Buffer.from(await imagem.arrayBuffer()).toString('base64'),
@@ -607,7 +653,7 @@ async function handleFormDataRequest(formData: FormData) {
       task: 'analisar_pdf_financeiro',
       provider,
       mode,
-      input: { customPrompt: pdfPrompt() },
+      input: { customPrompt: enrichImportPrompt(pdfPrompt(), periodoReferencia, memoria24h) },
       attachments: [{
         mimeType: 'application/pdf',
         data: pdfBuffer.toString('base64'),
@@ -624,7 +670,7 @@ async function handleFormDataRequest(formData: FormData) {
           provider,
           mode,
           input: {
-            customPrompt: `${pdfPrompt()}
+            customPrompt: `${enrichImportPrompt(pdfPrompt(), periodoReferencia, memoria24h)}
 
 O parser direto do PDF falhou. Use somente o texto extraido abaixo para montar a resposta em JSON, sem inventar dados:
 ${extractedText}`,
