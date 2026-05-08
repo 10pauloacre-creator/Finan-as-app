@@ -8,9 +8,11 @@ import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import {
+  aplicarDataCompetenciaNaTransacao,
   calcularDataFinalParcelamento,
   calcularGastoRecorrenteAnual,
   calcularParcelamentoInfo,
+  getDataCompetenciaDespesa,
   getDataCobrancaCartao,
   getDataOcorrenciaNoMes,
   transacaoContaNoMesAteData,
@@ -28,7 +30,9 @@ const TG_DOT_BOT = 110;
 type TransacaoPrevista = {
   uid: string;
   transacao: import('@/types').Transacao;
-  parcelaLabel?: string; // e.g. "3/12"
+  dataOcorrencia: string;
+  status: 'debitada' | 'prevista' | 'ativa';
+  parcelaLabel?: string;
   tipoLabel: 'Recorrente' | 'Parcela' | 'Agendada';
 };
 
@@ -70,16 +74,45 @@ function tgBuildPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
+function tgCorPorTotal(total: number) {
+  const proporcao = Math.max(0, Math.min(total / 7000, 1));
+  const origem = { r: 16, g: 185, b: 129 };
+  const destino = { r: 69, g: 10, b: 10 };
+  const r = Math.round(origem.r + (destino.r - origem.r) * proporcao);
+  const g = Math.round(origem.g + (destino.g - origem.g) * proporcao);
+  const b = Math.round(origem.b + (destino.b - origem.b) * proporcao);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function tgFundoPorTotal(total: number) {
+  const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
+  return `rgba(${cor}, 0.12)`;
+}
+
+function tgBordaPorTotal(total: number) {
+  const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
+  return `rgba(${cor}, 0.38)`;
+}
+
+function getParcelaLabelNoMes(transacao: Transacao, dataOcorrencia: string) {
+  if (!transacao.parcelas || transacao.parcelas <= 1) return undefined;
+  const base = parseFinancialDate(transacao.data);
+  const atual = parseFinancialDate(dataOcorrencia);
+  const deslocamento = (atual.getFullYear() - base.getFullYear()) * 12 + (atual.getMonth() - base.getMonth());
+  const numeroParcela = Math.min((transacao.parcela_atual || 0) + deslocamento + 1, transacao.parcelas);
+  return `${Math.max(numeroParcela, 1)}/${transacao.parcelas}`;
+}
+
 function calcularTimelineGastos(
   transacoes: import('@/types').Transacao[],
   categorias: import('@/types').Categoria[],
+  cartoes: CartaoCredito[],
 ): DadosMesGastos[] {
   const hoje = tgMesAtual();
-  const [hojeY, hojeM] = hoje.split('-').map(Number);
-  const maxFuturo = Math.max((2027 - hojeY) * 12 + (12 - hojeM), 2);
+  const referenciaHoje = startOfTodayLocal();
 
   const todosMeses: string[] = [];
-  for (let i = 0; i <= maxFuturo; i++) todosMeses.push(tgAddMeses(hoje, i));
+  for (let i = -2; i <= 10; i++) todosMeses.push(tgAddMeses(hoje, i));
 
   return todosMeses.map((mes) => {
     const [year, month] = mes.split('-').map(Number);
@@ -87,46 +120,36 @@ function calcularTimelineGastos(
     const catMap: Record<string, number> = {};
     const txPrevistas: TransacaoPrevista[] = [];
 
-    if (tipo !== 'futuro') {
+    transacoes.forEach((tx) => {
       // Passado e atual: soma transações com data no mês
-      transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
-        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
-      });
-    } else {
-      // 1. Despesas fixas recorrentes — aparecem em todo mês futuro
-      transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || tx.classificacao !== 'fixa') return;
-        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
-        txPrevistas.push({ uid: `${tx.id}-fixa-${mes}`, transacao: tx, tipoLabel: 'Recorrente' });
-      });
+      if (tx.tipo !== 'despesa') return;
 
-      // 2. Parcelas projetadas para este mês
-      transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1 || tx.classificacao === 'fixa') return;
-        const parcelaAtual = tx.parcela_atual || 1;
-        const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
-        const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
-        if (mes < primeiroMes || mes > ultimoMes) return;
-        const [pY, pM] = primeiroMes.split('-').map(Number);
-        const numParcela = (year - pY) * 12 + (month - pM) + 1;
-        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
-        txPrevistas.push({
-          uid: `${tx.id}-parcela-${mes}`,
-          transacao: tx,
-          parcelaLabel: `${numParcela}/${tx.parcelas}`,
-          tipoLabel: 'Parcela',
-        });
-      });
+      const cartao = tx.cartao_id ? cartoes.find((item) => item.id === tx.cartao_id) : undefined;
+      const transacaoCompetencia = aplicarDataCompetenciaNaTransacao(tx, cartao);
+      const ocorrencia = getDataOcorrenciaNoMes(transacaoCompetencia, month, year);
+      if (!ocorrencia) return;
 
-      // 3. Despesas avulsas agendadas explicitamente para este mês
-      transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
-        if (tx.classificacao === 'fixa' || (tx.parcelas && tx.parcelas > 1)) return;
-        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
-        txPrevistas.push({ uid: `${tx.id}-agendada-${mes}`, transacao: tx, tipoLabel: 'Agendada' });
+      const dataOcorrencia = formatFinancialDate(ocorrencia);
+      const status: TransacaoPrevista['status'] = tipo === 'futuro'
+        ? (tx.cartao_id ? 'ativa' : 'prevista')
+        : tipo === 'atual'
+          ? (ocorrencia <= referenciaHoje ? 'debitada' : tx.cartao_id ? 'ativa' : 'prevista')
+          : 'debitada';
+
+      catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+      txPrevistas.push({
+        uid: `${tx.id}-${mes}-${dataOcorrencia}`,
+        transacao: tx,
+        dataOcorrencia,
+        status,
+        parcelaLabel: getParcelaLabelNoMes(transacaoCompetencia, dataOcorrencia),
+        tipoLabel: tx.classificacao === 'fixa'
+          ? 'Recorrente'
+          : (tx.parcelas || 1) > 1
+            ? 'Parcela'
+            : 'Agendada',
       });
-    }
+    });
 
     const por_categoria = Object.entries(catMap)
       .map(([catId, valor]) => {
@@ -134,6 +157,8 @@ function calcularTimelineGastos(
         return { id: catId, nome: cat?.nome || 'Outros', icone: cat?.icone || '$', cor: cat?.cor || '#6B7280', valor };
       })
       .sort((a, b) => b.valor - a.valor);
+
+    txPrevistas.sort((a, b) => a.dataOcorrencia.localeCompare(b.dataOcorrencia) || a.transacao.descricao.localeCompare(b.transacao.descricao));
 
     return {
       mes,
@@ -150,11 +175,13 @@ function calcularTimelineGastos(
 function TimelineGastos({
   transacoes,
   categorias,
+  cartoes,
 }: {
   transacoes: import('@/types').Transacao[];
   categorias: import('@/types').Categoria[];
+  cartoes: CartaoCredito[];
 }) {
-  const dados = useMemo(() => calcularTimelineGastos(transacoes, categorias), [transacoes, categorias]);
+  const dados = useMemo(() => calcularTimelineGastos(transacoes, categorias, cartoes), [transacoes, categorias, cartoes]);
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -194,20 +221,6 @@ function TimelineGastos({
             className="absolute inset-0 pointer-events-none"
             style={{ zIndex: 2 }}
           >
-            <defs>
-              <linearGradient id="tgFillGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#EF4444" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#EF4444" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-
-            {atualIdx >= 0 && (
-              <path
-                d={`M ${atualIdx * TG_CARD_STEP} ${TG_CARD_H} L ${atualIdx * TG_CARD_STEP} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${TG_CARD_H} Z`}
-                fill="url(#tgFillGrad)"
-              />
-            )}
-
             <path d={pastPath} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
 
             {futurePath && (
@@ -218,15 +231,16 @@ function TimelineGastos({
               const d = dados[i];
               const isAtual = d.tipo === 'atual';
               const isPast = d.tipo === 'passado';
+              const corMes = tgCorPorTotal(d.total);
               return (
                 <g key={d.mes}>
-                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill="#EF4444" fillOpacity="0.12" />}
+                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill={tgFundoPorTotal(d.total)} />}
                   <circle
                     cx={pt.x}
                     cy={pt.y}
                     r={isAtual ? 6 : 5}
-                    fill={isPast ? '#10B981' : isAtual ? 'white' : 'transparent'}
-                    stroke={isPast ? '#10B981' : isAtual ? '#EF4444' : '#6B7280'}
+                    fill={isPast ? corMes : isAtual ? 'white' : 'transparent'}
+                    stroke={isAtual ? corMes : isPast ? corMes : '#6B7280'}
                     strokeWidth={isAtual ? 2.5 : 1.5}
                   />
                 </g>
@@ -238,29 +252,32 @@ function TimelineGastos({
             const isAtual = d.tipo === 'atual';
             const isFuturo = d.tipo === 'futuro';
             const isSel = mesSelecionado === d.mes;
+            const corMes = tgCorPorTotal(d.total);
             return (
               <button
                 key={d.mes}
                 type="button"
                 onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
-                className={`absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all ${
-                  isAtual
-                    ? 'border-2 border-red-500/50 bg-red-500/5'
-                    : isSel
-                      ? 'border border-purple-500/40 bg-white/4'
-                      : 'border border-white/5 bg-white/2 hover:bg-white/5'
-                }`}
+                className="absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all hover:bg-white/5"
                 style={{ left: i * TG_CARD_STEP, top: 0, width: TG_CARD_W, height: TG_CARD_H, zIndex: 1 }}
               >
-                <div className={`text-xs font-semibold mb-1 ${isAtual ? 'text-red-400' : isFuturo ? 'text-slate-500' : 'text-slate-400'}`}>
+                <div
+                  className="absolute inset-0 rounded-2xl border"
+                  style={{
+                    background: isAtual || isSel ? tgFundoPorTotal(d.total) : 'rgba(255,255,255,0.02)',
+                    borderColor: isAtual || isSel ? tgBordaPorTotal(d.total) : 'rgba(255,255,255,0.06)',
+                    borderWidth: isAtual ? 2 : 1,
+                  }}
+                />
+                <div className="relative text-xs font-semibold mb-1" style={{ color: d.total > 0 ? corMes : isFuturo ? '#64748B' : '#94A3B8' }}>
                   {d.label}
                 </div>
-                <div className={`text-sm font-bold tabular-nums ${isAtual ? 'text-red-300' : isFuturo ? 'text-slate-500' : 'text-white'}`}>
+                <div className="relative text-sm font-bold tabular-nums" style={{ color: d.total > 0 ? corMes : isFuturo ? '#64748B' : '#FFFFFF' }}>
                   {formatarMoeda(d.total)}
                 </div>
-                {isFuturo && d.total > 0 && (
-                  <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>
-                )}
+                <div className="relative text-[10px] text-slate-600 mt-0.5">
+                  {isFuturo ? 'estimado' : isAtual ? 'no mes' : 'fechado'}
+                </div>
               </button>
             );
           })}
@@ -531,20 +548,13 @@ const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
-type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'ja_debitadas' | 'previstas';
+type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'assinaturas' | 'ja_debitadas' | 'previstas';
 type VisuTab = 'despesas' | 'receitas';
 type TransacaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
   dataOrdenacao: string;
 };
-
-function getDataCompetenciaDespesa(transacao: Transacao, cartao?: CartaoCredito) {
-  if (transacao.tipo !== 'despesa') return transacao.data;
-  if (transacao.data_cobranca) return transacao.data_cobranca;
-  if (transacao.cartao_id) return getDataCobrancaCartao(transacao, cartao);
-  return transacao.data;
-}
 
 function aplicarDataDeExibicaoNaTransacao(transacao: Transacao, dataExibicao: string): Transacao {
   if (transacao.tipo !== 'despesa') return transacao;
@@ -559,6 +569,7 @@ const FILTROS_LINHA2: { valor: FiltroLinha2; label: string }[] = [
   { valor: 'todas',        label: 'Todas' },
   { valor: 'padrao',       label: 'Normais' },
   { valor: 'fixa',         label: 'Fixas' },
+  { valor: 'assinaturas',  label: 'Assinaturas' },
   { valor: 'ja_debitadas', label: '✓ Já debitadas' },
   { valor: 'previstas',    label: '⏱ Previstas' },
 ];
@@ -567,6 +578,10 @@ const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'e
 
 function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'futura' {
   return transacao.classificacao || 'padrao';
+}
+
+function isTransacaoAssinatura(transacao: Transacao) {
+  return transacao.tipo === 'despesa' && transacao.categoria_id === 'assinaturas';
 }
 
 function getBadgeClassificacao(transacao: Transacao, hoje: Date, dataExibicao?: string) {
@@ -887,8 +902,10 @@ export default function Transacoes() {
       const tipoOk = transacao.tipo === (visuTab === 'receitas' ? 'receita' : 'despesa');
       // ja_debitadas e previstas são aplicados em transacoesAgrupadas (precisam de realizadasIds)
       const classificacaoOk = visuTab === 'receitas'
-        || (filtroLinha2 !== 'padrao' && filtroLinha2 !== 'fixa')
-        || getClassificacaoTransacao(transacao) === filtroLinha2;
+        || filtroLinha2 === 'todas'
+        || filtroLinha2 === 'ja_debitadas'
+        || filtroLinha2 === 'previstas'
+        || (filtroLinha2 === 'assinaturas' ? isTransacaoAssinatura(transacao) : getClassificacaoTransacao(transacao) === filtroLinha2);
       const buscaOk = !busca || transacao.descricao.toLowerCase().includes(busca.toLowerCase());
       const catOk = !catSelecionada || (() => {
         const cat = categorias.find((c) => c.id === transacao.categoria_id);
@@ -1102,7 +1119,7 @@ export default function Transacoes() {
             </div>
           </div>
 
-          <TimelineGastos transacoes={transacoes} categorias={categorias} />
+          <TimelineGastos transacoes={transacoes} categorias={categorias} cartoes={cartoes} />
 
           {/* Category chips */}
           {chipsCategoria.length > 0 && (

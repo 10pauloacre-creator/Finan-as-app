@@ -87,6 +87,30 @@ export function getDataCobrancaCartao(
   return getDataCobrancaCartaoParaData(transacao.data, cartao);
 }
 
+export function getDataCompetenciaDespesa(
+  transacao: Pick<Transacao, 'tipo' | 'data' | 'data_cobranca' | 'cartao_id'>,
+  cartao?: Pick<CartaoCredito, 'dia_fechamento' | 'dia_vencimento'> | null,
+) {
+  if (transacao.tipo !== 'despesa') return transacao.data;
+  if (transacao.data_cobranca) return transacao.data_cobranca;
+  if (transacao.cartao_id) return getDataCobrancaCartao(transacao, cartao);
+  return transacao.data;
+}
+
+export function aplicarDataCompetenciaNaTransacao<T extends Transacao>(
+  transacao: T,
+  cartao?: Pick<CartaoCredito, 'dia_fechamento' | 'dia_vencimento'> | null,
+) {
+  if (transacao.tipo !== 'despesa') return transacao;
+
+  const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+  return {
+    ...transacao,
+    data: dataCompetencia,
+    data_cobranca: dataCompetencia,
+  };
+}
+
 function getParcelasJaLiquidadas(transacao: Pick<Transacao, 'parcela_atual' | 'parcelas'>) {
   return Math.max(Math.min(transacao.parcela_atual || 0, getTotalParcelas(transacao)), 0);
 }

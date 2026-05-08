@@ -5,13 +5,13 @@ import { useMemo, useState } from 'react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { transacaoContaNoMesAteData } from '@/lib/transacoes';
+import { getDataCompetenciaDespesa, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line
 } from 'recharts';
 import {
-  TrendingDown, TrendingUp, Lightbulb, Download,
+  TrendingDown, TrendingUp, Download,
   Brain, FileText, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import type { Transacao, Categoria, ContaBancaria, CartaoCredito } from '@/types';
@@ -365,8 +365,92 @@ function RelatorioIA() {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+function ListaTransacoesDetalhadas({
+  titulo,
+  descricao,
+  transacoes,
+  categorias,
+  contas,
+  cartoes,
+  destaque,
+}: {
+  titulo: string;
+  descricao: string;
+  transacoes: Transacao[];
+  categorias: Categoria[];
+  contas: ContaBancaria[];
+  cartoes: CartaoCredito[];
+  destaque: 'purple' | 'blue';
+}) {
+  if (transacoes.length === 0) return null;
+
+  const totalMensal = transacoes.reduce((soma, transacao) => soma + transacao.valor, 0);
+  const totalAnual = transacoes.reduce((soma, transacao) => (
+    soma + (transacao.classificacao === 'fixa' ? transacao.valor * 12 : transacao.valor)
+  ), 0);
+
+  const classes = destaque === 'purple'
+    ? 'bg-purple-950/30 border-purple-800/40 text-purple-300'
+    : 'bg-blue-950/30 border-blue-800/40 text-blue-300';
+
+  return (
+    <div className={`rounded-2xl border p-5 ${classes}`}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-sm font-semibold">{titulo}</h3>
+          <p className="text-xs text-slate-400 mt-1">{descricao}</p>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-white">{formatarMoeda(totalMensal)}/mês</div>
+          <div className="text-xs text-slate-400">{formatarMoeda(totalAnual)}/ano</div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {transacoes.map((transacao) => {
+          const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+          const conta = contas.find((item) => item.id === transacao.conta_id);
+          const cartao = cartoes.find((item) => item.id === transacao.cartao_id);
+          const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+          return (
+            <details key={transacao.id} className="group rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-white truncate">{transacao.descricao}</div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {categoria?.nome || 'Outros'} • {transacao.classificacao || 'padrao'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-red-300">{formatarMoeda(transacao.valor)}</div>
+                  <div className="text-[11px] text-slate-500">Clique para ver detalhes</div>
+                </div>
+              </summary>
+
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-white/8 pt-3">
+                <div className="space-y-2 text-xs text-slate-400">
+                  <div><span className="text-slate-500">Data do lançamento:</span> {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR')}</div>
+                  <div><span className="text-slate-500">Data da cobrança:</span> {parseFinancialDate(dataCompetencia).toLocaleDateString('pt-BR')}</div>
+                  <div><span className="text-slate-500">Método:</span> {transacao.metodo_pagamento || 'Não informado'}</div>
+                  <div><span className="text-slate-500">Origem:</span> {transacao.origem}</div>
+                </div>
+                <div className="space-y-2 text-xs text-slate-400">
+                  <div><span className="text-slate-500">Conta:</span> {conta?.nome || 'Sem conta vinculada'}</div>
+                  <div><span className="text-slate-500">Cartão:</span> {cartao?.nome || 'Sem cartão vinculado'}</div>
+                  <div><span className="text-slate-500">Parcelas:</span> {transacao.parcelas ? `${transacao.parcelas}x` : 'À vista'}</div>
+                  <div><span className="text-slate-500">Observações:</span> {transacao.observacoes || 'Sem observações'}</div>
+                </div>
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Relatorios() {
-  const { transacoes, categorias } = useFinanceiroStore();
+  const { transacoes, categorias, contas, cartoes } = useFinanceiroStore();
   const [anoSel, setAnoSel] = useState(new Date().getFullYear());
   const [exportando, setExportando] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<'graficos' | 'relatorio'>('graficos');
@@ -413,11 +497,16 @@ export default function Relatorios() {
   }, [dadosMesAtual, categorias]);
 
   const assinaturas = useMemo(() => {
-    return dadosMesAtual.filter(t =>
-      t.categoria_id === 'assinaturas' ||
-      t.descricao?.toLowerCase().match(/netflix|spotify|amazon|disney|hbo|youtube|apple|google/)
-    );
-  }, [dadosMesAtual]);
+    return transacoes
+      .filter((transacao) => transacao.tipo === 'despesa' && transacao.categoria_id === 'assinaturas')
+      .sort((a, b) => b.valor - a.valor);
+  }, [transacoes]);
+
+  const gastosFixos = useMemo(() => {
+    return transacoes
+      .filter((transacao) => transacao.tipo === 'despesa' && transacao.classificacao === 'fixa')
+      .sort((a, b) => b.valor - a.valor);
+  }, [transacoes]);
 
   const totalAno = dadosAnuais.reduce((s, m) => ({
     receitas: s.receitas + m.receitas,
@@ -671,38 +760,25 @@ export default function Relatorios() {
             )}
           </div>
 
-          {/* Analise de assinaturas */}
-          {assinaturas.length > 0 && (
-            <div className="bg-purple-950/30 border border-purple-800/40 rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Lightbulb size={16} className="text-purple-400" />
-                <h3 className="text-sm font-semibold text-purple-300">Análise de Assinaturas</h3>
-              </div>
-              <p className="text-slate-400 text-sm mb-3">
-                Você tem <strong className="text-white">{assinaturas.length} assinaturas</strong> totalizando{' '}
-                <strong className="text-purple-400">
-                  {formatarMoeda(assinaturas.reduce((s, t) => s + t.valor, 0))}/mês
-                </strong>{' '}
-                = <strong className="text-yellow-400">
-                  {formatarMoeda(assinaturas.reduce((s, t) => s + t.valor, 0) * 12)}/ano
-                </strong>
-              </p>
-              <div className="space-y-2">
-                {assinaturas.map(t => (
-                  <div key={t.id} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-300">{t.descricao}</span>
-                    <span className="text-red-400">{formatarMoeda(t.valor)}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-slate-500 text-xs mt-3">
-                💡 Se cancelar a mais cara, economizaria{' '}
-                <strong className="text-emerald-400">
-                  {formatarMoeda((assinaturas[0]?.valor || 0) * 12)}/ano
-                </strong>
-              </p>
-            </div>
-          )}
+          <ListaTransacoesDetalhadas
+            titulo="Assinaturas"
+            descricao="Mostra apenas despesas cadastradas na categoria Assinaturas com detalhes internos."
+            transacoes={assinaturas}
+            categorias={categorias}
+            contas={contas}
+            cartoes={cartoes}
+            destaque="purple"
+          />
+
+          <ListaTransacoesDetalhadas
+            titulo="Gastos fixos"
+            descricao="Reúne despesas recorrentes fixas para revisar quanto pesam por mês e por ano."
+            transacoes={gastosFixos}
+            categorias={categorias}
+            contas={contas}
+            cartoes={cartoes}
+            destaque="blue"
+          />
         </>
       )}
 
