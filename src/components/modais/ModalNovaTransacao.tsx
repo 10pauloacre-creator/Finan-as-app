@@ -124,7 +124,8 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     return () => window.clearTimeout(timeout);
   }, [transacaoEditar, aberto, tipoInicial]);
 
-  const categoriasFiltradas = categorias.filter((categoria) => categoria.tipo === form.tipo || categoria.tipo === 'transferencia');
+  const categoriaSelecionada = categorias.find((categoria) => categoria.id === form.categoria_id);
+  const categoriasFiltradas = categorias.filter((categoria) => categoria.tipo === form.tipo);
   const mostrarContaSelector = ['pix', 'debito', 'transferencia', 'emprestimo', 'financiamento'].includes(form.metodo_pagamento);
   const mostrarCartaoSelector = form.metodo_pagamento === 'credito';
   const usaControleDeSerie =
@@ -186,22 +187,28 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   }
 
   function salvarTransacao() {
+    const tipoAjustado = categoriaSelecionada?.tipo === 'transferencia' ? 'transferencia' : form.tipo;
+    const metodoAjustado = tipoAjustado === 'transferencia' && form.metodo_pagamento === 'credito'
+      ? 'pix'
+      : form.metodo_pagamento;
+    const cartaoAjustado = tipoAjustado === 'transferencia' ? undefined : (form.cartao_id || undefined);
+    const contaAjustada = cartaoAjustado ? undefined : (form.conta_id || undefined);
     const dados = {
       descricao: form.descricao,
       valor: parseFloat(form.valor.replace(',', '.')),
-      tipo: form.tipo,
+      tipo: tipoAjustado,
       classificacao: form.classificacao,
       categoria_id: form.categoria_id,
       data: form.data,
       horario: form.horario || undefined,
-      metodo_pagamento: form.metodo_pagamento,
+      metodo_pagamento: metodoAjustado,
       parcelas: parseInt(form.parcelas, 10) || 1,
       parcela_atual: parseInt(form.parcela_atual, 10) || 0,
       local: form.local || undefined,
       observacoes: form.observacoes || undefined,
       origem: 'manual' as const,
-      conta_id: form.conta_id || undefined,
-      cartao_id: form.cartao_id || undefined,
+      conta_id: contaAjustada,
+      cartao_id: cartaoAjustado,
       itens_compra: itensCompraIA.length > 0 ? itensCompraIA : undefined,
     };
 
@@ -451,9 +458,15 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                     type="button"
                     onClick={() => setForm((atual) => ({
                       ...atual,
+                      tipo: categoria.tipo,
                       categoria_id: categoria.id,
-                      metodo_pagamento: categoria.id === 'feira_mantimentos' ? 'credito' : atual.metodo_pagamento,
+                      metodo_pagamento: categoria.id === 'feira_mantimentos'
+                        ? 'credito'
+                        : categoria.tipo === 'transferencia' && atual.metodo_pagamento === 'credito'
+                        ? 'pix'
+                        : atual.metodo_pagamento,
                       conta_id: categoria.id === 'feira_mantimentos' ? '' : atual.conta_id,
+                      cartao_id: categoria.tipo === 'transferencia' ? '' : atual.cartao_id,
                     }))}
                     className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs transition-all ${
                       form.categoria_id === categoria.id
@@ -477,8 +490,8 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                     type="button"
                     onClick={() => setForm((atual) => ({
                       ...atual,
-                      metodo_pagamento: metodo.valor,
-                      conta_id: '',
+                      metodo_pagamento: atual.tipo === 'transferencia' && metodo.valor === 'credito' ? 'pix' : metodo.valor,
+                      conta_id: metodo.valor === 'credito' ? '' : atual.conta_id,
                       cartao_id: '',
                     }))}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${

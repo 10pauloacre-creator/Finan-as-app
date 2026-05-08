@@ -8,7 +8,7 @@ import type {
   Orcamento,
 } from '@/types';
 import { formatarMoeda } from './storage';
-import { transacaoContaNoMesAteData } from './transacoes';
+import { ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from './transacoes';
 
 interface DadosContexto {
   transacoes: Transacao[];
@@ -114,7 +114,7 @@ export function construirSnapshotFinanceiro(dados: DadosContexto): SnapshotFinan
       valor,
     }));
 
-  const transacoesRecentes = [...dados.transacoes]
+  const transacoesRecentes = ordenarTransacoesPorDataDesc(dados.transacoes)
     .slice(0, 20)
     .map((transacao) => ({
       id: transacao.id,

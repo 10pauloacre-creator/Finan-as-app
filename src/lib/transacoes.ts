@@ -24,6 +24,29 @@ function getTotalParcelas(transacao: Pick<Transacao, 'parcelas'>) {
   return Math.max(transacao.parcelas || 1, 1);
 }
 
+export function getDataOrdenacaoTransacao(transacao: Pick<Transacao, 'data' | 'horario' | 'criado_em'>) {
+  const dataBase = parseFinancialDate(transacao.data);
+  const [hora, minuto] = (transacao.horario || '00:00').split(':').map((parte) => parseInt(parte, 10) || 0);
+  const timestampData = new Date(
+    dataBase.getFullYear(),
+    dataBase.getMonth(),
+    dataBase.getDate(),
+    hora,
+    minuto,
+    0,
+    0,
+  ).getTime();
+
+  if (transacao.horario) return timestampData;
+
+  const criadoEm = transacao.criado_em ? new Date(transacao.criado_em).getTime() : Number.NaN;
+  return Number.isFinite(criadoEm) ? criadoEm : timestampData;
+}
+
+export function ordenarTransacoesPorDataDesc<T extends Pick<Transacao, 'data' | 'horario' | 'criado_em'>>(lista: T[]) {
+  return [...lista].sort((a, b) => getDataOrdenacaoTransacao(b) - getDataOrdenacaoTransacao(a));
+}
+
 function getParcelasJaLiquidadas(transacao: Pick<Transacao, 'parcela_atual' | 'parcelas'>) {
   return Math.max(Math.min(transacao.parcela_atual || 0, getTotalParcelas(transacao)), 0);
 }

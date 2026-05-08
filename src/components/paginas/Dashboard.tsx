@@ -12,7 +12,7 @@ import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { transacaoContaNoMesAteData } from '@/lib/transacoes';
+import { ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
@@ -596,14 +596,6 @@ function normalizarTexto(valor: string | null | undefined) {
     .trim();
 }
 
-function ordenarTransacoesPorData(lista: Transacao[]) {
-  return [...lista].sort((a, b) => {
-    const chaveA = `${a.data}T${a.horario || '00:00'}:${a.id}`;
-    const chaveB = `${b.data}T${b.horario || '00:00'}:${b.id}`;
-    return chaveA < chaveB ? 1 : -1;
-  });
-}
-
 function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
   const nomeTx = normalizarTexto(tx.categoria);
   const exata = categorias.find((categoria) => (
@@ -680,9 +672,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const dadosMes = useMemo(() => {
     const referenciaHoje = startOfTodayLocal();
-    const doMes = transacoes.filter(t => {
+    const doMes = ordenarTransacoesPorDataDesc(transacoes.filter(t => {
       return transacaoContaNoMesAteData(t, mes, ano, referenciaHoje);
-    });
+    }));
     const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
     const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
     const saldo = receitas - despesas;
@@ -1109,12 +1101,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
             {contaExpandida && (() => {
               const info = BANCO_INFO[contaExpandida.banco] || BANCO_INFO.outro;
-              const lista = ordenarTransacoesPorData(transacoesPorConta[contaExpandida.id] || []);
+              const lista = ordenarTransacoesPorDataDesc(transacoesPorConta[contaExpandida.id] || []);
               const entradasMes = lista.filter((transacao) => (
                 transacao.tipo === 'receita' && transacaoContaNoMesAteData(transacao, mes, ano, hoje)
               )).reduce((soma, transacao) => soma + transacao.valor, 0);
               const saidasMes = lista.filter((transacao) => (
-                transacao.tipo === 'despesa' && transacaoContaNoMesAteData(transacao, mes, ano, hoje)
+                (transacao.tipo === 'despesa' || transacao.tipo === 'transferencia') && transacaoContaNoMesAteData(transacao, mes, ano, hoje)
               )).reduce((soma, transacao) => soma + transacao.valor, 0);
 
               return (
@@ -1261,7 +1253,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
             {cartaoExpandido && (() => {
               const info = BANCO_INFO[cartaoExpandido.banco] || BANCO_INFO.outro;
-              const lista = ordenarTransacoesPorData(transacoesPorCartao[cartaoExpandido.id] || []);
+              const lista = ordenarTransacoesPorDataDesc(transacoesPorCartao[cartaoExpandido.id] || []);
               const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
               const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
               const totalCompras = compras.reduce((soma, transacao) => soma + transacao.valor, 0);

@@ -91,12 +91,30 @@ export default function Orcamentos() {
     const valor = parseFloat(valorInput.replace(',', '.'));
     if (isNaN(valor) || valor <= 0) return;
     setSalvando(true);
+
+    // Salva o mês selecionado
     const existente = orcamentosMes.find(o => o.categoria_id === modalCatId);
     if (existente) {
       editarOrcamento(existente.id, { valor_limite: valor });
     } else {
       adicionarOrcamento({ categoria_id: modalCatId, valor_limite: valor, mes, ano });
     }
+
+    // Propaga o mesmo limite para todos os meses futuros (24 meses à frente)
+    for (let i = 1; i <= 24; i++) {
+      const d = new Date(ano, mes - 1 + i, 1);
+      const fMes = d.getMonth() + 1;
+      const fAno = d.getFullYear();
+      const orcFuturo = orcamentos.find(
+        o => o.categoria_id === modalCatId && o.mes === fMes && o.ano === fAno,
+      );
+      if (orcFuturo) {
+        editarOrcamento(orcFuturo.id, { valor_limite: valor });
+      } else {
+        adicionarOrcamento({ categoria_id: modalCatId, valor_limite: valor, mes: fMes, ano: fAno });
+      }
+    }
+
     setSalvando(false);
     fecharModal();
   }
@@ -308,10 +326,13 @@ export default function Orcamentos() {
                   onKeyDown={e => e.key === 'Enter' && salvarOrcamento()}
                   autoFocus
                   className="w-full bg-[#0F1629] border border-white/10 rounded-xl px-4 py-2.5 text-base font-semibold text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50" />
+                <p className="text-[11px] text-slate-600 mt-1.5">
+                  Aplica este limite a partir de {`${mesesNome[mes - 1]}/${ano}`} e todos os meses seguintes
+                </p>
               </div>
               <div className="flex gap-2">
                 <button onClick={fecharModal}
-                  className="flex-1 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-slate-400 text-sm font-medium hover:bg-white/[0.08] transition-colors">
+                  className="flex-1 py-2.5 rounded-xl bg-white/4 border border-white/10 text-slate-400 text-sm font-medium hover:bg-white/8 transition-colors">
                   Cancelar
                 </button>
                 <button onClick={salvarOrcamento} disabled={salvando || !valorInput}

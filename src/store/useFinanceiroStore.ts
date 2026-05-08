@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   Transacao, Categoria, Investimento, Meta, ConfiguracaoApp,
-  DicaIA, ContaBancaria, CartaoCredito, Orcamento,
+  DicaIA, ContaBancaria, CartaoCredito, Orcamento, BANCO_INFO,
 } from '@/types';
 import {
   storageTransacoes, storageCategoriass, storageInvestimentos,
@@ -94,6 +94,82 @@ let supressaoDeRecargaLocal = 0;
 
 function arredondarMoeda(valor: number) {
   return Number(valor.toFixed(2));
+}
+
+function normalizarTexto(valor: string | undefined) {
+  return (valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferirContaIdPorTexto(transacao: Pick<Transacao, 'descricao' | 'local' | 'observacoes'>, contas: ContaBancaria[]) {
+  const textos = [transacao.descricao, transacao.local, transacao.observacoes]
+    .map((valor) => normalizarTexto(valor))
+    .filter(Boolean);
+
+  if (!textos.length) return undefined;
+
+  const candidatas = contas.filter((conta) => {
+    const nomeConta = normalizarTexto(conta.nome);
+    const nomeBanco = normalizarTexto(BANCO_INFO[conta.banco]?.nome);
+    return textos.some((texto) => texto === nomeConta || texto === nomeBanco);
+  });
+
+  return candidatas.length === 1 ? candidatas[0].id : undefined;
+}
+
+function normalizarTransacaoRelacionamentos(
+  transacao: Transacao,
+  categorias: Categoria[],
+  contas: ContaBancaria[],
+) {
+  const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+  const tipoAjustado = categoria?.tipo === 'transferencia' ? 'transferencia' : transacao.tipo;
+  const metodoAjustado = tipoAjustado === 'transferencia' && transacao.metodo_pagamento === 'credito'
+    ? 'pix'
+    : transacao.metodo_pagamento;
+  const cartaoAjustado = tipoAjustado === 'transferencia' ? undefined : transacao.cartao_id;
+  const contaInferida = !cartaoAjustado && !transacao.conta_id
+    ? inferirContaIdPorTexto(transacao, contas)
+    : undefined;
+  const contaAjustada = cartaoAjustado ? undefined : (transacao.conta_id || contaInferida);
+
+  if (
+    tipoAjustado === transacao.tipo
+    && metodoAjustado === transacao.metodo_pagamento
+    && cartaoAjustado === transacao.cartao_id
+    && contaAjustada === transacao.conta_id
+  ) {
+    return transacao;
+  }
+
+  return {
+    ...transacao,
+    tipo: tipoAjustado,
+    metodo_pagamento: metodoAjustado,
+    cartao_id: cartaoAjustado,
+    conta_id: contaAjustada,
+  };
+}
+
+function normalizarTransacoesParaEstado(
+  transacoes: Transacao[],
+  categorias: Categoria[],
+  contas: ContaBancaria[],
+  sync = false,
+) {
+  return transacoes.map((transacao) => {
+    const normalizada = normalizarTransacaoRelacionamentos(transacao, categorias, contas);
+    if (normalizada === transacao) return transacao;
+    storageTransacoes.save(normalizada);
+    if (sync) {
+      void syncSalvarTransacao(normalizada);
+    }
+    return normalizada;
+  });
 }
 
 function executarSemRecargaLocal<T>(callback: () => T): T {
@@ -295,15 +371,17 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
   const carregarDoLocal = () => {
     executarSemRecargaLocal(() => {
       const config = storageConfig.get();
-      const transacoes = storageTransacoes.getAll();
-      const contas = normalizarContasComTransacoes(storageContas.getAll(), transacoes);
+      const categorias = storageCategoriass.getAll();
+      const contasOriginais = storageContas.getAll();
+      const transacoes = normalizarTransacoesParaEstado(storageTransacoes.getAll(), categorias, contasOriginais, true);
+      const contas = normalizarContasComTransacoes(contasOriginais, transacoes);
       const cartoes = normalizarCartoesComTransacoes(storageCartoes.getAll(), transacoes);
       persistirContasNormalizadas(contas);
       persistirCartoesNormalizados(cartoes);
 
       set({
         transacoes,
-        categorias: storageCategoriass.getAll(),
+        categorias,
         investimentos: storageInvestimentos.getAll(),
         metas: storageMetas.getAll(),
         contas,
@@ -316,9 +394,10 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
     executarSemRecargaLocal(() => {
-      const contasNormalizadas = normalizarContasComTransacoes(dados.contas, dados.transacoes);
-      const cartoesNormalizados = normalizarCartoesComTransacoes(dados.cartoes, dados.transacoes);
-      storageTransacoes.replaceAll(dados.transacoes);
+      const transacoesNormalizadas = normalizarTransacoesParaEstado(dados.transacoes, dados.categorias, dados.contas, true);
+      const contasNormalizadas = normalizarContasComTransacoes(dados.contas, transacoesNormalizadas);
+      const cartoesNormalizados = normalizarCartoesComTransacoes(dados.cartoes, transacoesNormalizadas);
+      storageTransacoes.replaceAll(transacoesNormalizadas);
       storageCategoriass.replaceAll(dados.categorias);
       storageContas.replaceAll(contasNormalizadas);
       storageCartoes.replaceAll(cartoesNormalizados);
@@ -331,7 +410,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       if (dados.config) storageConfig.replace(dados.config);
 
       set({
-        transacoes: dados.transacoes,
+        transacoes: transacoesNormalizadas,
         categorias: dados.categorias,
         contas: contasNormalizadas,
         cartoes: cartoesNormalizados,
@@ -525,7 +604,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarTransacao: (dados) => {
       return executarSemRecargaLocal(() => {
-        const nova: Transacao = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const categorias = get().categorias;
+        const contas = get().contas;
+        const nova = normalizarTransacaoRelacionamentos(
+          { ...dados, id: gerarId(), criado_em: new Date().toISOString() } as Transacao,
+          categorias,
+          contas,
+        );
         storageTransacoes.save(nova);
         void syncSalvarTransacao(nova);
 
@@ -549,7 +634,11 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         const atual = get().transacoes.find((t) => t.id === id);
         if (!atual) return;
 
-        const atualizada = { ...atual, ...dados };
+        const atualizada = normalizarTransacaoRelacionamentos(
+          { ...atual, ...dados },
+          get().categorias,
+          get().contas,
+        );
         storageTransacoes.save(atualizada);
         void syncSalvarTransacao(atualizada);
 
