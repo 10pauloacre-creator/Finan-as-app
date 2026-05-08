@@ -11,6 +11,7 @@ import {
   calcularDataFinalParcelamento,
   calcularGastoRecorrenteAnual,
   calcularParcelamentoInfo,
+  getDataCobrancaCartao,
   getDataOcorrenciaNoMes,
   transacaoContaNoMesAteData,
   transacaoJaOcorreuAteData,
@@ -316,6 +317,7 @@ type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'ja_debitadas' | 'previstas';
 type TransacaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
+  dataOrdenacao: string;
 };
 
 const FILTROS_LINHA2: { valor: FiltroLinha2; label: string }[] = [
@@ -332,7 +334,18 @@ function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'f
   return transacao.classificacao || 'padrao';
 }
 
-function getBadgeClassificacao(transacao: Transacao, hoje: Date) {
+function getBadgeClassificacao(transacao: Transacao, hoje: Date, dataExibicao?: string) {
+  if (transacao.cartao_id && transacao.tipo === 'despesa') {
+    const referencia = parseFinancialDate(dataExibicao || transacao.data);
+    const prevista = referencia > hoje;
+    return {
+      label: prevista ? 'Cartao previsto' : 'Cartao ja cobrado',
+      className: prevista
+        ? 'bg-amber-500/15 text-amber-300 border-amber-500/20'
+        : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
+    };
+  }
+
   const classificacao = getClassificacaoTransacao(transacao);
   const realizada = transacaoJaOcorreuAteData(transacao, hoje);
 
@@ -395,6 +408,7 @@ function ModalDetalheTransacao({
   const parcelamento = calcularParcelamentoInfo(transacao, hoje);
   const gastoAnual = calcularGastoRecorrenteAnual(transacao);
   const ehReceita = transacao.tipo === 'receita';
+  const dataCobrancaCartao = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : null;
   const dataFinalParcelamento = transacao.parcelas && transacao.parcelas > 1
     ? calcularDataFinalParcelamento(transacao)
     : null;
@@ -432,7 +446,7 @@ function ModalDetalheTransacao({
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Data</div>
+              <div className="text-[11px] text-slate-500">{transacao.cartao_id ? 'Data da compra' : 'Data'}</div>
               <div className="mt-1 text-sm font-semibold text-white">
                 {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR')}
               </div>
@@ -453,6 +467,12 @@ function ModalDetalheTransacao({
               <div className="mt-1 text-sm font-semibold text-white uppercase">
                 {transacao.metodo_pagamento || 'Nao informado'}
               </div>
+              {dataCobrancaCartao && (
+                <>
+                  <div className="mt-3 text-[11px] text-slate-500">Cobranca no cartao</div>
+                  <div className="mt-1 text-sm text-amber-300">{parseFinancialDate(dataCobrancaCartao).toLocaleDateString('pt-BR')}</div>
+                </>
+              )}
               <div className="mt-3 text-[11px] text-slate-500">Conta</div>
               <div className="mt-1 text-sm text-slate-200">{getNomeConta(conta)}</div>
               <div className="mt-3 text-[11px] text-slate-500">Cartao</div>
@@ -564,46 +584,32 @@ export default function Transacoes() {
   const transacoesPorPeriodo = useMemo<TransacaoExibicao[]>(() => {
     const agora = new Date();
     return transacoes.flatMap((transacao) => {
+      const cartao = transacao.cartao_id ? cartoes.find((c) => c.id === transacao.cartao_id) : undefined;
+      const dataCobrancaCartao = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : transacao.data;
+
       if (periodo === 'mes') {
         // Cartão não-recorrente: aplica ciclo de faturamento
         if (transacao.cartao_id && transacao.classificacao !== 'fixa') {
-          const cartao = cartoes.find((c) => c.id === transacao.cartao_id);
-          const diaFechamento = cartao?.dia_fechamento ?? 8;
-          const diaVencimento = cartao?.dia_vencimento ?? 15;
-          const [txAno, txMes, txDia] = transacao.data.split('-').map(Number);
-          // Step 1: determine the closing month
-          let closingAno = txAno;
-          let closingMes = txMes;
-          if (txDia > diaFechamento) {
-            closingMes += 1;
-            if (closingMes > 12) { closingMes = 1; closingAno += 1; }
-          }
-          // Step 2: when vencimento < fechamento, payment is in the month AFTER closing
-          let faturaAno = closingAno;
-          let faturaMes = closingMes;
-          if (diaVencimento < diaFechamento) {
-            faturaMes += 1;
-            if (faturaMes > 12) { faturaMes = 1; faturaAno += 1; }
-          }
+          const [faturaAno, faturaMes] = dataCobrancaCartao.split('-').map(Number);
           return faturaMes === filtroMes && faturaAno === filtroAno
-            ? [{ transacao, dataExibicao: transacao.data }]
+            ? [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }]
             : [];
         }
         // Demais (débito, pix, recorrentes): lógica padrão
         const ocorrencia = getDataOcorrenciaNoMes(transacao, filtroMes, filtroAno);
         return ocorrencia
-          ? [{ transacao, dataExibicao: formatFinancialDate(ocorrencia) }]
+          ? [{ transacao, dataExibicao: formatFinancialDate(ocorrencia), dataOrdenacao: formatFinancialDate(ocorrencia) }]
           : [];
       }
       if (periodo === '3meses') {
         const tresMesesAtras = new Date(agora);
         tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
         tresMesesAtras.setDate(1);
-        return parseFinancialDate(transacao.data) >= tresMesesAtras
-          ? [{ transacao, dataExibicao: transacao.data }]
+        return parseFinancialDate(dataCobrancaCartao) >= tresMesesAtras
+          ? [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }]
           : [];
       }
-      return [{ transacao, dataExibicao: transacao.data }];
+      return [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }];
     });
   }, [transacoes, periodo, filtroMes, filtroAno, cartoes]);
 
@@ -706,7 +712,7 @@ export default function Transacoes() {
           return !realizada;
         })
       : transacoesFiltradas;
-    const ordenadas = [...base].sort((a, b) => b.dataExibicao.localeCompare(a.dataExibicao));
+    const ordenadas = [...base].sort((a, b) => b.dataOrdenacao.localeCompare(a.dataOrdenacao));
     ordenadas.forEach((item) => {
       if (!grupos[item.dataExibicao]) grupos[item.dataExibicao] = [];
       grupos[item.dataExibicao].push(item);
@@ -934,7 +940,7 @@ export default function Transacoes() {
                     const cat = categorias.find((c) => c.id === t.categoria_id);
                     const conta = contas.find((item) => item.id === t.conta_id);
                     const cartao = cartoes.find((item) => item.id === t.cartao_id);
-                    const badgeClassificacao = getBadgeClassificacao(t, hoje);
+                    const badgeClassificacao = getBadgeClassificacao(t, hoje, dataExibicao);
                     const eFutura = parseFinancialDate(dataExibicao) > hoje;
                     const parcelamento = calcularParcelamentoInfo(t, parseFinancialDate(dataExibicao));
 
@@ -969,7 +975,7 @@ export default function Transacoes() {
                           )}
                           {eFutura && (
                             <div className="mt-1 text-[11px] text-amber-400">
-                              Prevista para {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              {t.cartao_id ? 'Cobranca em ' : 'Prevista para '}{parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </div>
                           )}
                           {t.itens_compra && t.itens_compra.length > 0 && (

@@ -1,5 +1,5 @@
-import type { Transacao } from '@/types';
-import { parseFinancialDate, startOfTodayLocal } from './date';
+import type { CartaoCredito, Transacao } from '@/types';
+import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from './date';
 
 function inicioDoDia(data: Date) {
   return new Date(data.getFullYear(), data.getMonth(), data.getDate(), 0, 0, 0, 0);
@@ -45,6 +45,45 @@ export function getDataOrdenacaoTransacao(transacao: Pick<Transacao, 'data' | 'h
 
 export function ordenarTransacoesPorDataDesc<T extends Pick<Transacao, 'data' | 'horario' | 'criado_em'>>(lista: T[]) {
   return [...lista].sort((a, b) => getDataOrdenacaoTransacao(b) - getDataOrdenacaoTransacao(a));
+}
+
+export function getDataCobrancaCartaoParaData(
+  dataBase: string,
+  cartao?: Pick<CartaoCredito, 'dia_fechamento' | 'dia_vencimento'> | null,
+) {
+  if (!cartao) return dataBase;
+
+  const [anoBase, mesBase, diaBase] = dataBase.split('-').map(Number);
+  let mesFechamento = mesBase;
+  let anoFechamento = anoBase;
+
+  if (diaBase > cartao.dia_fechamento) {
+    mesFechamento += 1;
+    if (mesFechamento > 12) {
+      mesFechamento = 1;
+      anoFechamento += 1;
+    }
+  }
+
+  let mesCobranca = mesFechamento;
+  let anoCobranca = anoFechamento;
+
+  if (cartao.dia_vencimento < cartao.dia_fechamento) {
+    mesCobranca += 1;
+    if (mesCobranca > 12) {
+      mesCobranca = 1;
+      anoCobranca += 1;
+    }
+  }
+
+  return formatFinancialDate(criarDataNoMes(anoCobranca, mesCobranca - 1, cartao.dia_vencimento));
+}
+
+export function getDataCobrancaCartao(
+  transacao: Pick<Transacao, 'data'>,
+  cartao?: Pick<CartaoCredito, 'dia_fechamento' | 'dia_vencimento'> | null,
+) {
+  return getDataCobrancaCartaoParaData(transacao.data, cartao);
 }
 
 function getParcelasJaLiquidadas(transacao: Pick<Transacao, 'parcela_atual' | 'parcelas'>) {

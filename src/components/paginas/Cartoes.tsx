@@ -9,7 +9,8 @@ import { formatarMoeda } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, BandeirCartao, CartaoCredito, Categoria, Transacao } from '@/types';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 import { parseFinancialDate } from '@/lib/date';
-import { getDataOcorrenciaNoMes } from '@/lib/transacoes';
+import { formatFinancialDate } from '@/lib/date';
+import { getDataCobrancaCartaoParaData, getDataOcorrenciaNoMes } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
@@ -83,8 +84,11 @@ function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]
         if (tx.cartao_id !== cartao.id) return soma;
         const ocorrencia = getDataOcorrenciaNoMes(tx, month, year);
         if (!ocorrencia) return soma;
+        const dataCobranca = getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
+        const dataCobrancaDate = parseFinancialDate(dataCobranca);
+        if (dataCobrancaDate.getMonth() + 1 !== month || dataCobrancaDate.getFullYear() !== year) return soma;
         const delta = tx.tipo === 'despesa' ? tx.valor : -tx.valor;
-        if (ocorrencia > referenciaHoje) {
+        if (dataCobrancaDate > referenciaHoje) {
           totalPrevisto += delta;
         } else {
           totalDebitado += delta;
@@ -398,6 +402,7 @@ function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inici
 }
 
 function construirLancamentosDaFatura(
+  cartao: CartaoCredito,
   cartaoId: string,
   transacoes: Transacao[],
   inicio: Date,
@@ -421,11 +426,13 @@ function construirLancamentosDaFatura(
     mesesPeriodo.forEach(({ mes, ano }) => {
       const ocorrencia = getDataOcorrenciaNoMes(transacao, mes, ano);
       if (!ocorrencia || ocorrencia < inicio || ocorrencia > fim) return;
+      const dataCobranca = getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
+      const dataCobrancaDate = parseFinancialDate(dataCobranca);
 
       lista.push({
         transacao,
-        dataExibicao: ocorrencia.toISOString().slice(0, 10),
-        status: ocorrencia > referencia ? 'prevista' : 'debitada',
+        dataExibicao: dataCobranca,
+        status: dataCobrancaDate > referencia ? 'prevista' : 'debitada',
       });
     });
   });
@@ -854,7 +861,7 @@ export default function Cartoes() {
           const expandido = cartaoExpandidoId === cartao.id;
           const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
           const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento, cartao.dia_vencimento);
-          const listaCompleta = construirLancamentosDaFatura(cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura);
+          const listaCompleta = construirLancamentosDaFatura(cartao, cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura);
           const lista = listaCompleta.filter((item) => (
             filtroLancamentos === 'todos'
               ? true
@@ -1171,7 +1178,7 @@ export default function Cartoes() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
                                 {categoria?.nome ? ` • ${categoria.nome}` : ''}
                                 {` • ${status === 'prevista' ? 'prevista' : 'já debitada'}`}

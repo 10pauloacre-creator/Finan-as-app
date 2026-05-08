@@ -12,7 +12,7 @@ import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import { getDataCobrancaCartao, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
@@ -1151,6 +1151,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     <div className="space-y-2">
                       {lista.slice(0, 5).map((transacao) => {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                        const cartao = cartoes.find((item) => item.id === transacao.cartao_id);
+                        const dataLista = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : transacao.data;
                         return (
                           <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
@@ -1159,7 +1161,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
                             <button
@@ -1394,6 +1396,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     <div className="space-y-2">
                       {lista.slice(0, 8).map((transacao) => {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                        const dataLista = getDataCobrancaCartao(transacao, cartaoExpandido);
                         return (
                           <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
@@ -1402,7 +1405,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} • {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {categoria?.nome || 'Outros'} • cobra em {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -1670,6 +1673,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
         <div className="space-y-2">
           {transacoesFiltradas.map(t => {
             const cat = categorias.find(c => c.id === t.categoria_id);
+            const cartao = cartoes.find((item) => item.id === t.cartao_id);
+            const dataLista = t.cartao_id ? getDataCobrancaCartao(t, cartao) : t.data;
             return (
               <button
                 key={t.id}
@@ -1686,7 +1691,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="text-xs text-slate-500">
                     {cat?.nome || 'Outros'}
                     {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
-                    {' • '}{parseFinancialDate(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    {' • '}{t.cartao_id ? 'cobranca ' : ''}{parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
                 </div>
                 <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
