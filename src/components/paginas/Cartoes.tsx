@@ -683,7 +683,7 @@ export default function Cartoes() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">CartÃµes de CrÃ©dito</h2>
+          <h2 className="text-xl font-bold text-white">Cartões de Crédito</h2>
           <p className="text-slate-500 text-sm">
             Fatura total:{' '}
             <span className="text-red-400 font-semibold tabular-nums">{formatarMoeda(totalFaturas)}</span>
@@ -714,7 +714,7 @@ export default function Cartoes() {
             <div className="text-lg font-bold text-red-400 tabular-nums">{formatarMoeda(totalFaturas)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500 mb-1 uppercase tracking-wide">DisponÃ­vel</div>
+            <div className="text-xs text-slate-500 mb-1 uppercase tracking-wide">Disponível</div>
             <div className="text-lg font-bold text-emerald-400 tabular-nums">{formatarMoeda(totalDisponivel)}</div>
           </div>
         </div>
@@ -773,7 +773,7 @@ export default function Cartoes() {
           </div>
 
           <div>
-            <label className="text-xs text-slate-400 mb-1 block">Nome do cartÃ£o (opcional)</label>
+            <label className="text-xs text-slate-400 mb-1 block">Nome do cartão (opcional)</label>
             <input
               type="text"
               placeholder="Ex: Nubank Roxinho"
@@ -908,7 +908,7 @@ export default function Cartoes() {
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-white truncate">{cartao.nome}</div>
                       <div className="text-xs text-slate-500">
-                        {info.nome} â€¢ {cartao.bandeira}
+                        {info.nome} • {cartao.bandeira}
                       </div>
                     </div>
                   </div>
@@ -938,10 +938,10 @@ export default function Cartoes() {
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
-                        if (confirm('Excluir este cartÃ£o?')) excluirCartao(cartao.id);
+                        if (confirm('Excluir este cartão?')) excluirCartao(cartao.id);
                       }}
                       className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-900/20 transition-colors"
-                      aria-label="Excluir cartÃ£o"
+                      aria-label="Excluir cartão"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -1056,7 +1056,7 @@ export default function Cartoes() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-emerald-400 text-sm font-bold tabular-nums">{formatarMoeda(disponivel)}</div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">DisponÃ­vel</div>
+                      <div className="text-slate-600 text-[11px] mt-0.5">Disponível</div>
                     </div>
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className={`text-sm font-bold ${diasVencimento <= 5 ? 'text-red-400' : 'text-slate-300'}`}>
@@ -1067,7 +1067,7 @@ export default function Cartoes() {
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-slate-300 text-sm font-bold">{compras.length}</div>
                       <div className="text-slate-600 text-[11px] mt-0.5">
-                        {expandido ? 'lanÃ§amentos visÃ­veis' : 'clique para ver gastos'}
+                        {expandido ? 'lançamentos visíveis' : 'clique para ver gastos'}
                       </div>
                     </div>
                   </div>
@@ -1089,9 +1089,9 @@ export default function Cartoes() {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-sm font-semibold text-white">Gastos do cartÃ£o</h3>
+                        <h3 className="text-sm font-semibold text-white">Gastos do cartão</h3>
                         <p className="text-xs text-slate-500 mt-1">
-                          Os lanÃ§amentos importados pela I.A. ficam vinculados a este cartÃ£o com data, detalhe da compra, parcela e valor.
+                          Os lançamentos importados pela I.A. ficam vinculados a este cartão com data, detalhe da compra, parcela e valor.
                         </p>
                       </div>
                       <button
@@ -1113,7 +1113,7 @@ export default function Cartoes() {
                         <div className="text-sm font-semibold text-white mt-1">{compras.length}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Estornos / crÃ©ditos</div>
+                        <div className="text-[11px] text-slate-500">Estornos / créditos</div>
                         <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">
                           {formatarMoeda(estornos.reduce((soma, item) => soma + item.transacao.valor, 0))}
                         </div>
@@ -1192,7 +1192,7 @@ export default function Cartoes() {
                       })}
                       {lista.length === 0 && (
                         <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
-                          Nenhum gasto visÃ­vel ainda. Clique no botÃ£o I.A. para ler a fatura ou a lista de lanÃ§amentos deste cartÃ£o.
+                          Nenhum gasto visível ainda. Clique no botão I.A. para ler a fatura ou a lista de lançamentos deste cartão.
                         </div>
                       )}
                     </div>
@@ -1206,8 +1206,8 @@ export default function Cartoes() {
         {cartoes.length === 0 && (
           <div className="glass-card flex flex-col items-center justify-center py-14 text-slate-600">
             <CreditCard size={40} className="mb-3 opacity-30" />
-            <p className="text-sm font-medium text-slate-500">Nenhum cartÃ£o cadastrado</p>
-            <p className="text-xs mt-1">Clique em &quot;Novo CartÃ£o&quot; para comeÃ§ar</p>
+            <p className="text-sm font-medium text-slate-500">Nenhum cartão cadastrado</p>
+            <p className="text-xs mt-1">Clique em &quot;Novo Cartão&quot; para começar</p>
           </div>
         )}
       </div>

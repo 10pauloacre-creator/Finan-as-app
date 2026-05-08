@@ -862,13 +862,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
         ...(data.acoes_sugeridas || []).map((acao, index): DicaItem => ({
           id: `auto-acao-${index}`,
           tipo: tipoDicaPorAutomacao(acao.tipo),
-          titulo: acao.titulo || 'AÃ§Ã£o sugerida',
+          titulo: acao.titulo || 'Ação sugerida',
           mensagem: acao.descricao || '',
         })),
         ...(data.automacoes_prontas || []).map((automacao, index): DicaItem => ({
           id: `auto-rotina-${index}`,
           tipo: 'dica',
-          titulo: 'AutomaÃ§Ã£o pronta',
+          titulo: 'Automação pronta',
           mensagem: automacao.descricao || '',
         })),
       ].filter((dica) => dica.mensagem);
@@ -1619,7 +1619,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
               className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-1.5 text-[11px] font-medium text-purple-300 transition-colors hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregandoAutomacoes ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-              {carregandoAutomacoes ? 'Atualizando anÃ¡lise' : 'Atualizar anÃ¡lise'}
+              {carregandoAutomacoes ? 'Atualizando análise' : 'Atualizar análise'}
             </button>
           </div>
           <InsightCard
