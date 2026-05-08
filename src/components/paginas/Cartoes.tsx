@@ -352,6 +352,25 @@ function ordenarTransacoesPorData(lista: Transacao[]) {
   });
 }
 
+function getPeriodoFatura(diaFechamento: number): { inicio: Date; fim: Date } {
+  const hoje = new Date();
+  const diaHoje = hoje.getDate();
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth(); // 0-based
+  if (diaHoje <= diaFechamento) {
+    // Período ainda aberto: iniciou no mês anterior, fecha este mês
+    return {
+      inicio: new Date(ano, mes - 1, diaFechamento + 1),
+      fim: new Date(ano, mes, diaFechamento),
+    };
+  }
+  // Período recém-aberto após o fechamento deste mês
+  return {
+    inicio: new Date(ano, mes, diaFechamento + 1),
+    fim: new Date(ano, mes + 1, diaFechamento),
+  };
+}
+
 export default function Cartoes() {
   const {
     cartoes,
@@ -723,7 +742,12 @@ export default function Cartoes() {
           const urgente = diasVencimento <= 5 && cartao.fatura_atual > 0;
           const expandido = cartaoExpandidoId === cartao.id;
           const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
-          const lista = ordenarTransacoesPorData(transacoesPorCartao[cartao.id] || []);
+          const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento);
+          const txFatura = (transacoesPorCartao[cartao.id] || []).filter((tx) => {
+            const d = parseFinancialDate(tx.data);
+            return d >= inicioFatura && d <= fimFatura;
+          });
+          const lista = ordenarTransacoesPorData(txFatura);
           const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
           const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
           const baseLancamentos = compras.reduce((soma, transacao) => soma + transacao.valor, 0)
@@ -955,8 +979,12 @@ export default function Cartoes() {
                         </div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Fechamento</div>
-                        <div className="text-sm font-semibold text-white mt-1">Dia {cartao.dia_fechamento}</div>
+                        <div className="text-[11px] text-slate-500">Período da fatura</div>
+                        <div className="text-xs font-semibold text-white mt-1">
+                          {inicioFatura.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          {' – '}
+                          {fimFatura.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </div>
                       </div>
                     </div>
 

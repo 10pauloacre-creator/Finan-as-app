@@ -565,6 +565,23 @@ export default function Transacoes() {
     const agora = new Date();
     return transacoes.flatMap((transacao) => {
       if (periodo === 'mes') {
+        // Cartão não-recorrente: aplica ciclo de faturamento
+        if (transacao.cartao_id && transacao.classificacao !== 'fixa') {
+          const cartao = cartoes.find((c) => c.id === transacao.cartao_id);
+          const diaFechamento = cartao?.dia_fechamento ?? 8;
+          const [txAno, txMes, txDia] = transacao.data.split('-').map(Number);
+          let faturaAno = txAno;
+          let faturaMes = txMes;
+          if (txDia > diaFechamento) {
+            // Após o fechamento → entra na fatura do mês seguinte
+            faturaMes += 1;
+            if (faturaMes > 12) { faturaMes = 1; faturaAno += 1; }
+          }
+          return faturaMes === filtroMes && faturaAno === filtroAno
+            ? [{ transacao, dataExibicao: transacao.data }]
+            : [];
+        }
+        // Demais (débito, pix, recorrentes): lógica padrão
         const ocorrencia = getDataOcorrenciaNoMes(transacao, filtroMes, filtroAno);
         return ocorrencia
           ? [{ transacao, dataExibicao: formatFinancialDate(ocorrencia) }]
@@ -580,7 +597,7 @@ export default function Transacoes() {
       }
       return [{ transacao, dataExibicao: transacao.data }];
     });
-  }, [transacoes, periodo, filtroMes, filtroAno]);
+  }, [transacoes, periodo, filtroMes, filtroAno, cartoes]);
 
   const chipsCategoria = useMemo(() => {
     const mapa: Record<string, { id: string; nome: string; icone: string; cor: string; total: number }> = {};
