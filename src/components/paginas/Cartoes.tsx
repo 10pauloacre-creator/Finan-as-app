@@ -1,12 +1,12 @@
 'use client';
 
-import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, Trash2, Pencil, CreditCard, Check, X, AlertCircle, Brain, Loader2, ChevronDown,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
-import { BANCO_INFO, BancoSlug, BandeirCartao, Categoria, Transacao } from '@/types';
+import { BANCO_INFO, BancoSlug, BandeirCartao, CartaoCredito, Categoria, Transacao } from '@/types';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 import { parseFinancialDate } from '@/lib/date';
 import BankLogo from '@/components/ui/BankLogo';
@@ -14,6 +14,262 @@ import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 
 const BANDEIRAS: BandeirCartao[] = ['visa', 'mastercard', 'elo', 'amex', 'hipercard'];
+
+// ─── Timeline de Faturas ─────────────────────────────────────────────────────
+const MESES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const TL_CARD_W = 140;
+const TL_CARD_GAP = 12;
+const TL_CARD_STEP = TL_CARD_W + TL_CARD_GAP;
+const TL_CARD_H = 178;
+const TL_DOT_TOP = 22;
+const TL_DOT_BOT = 110;
+
+type DadosMes = {
+  mes: string;
+  label: string;
+  ano: string;
+  total: number;
+  tipo: 'passado' | 'atual' | 'futuro';
+  por_cartao: { id: string; nome: string; banco: BancoSlug; valor: number }[];
+};
+
+function tlAddMeses(mesKey: string, n: number): string {
+  const [y, m] = mesKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function tlMesAtual(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function tlDotY(valor: number, maxValor: number): number {
+  if (maxValor === 0) return (TL_DOT_TOP + TL_DOT_BOT) / 2;
+  const norm = Math.min(valor / maxValor, 1);
+  return TL_DOT_BOT - norm * (TL_DOT_BOT - TL_DOT_TOP);
+}
+
+function tlBuildPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return pts.length === 1 ? `M ${pts[0].x} ${pts[0].y}` : '';
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const cp1x = pts[i - 1].x + TL_CARD_STEP * 0.4;
+    const cp2x = pts[i].x - TL_CARD_STEP * 0.4;
+    d += ` C ${cp1x} ${pts[i - 1].y}, ${cp2x} ${pts[i].y}, ${pts[i].x} ${pts[i].y}`;
+  }
+  return d;
+}
+
+function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]): DadosMes[] {
+  const hoje = tlMesAtual();
+
+  let maxFuturo = 2;
+  transacoes.forEach((tx) => {
+    if (!tx.cartao_id || !tx.parcelas || tx.parcelas <= 1) return;
+    const parcelaAtual = tx.parcela_atual || 1;
+    const primeiroMes = tlAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
+    const ultimoMes = tlAddMeses(primeiroMes, tx.parcelas - 1);
+    if (ultimoMes > hoje) {
+      const [y1, m1] = hoje.split('-').map(Number);
+      const [y2, m2] = ultimoMes.split('-').map(Number);
+      const diff = (y2 - y1) * 12 + (m2 - m1);
+      maxFuturo = Math.max(maxFuturo, Math.min(diff, 6));
+    }
+  });
+
+  const todosMeses: string[] = [];
+  for (let i = -3; i <= maxFuturo; i++) todosMeses.push(tlAddMeses(hoje, i));
+
+  return todosMeses.map((mes) => {
+    const [year, month] = mes.split('-').map(Number);
+    const tipo: DadosMes['tipo'] = mes < hoje ? 'passado' : mes === hoje ? 'atual' : 'futuro';
+
+    const por_cartao = cartoes.map((cartao) => {
+      let valor = 0;
+      if (tipo === 'atual') {
+        valor = cartao.fatura_atual;
+      } else if (tipo === 'passado') {
+        transacoes.forEach((tx) => {
+          if (tx.cartao_id !== cartao.id || !tx.data.startsWith(mes)) return;
+          valor += tx.tipo === 'despesa' ? tx.valor : -tx.valor;
+        });
+      } else {
+        transacoes.forEach((tx) => {
+          if (tx.cartao_id !== cartao.id || !tx.parcelas || tx.parcelas <= 1) return;
+          const parcelaAtual = tx.parcela_atual || 1;
+          const primeiroMes = tlAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
+          const ultimoMes = tlAddMeses(primeiroMes, tx.parcelas - 1);
+          if (mes >= primeiroMes && mes <= ultimoMes) valor += tx.valor;
+        });
+      }
+      return { id: cartao.id, nome: cartao.nome, banco: cartao.banco, valor: Math.max(0, valor) };
+    });
+
+    return {
+      mes,
+      label: MESES_PT[month - 1],
+      ano: String(year),
+      total: Math.max(0, por_cartao.reduce((s, c) => s + c.valor, 0)),
+      tipo,
+      por_cartao,
+    };
+  });
+}
+
+function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; transacoes: Transacao[] }) {
+  const dados = useMemo(() => calcularTimelineMeses(cartoes, transacoes), [cartoes, transacoes]);
+  const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+    if (atualIdx < 0) return;
+    const containerW = scrollRef.current.clientWidth;
+    scrollRef.current.scrollLeft = Math.max(0, atualIdx * TL_CARD_STEP - containerW / 2 + TL_CARD_W / 2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (cartoes.length === 0) return null;
+
+  const maxValor = Math.max(...dados.map((d) => d.total), 1);
+  const totalW = dados.length * TL_CARD_STEP - TL_CARD_GAP;
+  const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+
+  const points = dados.map((d, i) => ({
+    x: i * TL_CARD_STEP + TL_CARD_W / 2,
+    y: tlDotY(d.total, maxValor),
+  }));
+
+  const pastPath = tlBuildPath(points.slice(0, atualIdx + 1));
+  const futurePath = atualIdx >= 0 ? tlBuildPath(points.slice(atualIdx)) : '';
+
+  const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
+
+  return (
+    <div className="glass-card p-5">
+      <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos por Mês</h3>
+      <p className="text-[11px] text-slate-600 mb-4">Meses passados, atual e parcelas futuras de todos os cartões</p>
+
+      <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
+        <div className="relative" style={{ width: totalW, height: TL_CARD_H }}>
+          {/* SVG sparkline overlay */}
+          <svg
+            width={totalW}
+            height={TL_CARD_H}
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 2 }}
+          >
+            <defs>
+              <linearGradient id="tlFillGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {/* Gradient fill under current month */}
+            {atualIdx >= 0 && (
+              <path
+                d={`M ${atualIdx * TL_CARD_STEP} ${TL_CARD_H} L ${atualIdx * TL_CARD_STEP} ${points[atualIdx].y} L ${atualIdx * TL_CARD_STEP + TL_CARD_W} ${points[atualIdx].y} L ${atualIdx * TL_CARD_STEP + TL_CARD_W} ${TL_CARD_H} Z`}
+                fill="url(#tlFillGrad)"
+              />
+            )}
+
+            {/* Past + current solid line */}
+            <path d={pastPath} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+
+            {/* Future dashed line */}
+            {futurePath && (
+              <path d={futurePath} fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+            )}
+
+            {/* Dots */}
+            {points.map((pt, i) => {
+              const d = dados[i];
+              const isAtual = d.tipo === 'atual';
+              const isFuturo = d.tipo === 'futuro';
+              const isPast = d.tipo === 'passado';
+              return (
+                <g key={d.mes}>
+                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill="#3B82F6" fillOpacity="0.12" />}
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={isAtual ? 6 : 5}
+                    fill={isPast ? '#10B981' : isAtual ? 'white' : 'transparent'}
+                    stroke={isPast ? '#10B981' : isAtual ? '#3B82F6' : '#6B7280'}
+                    strokeWidth={isAtual ? 2.5 : 1.5}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Month cards */}
+          {dados.map((d, i) => {
+            const isAtual = d.tipo === 'atual';
+            const isFuturo = d.tipo === 'futuro';
+            const isSel = mesSelecionado === d.mes;
+            return (
+              <button
+                key={d.mes}
+                type="button"
+                onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
+                className={`absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all ${
+                  isAtual
+                    ? 'border-2 border-blue-500/60 bg-blue-500/5'
+                    : isSel
+                      ? 'border border-purple-500/40 bg-white/[0.04]'
+                      : 'border border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'
+                }`}
+                style={{ left: i * TL_CARD_STEP, top: 0, width: TL_CARD_W, height: TL_CARD_H, zIndex: 1 }}
+              >
+                <div className={`text-xs font-semibold mb-1 ${isAtual ? 'text-blue-400' : isFuturo ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {d.label}
+                </div>
+                <div className={`text-sm font-bold tabular-nums ${isAtual ? 'text-blue-300' : isFuturo ? 'text-slate-500' : 'text-white'}`}>
+                  {formatarMoeda(d.total)}
+                </div>
+                {isFuturo && d.total > 0 && (
+                  <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Per-card breakdown */}
+      {mesSel && mesSel.por_cartao.some((c) => c.valor > 0) && (
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="text-xs text-slate-500 mb-3">
+            {mesSel.label} {mesSel.ano}
+            {mesSel.tipo === 'futuro' && ' — projeção de parcelas'}
+            {mesSel.tipo === 'passado' && ' — lançamentos do mês'}
+            {mesSel.tipo === 'atual' && ' — fatura atual'}
+          </div>
+          <div className="space-y-2">
+            {mesSel.por_cartao
+              .filter((c) => c.valor > 0)
+              .sort((a, b) => b.valor - a.valor)
+              .map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BankLogo banco={c.banco} size={20} className="h-5 w-5 object-contain flex-shrink-0" />
+                    <span className="text-xs text-slate-300 truncate">{c.nome}</span>
+                  </div>
+                  <span className="text-xs font-semibold text-white tabular-nums flex-shrink-0">
+                    {formatarMoeda(c.valor)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type StatusImportacao = {
   cartaoId: string;
@@ -349,6 +605,8 @@ export default function Cartoes() {
           </div>
         )}
       </div>
+
+      <TimelineFaturas cartoes={cartoes} transacoes={transacoes} />
 
       {mostrarForm && (
         <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4 border-purple-500/30">
