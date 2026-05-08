@@ -732,8 +732,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
   }, [dicasLocais, setDicasIA]);
 
   useEffect(() => {
-    if (snapshotProjeto.transacoesRecentes.length === 0 && snapshotProjeto.cartoes.length === 0) return;
-
     const assinatura = assinaturaAutomacao(snapshotProjeto);
     const cache = lerCacheAutomacao(assinatura);
     if (cache) {
@@ -743,6 +741,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
       ]);
       return;
     }
+
+    setDicasIA(dicasLocais.map((dica) => ({ ...dica, origem: 'local' as const, criado_em: new Date().toISOString() })));
+    return;
 
     let ativo = true;
     const timeout = setTimeout(async () => {
@@ -809,6 +810,67 @@ export default function Dashboard({ onNovoPagina }: Props) {
   }, [config.ai_modelo_padrao, dicasLocais, setDicasIA, snapshotProjeto]);
 
   // Score de saúde financeira
+  async function atualizarAnaliseIA() {
+    if (snapshotProjeto.transacoesRecentes.length === 0 && snapshotProjeto.cartoes.length === 0) return;
+
+    const assinatura = assinaturaAutomacao(snapshotProjeto);
+    setCarregandoAutomacoes(true);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: 'automacao_financeira_interna',
+          provider: config.ai_modelo_padrao || 'automatico',
+          mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
+          input: {
+            question: 'Analise o projeto e sugira automacoes, monitoramentos e alertas importantes.',
+            projectSnapshot: snapshotProjeto,
+          },
+        }),
+      });
+
+      if (!res.ok) return;
+      const data = await res.json() as {
+        acoes_sugeridas?: Array<{ tipo?: string; titulo?: string; descricao?: string }>;
+        automacoes_prontas?: Array<{ descricao?: string }>;
+      };
+
+      const automacoes: DicaItem[] = [
+        ...(data.acoes_sugeridas || []).map((acao, index): DicaItem => ({
+          id: `auto-acao-${index}`,
+          tipo: tipoDicaPorAutomacao(acao.tipo),
+          titulo: acao.titulo || 'AÃ§Ã£o sugerida',
+          mensagem: acao.descricao || '',
+        })),
+        ...(data.automacoes_prontas || []).map((automacao, index): DicaItem => ({
+          id: `auto-rotina-${index}`,
+          tipo: 'dica',
+          titulo: 'AutomaÃ§Ã£o pronta',
+          mensagem: automacao.descricao || '',
+        })),
+      ].filter((dica) => dica.mensagem);
+
+      if (automacoes.length === 0) return;
+
+      salvarCacheAutomacao({
+        assinatura,
+        ts: Date.now(),
+        dicas: automacoes,
+      });
+
+      setDicasIA([
+        ...dicasLocais.map((dica) => ({ ...dica, origem: 'local' as const, criado_em: new Date().toISOString() })),
+        ...automacoes.map((dica) => ({ ...dica, origem: 'automacao' as const, criado_em: new Date().toISOString() })),
+      ]);
+    } catch {
+      // Mantem as dicas locais se a IA falhar.
+    } finally {
+      setCarregandoAutomacoes(false);
+    }
+  }
+
   const score = useMemo(
     () => calcularScore({ transacoes, orcamentos, contas, cartoes, metas }),
     [transacoes, orcamentos, contas, cartoes, metas],
@@ -1523,6 +1585,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 Atualizando automações
               </span>
             )}
+          </div>
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => void atualizarAnaliseIA()}
+              disabled={carregandoAutomacoes}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-1.5 text-[11px] font-medium text-purple-300 transition-colors hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {carregandoAutomacoes ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+              {carregandoAutomacoes ? 'Atualizando anÃ¡lise' : 'Atualizar anÃ¡lise'}
+            </button>
           </div>
           <InsightCard
             dicas={dicasIA as DicaItem[]}
