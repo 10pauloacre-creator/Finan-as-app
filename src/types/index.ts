@@ -74,6 +74,7 @@ export interface Transacao {
   conta_id?: string;           // conta bancária vinculada
   cartao_id?: string;          // cartão de crédito vinculado
   data: string;                // YYYY-MM-DD
+  data_cobranca?: string;      // YYYY-MM-DD
   horario?: string;            // HH:mm
   tipo: TipoTransacao;
   classificacao?: ClassificacaoTransacao;

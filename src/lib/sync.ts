@@ -156,6 +156,7 @@ function mapTransacao(t: Transacao) {
     descricao: t.descricao,
     categoria_id: t.categoria_id,
     data: t.data,
+    data_cobranca: t.data_cobranca,
     horario: t.horario,
     metodo_pagamento: t.metodo_pagamento,
     classificacao: t.classificacao ?? 'padrao',

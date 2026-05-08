@@ -539,6 +539,22 @@ type TransacaoExibicao = {
   dataOrdenacao: string;
 };
 
+function getDataCompetenciaDespesa(transacao: Transacao, cartao?: CartaoCredito) {
+  if (transacao.tipo !== 'despesa') return transacao.data;
+  if (transacao.data_cobranca) return transacao.data_cobranca;
+  if (transacao.cartao_id) return getDataCobrancaCartao(transacao, cartao);
+  return transacao.data;
+}
+
+function aplicarDataDeExibicaoNaTransacao(transacao: Transacao, dataExibicao: string): Transacao {
+  if (transacao.tipo !== 'despesa') return transacao;
+  return {
+    ...transacao,
+    data: dataExibicao,
+    data_cobranca: dataExibicao,
+  };
+}
+
 const FILTROS_LINHA2: { valor: FiltroLinha2; label: string }[] = [
   { valor: 'todas',        label: 'Todas' },
   { valor: 'padrao',       label: 'Normais' },
@@ -566,7 +582,10 @@ function getBadgeClassificacao(transacao: Transacao, hoje: Date, dataExibicao?: 
   }
 
   const classificacao = getClassificacaoTransacao(transacao);
-  const realizada = transacaoJaOcorreuAteData(transacao, hoje);
+  const realizada = transacaoJaOcorreuAteData(
+    dataExibicao ? aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao) : transacao,
+    hoje,
+  );
 
   if (classificacao === 'fixa') {
     return {
@@ -627,7 +646,7 @@ function ModalDetalheTransacao({
   const parcelamento = calcularParcelamentoInfo(transacao, hoje);
   const gastoAnual = calcularGastoRecorrenteAnual(transacao);
   const ehReceita = transacao.tipo === 'receita';
-  const dataCobrancaCartao = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : null;
+  const dataCobranca = transacao.tipo === 'despesa' ? getDataCompetenciaDespesa(transacao, cartao) : null;
   const dataFinalParcelamento = transacao.parcelas && transacao.parcelas > 1
     ? calcularDataFinalParcelamento(transacao)
     : null;
@@ -686,10 +705,10 @@ function ModalDetalheTransacao({
               <div className="mt-1 text-sm font-semibold text-white uppercase">
                 {transacao.metodo_pagamento || 'Nao informado'}
               </div>
-              {dataCobrancaCartao && (
+              {dataCobranca && (
                 <>
-                  <div className="mt-3 text-[11px] text-slate-500">Cobranca no cartao</div>
-                  <div className="mt-1 text-sm text-amber-300">{parseFinancialDate(dataCobrancaCartao).toLocaleDateString('pt-BR')}</div>
+                  <div className="mt-3 text-[11px] text-slate-500">Data de cobranca</div>
+                  <div className="mt-1 text-sm text-amber-300">{parseFinancialDate(dataCobranca).toLocaleDateString('pt-BR')}</div>
                 </>
               )}
               <div className="mt-3 text-[11px] text-slate-500">Conta</div>
@@ -804,31 +823,46 @@ export default function Transacoes() {
     const agora = new Date();
     return transacoes.flatMap((transacao) => {
       const cartao = transacao.cartao_id ? cartoes.find((c) => c.id === transacao.cartao_id) : undefined;
-      const dataCobrancaCartao = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : transacao.data;
+      const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+      const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataCompetencia);
+      const dataOrdenacao = transacao.tipo === 'despesa' ? dataCompetencia : transacao.data;
 
       if (periodo === 'mes') {
         // Cartão não-recorrente: aplica ciclo de faturamento
-        if (transacao.cartao_id && transacao.classificacao !== 'fixa') {
-          const [faturaAno, faturaMes] = dataCobrancaCartao.split('-').map(Number);
+        if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
+          const [faturaAno, faturaMes] = dataCompetencia.split('-').map(Number);
           return faturaMes === filtroMes && faturaAno === filtroAno
-            ? [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }]
+            ? [{ transacao, dataExibicao: dataCompetencia, dataOrdenacao }]
             : [];
         }
         // Demais (débito, pix, recorrentes): lógica padrão
-        const ocorrencia = getDataOcorrenciaNoMes(transacao, filtroMes, filtroAno);
+        const ocorrencia = getDataOcorrenciaNoMes(
+          transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+          filtroMes,
+          filtroAno,
+        );
         return ocorrencia
-          ? [{ transacao, dataExibicao: formatFinancialDate(ocorrencia), dataOrdenacao: formatFinancialDate(ocorrencia) }]
+          ? [{
+              transacao,
+              dataExibicao: formatFinancialDate(ocorrencia),
+              dataOrdenacao: formatFinancialDate(ocorrencia),
+            }]
           : [];
       }
       if (periodo === '3meses') {
         const tresMesesAtras = new Date(agora);
         tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
         tresMesesAtras.setDate(1);
-        return parseFinancialDate(dataCobrancaCartao) >= tresMesesAtras
-          ? [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }]
+        const dataFiltro = transacao.tipo === 'despesa' ? dataCompetencia : transacao.data;
+        return parseFinancialDate(dataFiltro) >= tresMesesAtras
+          ? [{ transacao, dataExibicao: dataFiltro, dataOrdenacao }]
           : [];
       }
-      return [{ transacao, dataExibicao: dataCobrancaCartao, dataOrdenacao: transacao.data }];
+      return [{
+        transacao,
+        dataExibicao: transacao.tipo === 'despesa' ? dataCompetencia : transacao.data,
+        dataOrdenacao,
+      }];
     });
   }, [transacoes, periodo, filtroMes, filtroAno, cartoes]);
 
@@ -883,11 +917,12 @@ export default function Transacoes() {
 
   const transacoesRealizadasFiltradas = useMemo(() => (
     transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
+      const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao);
       if (periodo === 'mes') {
         const data = parseFinancialDate(dataExibicao);
-        return transacaoContaNoMesAteData(transacao, data.getMonth() + 1, data.getFullYear(), referenciaTotais);
+        return transacaoContaNoMesAteData(transacaoNaCompetencia, data.getMonth() + 1, data.getFullYear(), referenciaTotais);
       }
-      return transacaoJaOcorreuAteData(transacao, referenciaTotais);
+      return transacaoJaOcorreuAteData(transacaoNaCompetencia, referenciaTotais);
     })
   ), [transacoesFiltradas, periodo, referenciaTotais]);
 

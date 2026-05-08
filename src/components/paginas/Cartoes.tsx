@@ -83,9 +83,12 @@ function calcularTimelineMeses(cartoes: CartaoCredito[], transacoes: Transacao[]
     const por_cartao = cartoes.map((cartao) => {
       const valor = transacoes.reduce((soma, tx) => {
         if (tx.cartao_id !== cartao.id) return soma;
-        const ocorrencia = getDataOcorrenciaNoMes(tx, month, year);
+        const txNaCompetencia = tx.data_cobranca ? { ...tx, data: tx.data_cobranca } : tx;
+        const ocorrencia = getDataOcorrenciaNoMes(txNaCompetencia, month, year);
         if (!ocorrencia) return soma;
-        const dataCobranca = getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
+        const dataCobranca = tx.data_cobranca
+          ? formatFinancialDate(ocorrencia)
+          : getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
         const dataCobrancaDate = parseFinancialDate(dataCobranca);
         if (dataCobrancaDate.getMonth() + 1 !== month || dataCobrancaDate.getFullYear() !== year) return soma;
         const delta = tx.tipo === 'despesa' ? tx.valor : -tx.valor;
@@ -425,9 +428,12 @@ function construirLancamentosDaFatura(
     if (transacao.cartao_id !== cartaoId) return;
 
     mesesPeriodo.forEach(({ mes, ano }) => {
-      const ocorrencia = getDataOcorrenciaNoMes(transacao, mes, ano);
+      const transacaoNaCompetencia = transacao.data_cobranca ? { ...transacao, data: transacao.data_cobranca } : transacao;
+      const ocorrencia = getDataOcorrenciaNoMes(transacaoNaCompetencia, mes, ano);
       if (!ocorrencia || ocorrencia < inicio || ocorrencia > fim) return;
-      const dataCobranca = getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
+      const dataCobranca = transacao.data_cobranca
+        ? formatFinancialDate(ocorrencia)
+        : getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
       const dataCobrancaDate = parseFinancialDate(dataCobranca);
 
       lista.push({

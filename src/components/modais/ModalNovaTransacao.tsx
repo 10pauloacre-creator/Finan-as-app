@@ -8,6 +8,7 @@ import { ClassificacaoTransacao, MetodoPagamento, TipoTransacao, Transacao, BANC
 import { detectarDuplicata } from '@/lib/duplicata';
 import ModalDuplicata from './ModalDuplicata';
 import { formatFinancialDate } from '@/lib/date';
+import { getDataCobrancaCartao } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
@@ -32,6 +33,7 @@ type FormState = {
   classificacao: ClassificacaoTransacao;
   categoria_id: string;
   data: string;
+  data_cobranca: string;
   horario: string;
   metodo_pagamento: MetodoPagamento;
   parcelas: string;
@@ -61,6 +63,7 @@ function getFormVazio(tipo: TipoTransacao = 'despesa'): FormState {
     classificacao: 'padrao',
     categoria_id: '',
     data: formatFinancialDate(new Date()),
+    data_cobranca: tipo === 'despesa' ? formatFinancialDate(new Date()) : '',
     horario: '',
     metodo_pagamento: 'pix',
     parcelas: '1',
@@ -105,6 +108,19 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
           classificacao: transacaoEditar.classificacao || 'padrao',
           categoria_id: transacaoEditar.categoria_id,
           data: transacaoEditar.data,
+          data_cobranca: transacaoEditar.tipo === 'despesa'
+            ? (
+                transacaoEditar.data_cobranca
+                || (
+                  transacaoEditar.cartao_id
+                    ? getDataCobrancaCartao(
+                        transacaoEditar,
+                        cartoes.find((cartao) => cartao.id === transacaoEditar.cartao_id),
+                      )
+                    : transacaoEditar.data
+                )
+              )
+            : '',
           horario: transacaoEditar.horario || '',
           metodo_pagamento: transacaoEditar.metodo_pagamento || 'pix',
           parcelas: transacaoEditar.parcelas?.toString() || '1',
@@ -122,7 +138,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [transacaoEditar, aberto, tipoInicial]);
+  }, [transacaoEditar, aberto, tipoInicial, cartoes]);
 
   const categoriaSelecionada = categorias.find((categoria) => categoria.id === form.categoria_id);
   const categoriasFiltradas = categorias.filter((categoria) => categoria.tipo === form.tipo);
@@ -200,6 +216,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
       classificacao: form.classificacao,
       categoria_id: form.categoria_id,
       data: form.data,
+      data_cobranca: form.tipo === 'despesa' ? (form.data_cobranca || form.data) : undefined,
       horario: form.horario || undefined,
       metodo_pagamento: metodoAjustado,
       parcelas: parseInt(form.parcelas, 10) || 1,
@@ -417,7 +434,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Data</label>
+                <label className="mb-1 block text-xs text-slate-400">Data da realizacao</label>
                 <input
                   type="date"
                   value={form.data}
@@ -426,6 +443,25 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 />
               </div>
             </div>
+
+            {form.tipo === 'despesa' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Data de cobranca</label>
+                  <input
+                    type="date"
+                    value={form.data_cobranca}
+                    onChange={(e) => setForm((atual) => ({ ...atual, data_cobranca: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <div className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs text-slate-400">
+                    A despesa entra nas listas e previsoes pelo mes da cobranca.
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

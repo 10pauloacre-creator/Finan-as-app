@@ -51,6 +51,7 @@ create table if not exists transacoes (
   descricao          text not null,
   categoria_id       text references categorias(id),
   data               text not null,
+  data_cobranca      text,
   horario            text,
   metodo_pagamento   text default 'pix',
   classificacao      text default 'padrao',
@@ -180,6 +181,7 @@ alter table transacoes    add column if not exists horario             text;
 alter table transacoes    add column if not exists cartao_id           text;
 alter table transacoes    add column if not exists classificacao       text default 'padrao';
 alter table transacoes    add column if not exists parcela_atual       int;
+alter table transacoes    add column if not exists data_cobranca       text;
 alter table transacoes    add column if not exists comprovante_url     text;
 alter table transacoes    add column if not exists tags                jsonb;
 alter table transacoes    add column if not exists observacoes         text;

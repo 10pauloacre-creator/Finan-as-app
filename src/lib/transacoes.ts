@@ -80,9 +80,10 @@ export function getDataCobrancaCartaoParaData(
 }
 
 export function getDataCobrancaCartao(
-  transacao: Pick<Transacao, 'data'>,
+  transacao: Pick<Transacao, 'data' | 'data_cobranca'>,
   cartao?: Pick<CartaoCredito, 'dia_fechamento' | 'dia_vencimento'> | null,
 ) {
+  if (transacao.data_cobranca) return transacao.data_cobranca;
   return getDataCobrancaCartaoParaData(transacao.data, cartao);
 }
 
