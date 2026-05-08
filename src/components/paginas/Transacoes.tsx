@@ -68,22 +68,12 @@ function calcularTimelineGastos(
 ): DadosMesGastos[] {
   const hoje = tgMesAtual();
 
-  let maxFuturo = 2;
-  transacoes.forEach((tx) => {
-    if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1) return;
-    const parcelaAtual = tx.parcela_atual || 1;
-    const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
-    const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
-    if (ultimoMes > hoje) {
-      const [y1, m1] = hoje.split('-').map(Number);
-      const [y2, m2] = ultimoMes.split('-').map(Number);
-      const diff = (y2 - y1) * 12 + (m2 - m1);
-      maxFuturo = Math.max(maxFuturo, Math.min(diff, 6));
-    }
-  });
+  // Sempre vai até dezembro de 2027
+  const [hojeY, hojeM] = hoje.split('-').map(Number);
+  const maxFuturo = Math.max((2027 - hojeY) * 12 + (12 - hojeM), 2);
 
   const todosMeses: string[] = [];
-  for (let i = -3; i <= maxFuturo; i++) todosMeses.push(tgAddMeses(hoje, i));
+  for (let i = 0; i <= maxFuturo; i++) todosMeses.push(tgAddMeses(hoje, i));
 
   return todosMeses.map((mes) => {
     const [year, month] = mes.split('-').map(Number);
