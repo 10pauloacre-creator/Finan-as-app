@@ -312,21 +312,23 @@ const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
-type ClassificacaoFiltro = 'todas' | 'padrao' | 'fixa' | 'futura';
-type StatusFiltro = 'todos' | 'realizadas' | 'previstas';
+type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'ja_debitadas' | 'previstas';
 type TransacaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
 };
 
-const FILTROS_CLASSIFICACAO: { valor: ClassificacaoFiltro; label: string }[] = [
-  { valor: 'todas', label: 'Todas' },
-  { valor: 'padrao', label: 'Normais' },
-  { valor: 'fixa', label: 'Fixas' },
-  { valor: 'futura', label: 'Futuras' },
+const FILTROS_LINHA2: { valor: FiltroLinha2; label: string }[] = [
+  { valor: 'todas',        label: 'Todas' },
+  { valor: 'padrao',       label: 'Normais' },
+  { valor: 'fixa',         label: 'Fixas' },
+  { valor: 'ja_debitadas', label: '✓ Já debitadas' },
+  { valor: 'previstas',    label: '⏱ Previstas' },
 ];
 
-function getClassificacaoTransacao(transacao: Transacao): Exclude<ClassificacaoFiltro, 'todas'> {
+const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'emprestimo', 'financiamento']);
+
+function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'futura' {
   return transacao.classificacao || 'padrao';
 }
 
@@ -552,8 +554,7 @@ export default function Transacoes() {
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes');
-  const [filtroClassificacao, setFiltroClassificacao] = useState<ClassificacaoFiltro>('todas');
-  const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('todos');
+  const [filtroLinha2, setFiltroLinha2] = useState<FiltroLinha2>('todas');
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [transacaoEditar, setTransacaoEditar] = useState<Transacao | undefined>();
@@ -600,7 +601,9 @@ export default function Transacoes() {
   const transacoesFiltradas = useMemo(() => {
     return transacoesPorPeriodo.filter(({ transacao }) => {
       const tipoOk = filtroTipo === 'todos' || transacao.tipo === filtroTipo;
-      const classificacaoOk = filtroClassificacao === 'todas' || getClassificacaoTransacao(transacao) === filtroClassificacao;
+      // ja_debitadas e previstas são aplicados em transacoesAgrupadas (precisam de realizadasIds)
+      const classificacaoOk = (filtroLinha2 !== 'padrao' && filtroLinha2 !== 'fixa')
+        || getClassificacaoTransacao(transacao) === filtroLinha2;
       const buscaOk = !busca || transacao.descricao.toLowerCase().includes(busca.toLowerCase());
       const catOk = !catSelecionada || (() => {
         const cat = categorias.find((c) => c.id === transacao.categoria_id);
@@ -608,7 +611,7 @@ export default function Transacoes() {
       })();
       return tipoOk && classificacaoOk && buscaOk && catOk;
     });
-  }, [transacoesPorPeriodo, filtroTipo, filtroClassificacao, busca, catSelecionada, categorias]);
+  }, [transacoesPorPeriodo, filtroTipo, filtroLinha2, busca, catSelecionada, categorias]);
 
   const referenciaTotais = useMemo(() => {
     if (periodo !== 'mes') return hoje;
@@ -666,19 +669,25 @@ export default function Transacoes() {
       transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
     );
     const grupos: Record<string, TransacaoExibicao[]> = {};
-    const base = filtroStatus === 'todos'
-      ? transacoesFiltradas
-      : transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
+    const base = (filtroLinha2 === 'ja_debitadas' || filtroLinha2 === 'previstas')
+      ? transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
           const realizada = realizadasIds.has(`${transacao.id}|${dataExibicao}`);
-          return filtroStatus === 'realizadas' ? realizada : !realizada;
-        });
+          if (filtroLinha2 === 'ja_debitadas') {
+            const naoCartao = !transacao.cartao_id;
+            const metodoOk = !transacao.metodo_pagamento
+              || METODOS_DEBITO.has(transacao.metodo_pagamento);
+            return realizada && naoCartao && metodoOk;
+          }
+          return !realizada;
+        })
+      : transacoesFiltradas;
     const ordenadas = [...base].sort((a, b) => b.dataExibicao.localeCompare(a.dataExibicao));
     ordenadas.forEach((item) => {
       if (!grupos[item.dataExibicao]) grupos[item.dataExibicao] = [];
       grupos[item.dataExibicao].push(item);
     });
     return Object.entries(grupos).sort(([a], [b]) => b.localeCompare(a));
-  }, [transacoesFiltradas, transacoesRealizadasFiltradas, filtroStatus]);
+  }, [transacoesFiltradas, transacoesRealizadasFiltradas, filtroLinha2]);
 
   const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -850,32 +859,13 @@ export default function Transacoes() {
           ))}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {FILTROS_CLASSIFICACAO.map((f) => (
+          {FILTROS_LINHA2.map((f) => (
             <button
               key={f.valor}
-              onClick={() => setFiltroClassificacao(f.valor)}
+              onClick={() => setFiltroLinha2(f.valor)}
               className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                filtroClassificacao === f.valor
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {([
-            { valor: 'todos', label: 'Todos' },
-            { valor: 'realizadas', label: '✓ Já debitadas' },
-            { valor: 'previstas', label: '⏱ Previstas' },
-          ] as { valor: StatusFiltro; label: string }[]).map((f) => (
-            <button
-              key={f.valor}
-              onClick={() => setFiltroStatus(f.valor)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                filtroStatus === f.valor
-                  ? f.valor === 'realizadas'
+                filtroLinha2 === f.valor
+                  ? f.valor === 'ja_debitadas'
                     ? 'bg-emerald-700 text-white'
                     : f.valor === 'previstas'
                       ? 'bg-amber-700 text-white'
@@ -888,7 +878,7 @@ export default function Transacoes() {
           ))}
         </div>
         <p className="text-[11px] text-slate-500">
-          Fixa significa recorrente. Se a data do mes ainda nao chegou, ela aparece como pendente e nao entra nos totais.
+          "Fixas" são recorrentes. "Já debitadas" mostra apenas pagamentos via PIX, débito ou transferência já realizados. "Previstas" mostra o que ainda não foi pago.
         </p>
       </div>
 
