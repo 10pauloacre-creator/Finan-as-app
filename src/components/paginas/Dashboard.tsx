@@ -12,7 +12,7 @@ import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { getDataCobrancaCartao, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import { getDataCobrancaCartao, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
@@ -20,7 +20,7 @@ import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useCountUp } from '@/hooks/useCountUp';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
-type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes';
+type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
 
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
@@ -708,6 +708,27 @@ export default function Dashboard({ onNovoPagina }: Props) {
     return { receitas, despesas, saldo, graficoPizza, areaData, doMes };
   }, [transacoes, categorias, mes, ano]);
 
+  // Despesas que ainda não ocorreram neste mês = "A pagar"
+  const aPagarMesAtual = useMemo(() => {
+    const hoje = startOfTodayLocal();
+    let total = 0;
+    transacoes.forEach((t) => {
+      if (t.tipo !== 'despesa') return;
+      const cartao = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : undefined;
+      if (cartao && t.classificacao !== 'fixa') {
+        const dataCobranca = getDataCobrancaCartao(t, cartao);
+        const [cAno, cMes] = dataCobranca.split('-').map(Number);
+        if (cMes !== mes || cAno !== ano) return;
+        if (parseFinancialDate(dataCobranca) <= hoje) return;
+      } else {
+        const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
+        if (!ocorrencia || ocorrencia <= hoje) return;
+      }
+      total += t.valor;
+    });
+    return total;
+  }, [transacoes, cartoes, mes, ano]);
+
   const snapshotProjeto = useMemo(() => construirSnapshotFinanceiro({
     transacoes,
     categorias,
@@ -883,12 +904,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
   );
 
   // useCountUp para valores animados
+  // Saldo real = dinheiro em conta − o que ainda precisa ser pago
+  const saldoContas = contas.reduce((s, c) => s + c.saldo, 0);
+  const saldoProjetado = saldoContas - aPagarMesAtual;
+
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
-  const saldoMesAnimado = useCountUp(dadosMes.saldo);
+  const saldoMesAnimado = useCountUp(saldoProjetado);
   const corSaldoMes =
-    dadosMes.saldo > 0 ? '#10B981' :
-    dadosMes.saldo < 0 ? '#EF4444' :
+    saldoProjetado > 0 ? '#10B981' :
+    saldoProjetado < 0 ? '#EF4444' :
     '#F1F5F9';
 
   const ocultar = (v: string) => saldoOculto ? '??????' : v;
@@ -1064,7 +1089,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             </button>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            {MESES_ABREV[mes - 1]} {ano} • {dadosMes.doMes.length} transações
+            {MESES_ABREV[mes - 1]} {ano} • em conta menos a pagar
           </p>
         </div>
         <div className="text-right">

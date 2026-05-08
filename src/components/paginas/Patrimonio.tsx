@@ -22,13 +22,22 @@ function lerListaPersistida<T>(key: string): T[] {
   }
 }
 
+function normalizarItensPatrimoniais(itens: ItemManual[]) {
+  return itens.map((item) => ({
+    ...item,
+    natureza: item.natureza || 'ativo',
+  }));
+}
+
 type GrupoManual = 'imoveis' | 'veiculos' | 'outros';
+type NaturezaPatrimonial = 'ativo' | 'passivo';
 type TipoMovimentoReserva = 'deposito' | 'retirada';
 
 interface ItemManual {
   id: string;
   nome: string;
   valor: number;
+  natureza: NaturezaPatrimonial;
   grupo: GrupoManual;
   icone: string;
 }
@@ -94,6 +103,7 @@ interface ModalItemProps {
 function ModalItemManual({ item, onSalvar, onFechar }: ModalItemProps) {
   const [nome, setNome] = useState(item?.nome || '');
   const [valor, setValor] = useState(item?.valor?.toString() || '');
+  const [natureza, setNatureza] = useState<NaturezaPatrimonial>(item?.natureza || 'ativo');
   const [grupo, setGrupo] = useState<GrupoManual>(item?.grupo || 'outros');
   const [icone, setIcone] = useState(item?.icone || GRUPO_INFO[item?.grupo || 'outros'].icone);
 
@@ -102,7 +112,7 @@ function ModalItemManual({ item, onSalvar, onFechar }: ModalItemProps) {
   function handleSalvar() {
     const valorNumerico = parseFloat(valor.replace(',', '.'));
     if (!nome.trim() || Number.isNaN(valorNumerico) || valorNumerico <= 0) return;
-    onSalvar({ nome: nome.trim(), valor: valorNumerico, grupo, icone });
+    onSalvar({ nome: nome.trim(), valor: valorNumerico, natureza, grupo, icone });
   }
 
   return (
@@ -117,7 +127,7 @@ function ModalItemManual({ item, onSalvar, onFechar }: ModalItemProps) {
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white">{item ? 'Editar ativo' : 'Novo ativo'}</h3>
+          <h3 className="text-base font-bold text-white">{item ? 'Editar item patrimonial' : 'Novo item patrimonial'}</h3>
           <button onClick={onFechar} className="text-slate-500 hover:text-white transition-colors">
             <X size={18} />
           </button>
@@ -142,11 +152,35 @@ function ModalItemManual({ item, onSalvar, onFechar }: ModalItemProps) {
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1.5 block">Nome do ativo</label>
+          <label className="text-xs text-slate-500 mb-1.5 block">Natureza</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { valor: 'ativo', label: 'Ativo', cor: '#10B981', icone: '📈' },
+              { valor: 'passivo', label: 'Passivo', cor: '#EF4444', icone: '📉' },
+            ] as const).map((opcao) => (
+              <button
+                key={opcao.valor}
+                type="button"
+                onClick={() => setNatureza(opcao.valor)}
+                className={`py-2 rounded-xl text-xs font-medium transition-all ${
+                  natureza === opcao.valor
+                    ? 'text-white border-2'
+                    : 'bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white'
+                }`}
+                style={natureza === opcao.valor ? { background: `${opcao.cor}22`, borderColor: opcao.cor, color: opcao.cor } : {}}
+              >
+                {opcao.icone} {opcao.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-slate-500 mb-1.5 block">Nome do item</label>
           <input
             value={nome}
             onChange={(event) => setNome(event.target.value)}
-            placeholder="Ex: Apartamento, terreno..."
+            placeholder={natureza === 'ativo' ? 'Ex: Apartamento, terreno...' : 'Ex: Carro, lancha, casa de uso...'}
             className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-purple-500"
           />
         </div>
@@ -188,7 +222,7 @@ function ModalItemManual({ item, onSalvar, onFechar }: ModalItemProps) {
           onClick={handleSalvar}
           className="w-full btn-primary text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
         >
-          <Check size={16} /> {item ? 'Salvar alteracoes' : 'Adicionar ativo'}
+          <Check size={16} /> {item ? 'Salvar alteracoes' : `Adicionar ${natureza}`}
         </button>
       </div>
     </div>
@@ -492,9 +526,9 @@ function ModalMovimentoReserva({ reserva, tipoInicial, onSalvar, onFechar }: Mod
 }
 
 export default function Patrimonio() {
-  const { contas, cartoes, investimentos, selicAtual } = useFinanceiroStore();
+  const { contas, investimentos, selicAtual } = useFinanceiroStore();
   const [oculto, setOculto] = useState(false);
-  const [itensManual, setItensManual] = useState<ItemManual[]>(() => lerListaPersistida<ItemManual>(STORAGE_ITENS_MANUAIS));
+  const [itensManual, setItensManual] = useState<ItemManual[]>(() => normalizarItensPatrimoniais(lerListaPersistida<ItemManual>(STORAGE_ITENS_MANUAIS)));
   const [reservas, setReservas] = useState<Reserva[]>(() => storageReservas.getAll());
   const [modalAberto, setModalAberto] = useState(false);
   const [itemEditar, setItemEditar] = useState<ItemManual | undefined>();
@@ -506,6 +540,16 @@ export default function Patrimonio() {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_ITENS_MANUAIS, JSON.stringify(itensManual));
   }, [itensManual]);
+
+  const ativosManuais = useMemo(
+    () => itensManual.filter((item) => item.natureza === 'ativo'),
+    [itensManual],
+  );
+
+  const passivosManuais = useMemo(
+    () => itensManual.filter((item) => item.natureza === 'passivo'),
+    [itensManual],
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -529,24 +573,25 @@ export default function Patrimonio() {
 
   const totais = useMemo(() => {
     const saldoContas = contas.reduce((soma, conta) => soma + conta.saldo, 0);
-    const faturaCartoes = cartoes.reduce((soma, cartao) => soma + cartao.fatura_atual, 0);
     const totalInvest = investimentos.reduce((soma, investimento) => soma + (investimento.valor_atual ?? investimento.valor_investido), 0);
-    const totalManual = itensManual.reduce((soma, item) => soma + item.valor, 0);
+    const totalAtivosManuais = ativosManuais.reduce((soma, item) => soma + item.valor, 0);
+    const totalPassivos = passivosManuais.reduce((soma, item) => soma + item.valor, 0);
     const totalReservas = reservas.reduce((soma, reserva) => soma + calcularSaldoReserva(reserva), 0);
-    const totalAtivos = saldoContas + totalInvest + totalManual + totalReservas;
-    const liquido = totalAtivos - faturaCartoes;
-    return { saldoContas, faturaCartoes, totalInvest, totalManual, totalReservas, totalAtivos, liquido };
-  }, [contas, cartoes, investimentos, itensManual, reservas]);
+    const totalAtivos = saldoContas + totalInvest + totalAtivosManuais + totalReservas;
+    const liquido = totalAtivos - totalPassivos;
+    return { saldoContas, totalInvest, totalAtivosManuais, totalPassivos, totalReservas, totalAtivos, liquido };
+  }, [contas, investimentos, ativosManuais, passivosManuais, reservas]);
 
   const qtdGrupos = [
     contas.length > 0,
     investimentos.length > 0,
-    cartoes.length > 0,
-    itensManual.length > 0,
+    ativosManuais.length > 0,
+    passivosManuais.length > 0,
     reservas.length > 0,
   ].filter(Boolean).length;
 
-  const qtdAtivos = contas.length + investimentos.length + cartoes.length + itensManual.length + reservas.length;
+  const qtdAtivos = contas.length + investimentos.length + ativosManuais.length + reservas.length;
+  const qtdPassivos = passivosManuais.length;
   const ocultarValor = (valor: string) => (oculto ? '••••••' : valor);
 
   function handleSalvarManual(dados: Omit<ItemManual, 'id'>) {
@@ -563,7 +608,7 @@ export default function Patrimonio() {
   }
 
   function handleExcluirManual(id: string) {
-    if (confirm('Remover este ativo?')) {
+    if (confirm('Remover este item patrimonial?')) {
       setItensManual((atual) => atual.filter((item) => item.id !== id));
     }
   }
@@ -679,7 +724,7 @@ export default function Patrimonio() {
               {oculto ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
           </div>
-          <p className="text-slate-500 text-sm mt-1">{qtdAtivos} ativos · {qtdGrupos} grupos</p>
+          <p className="text-slate-500 text-sm mt-1">{qtdAtivos} ativos | {qtdPassivos} passivos | {qtdGrupos} grupos</p>
         </div>
 
         <div className="flex gap-2">
@@ -693,7 +738,7 @@ export default function Patrimonio() {
             onClick={() => { setItemEditar(undefined); setModalAberto(true); }}
             className="btn-primary flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold"
           >
-            <Plus size={16} /> Ativo
+            <Plus size={16} /> Item patrimonial
           </button>
         </div>
       </div>
@@ -991,70 +1036,32 @@ export default function Patrimonio() {
         )}
       </section>
 
-      {cartoes.length > 0 && (
-        <section className="glass-card p-5" style={{ borderColor: 'rgba(239,68,68,0.15)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-base">💳</span>
-              <span className="text-sm font-semibold text-slate-200">Cartoes (debito)</span>
-            </div>
-            <span className="text-sm font-bold text-red-400 tabular-nums">
-              -{ocultarValor(formatarMoeda(totais.faturaCartoes))}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {cartoes.map((cartao) => {
-              const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
-              const pct = totais.faturaCartoes > 0 ? (cartao.fatura_atual / totais.faturaCartoes) * 100 : 0;
-              return (
-                <div key={cartao.id}>
-                  <div className="flex items-center gap-3">
-                    <BankLogo banco={cartao.banco} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-white truncate">{cartao.nome}</span>
-                        <span className="text-sm font-semibold text-red-400 tabular-nums">-{ocultarValor(formatarMoeda(cartao.fatura_atual))}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500 capitalize">{info.nome} · {cartao.bandeira}</span>
-                        <span className="text-xs text-slate-600">{pct.toFixed(1)}% do debito</span>
-                      </div>
-                    </div>
-                  </div>
-                  <BarraProgresso pct={pct} cor="#EF4444" />
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       <section className="glass-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-base">🏠</span>
-            <span className="text-sm font-semibold text-slate-200">Outros ativos</span>
+            <span className="text-base">??</span>
+            <span className="text-sm font-semibold text-slate-200">Ativos patrimoniais</span>
           </div>
           <span className="text-sm font-bold tabular-nums" style={{ color: '#A78BFA' }}>
-            {ocultarValor(formatarMoeda(totais.totalManual))}
+            {ocultarValor(formatarMoeda(totais.totalAtivosManuais))}
           </span>
         </div>
 
-        {itensManual.length === 0 ? (
+        {ativosManuais.length === 0 ? (
           <div className="text-center py-6 text-slate-600">
-            <div className="text-3xl mb-2 opacity-40">🏠</div>
-            <p className="text-sm text-slate-600">Nenhum ativo manual</p>
+            <div className="text-3xl mb-2 opacity-40">??</div>
+            <p className="text-sm text-slate-600">Nenhum ativo patrimonial</p>
             <p className="text-xs mt-1 text-slate-700">Adicione imoveis, veiculos e outros bens.</p>
             <button
               onClick={() => { setItemEditar(undefined); setModalAberto(true); }}
               className="mt-3 text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 mx-auto"
             >
-              <Plus size={12} /> Adicionar ativo
+              <Plus size={12} /> Adicionar item
             </button>
           </div>
         ) : (
           <div className="space-y-3">
-            {itensManual.map((item) => {
+            {ativosManuais.map((item) => {
               const grupoInfo = GRUPO_INFO[item.grupo];
               const pct = totais.totalAtivos > 0 ? (item.valor / totais.totalAtivos) * 100 : 0;
               return (
@@ -1095,6 +1102,65 @@ export default function Patrimonio() {
         )}
       </section>
 
+      <section className="glass-card p-5" style={{ borderColor: 'rgba(239,68,68,0.15)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-base">??</span>
+            <span className="text-sm font-semibold text-slate-200">Passivos patrimoniais</span>
+          </div>
+          <span className="text-sm font-bold text-red-400 tabular-nums">
+            -{ocultarValor(formatarMoeda(totais.totalPassivos))}
+          </span>
+        </div>
+
+        {passivosManuais.length === 0 ? (
+          <div className="text-center py-6 text-slate-600">
+            <div className="text-3xl mb-2 opacity-40">??</div>
+            <p className="text-sm text-slate-600">Nenhum passivo patrimonial</p>
+            <p className="text-xs mt-1 text-slate-700">Adicione carro, casa de uso, barco ou outros bens que geram gastos.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {passivosManuais.map((item) => {
+              const grupoInfo = GRUPO_INFO[item.grupo];
+              const pct = totais.totalPassivos > 0 ? (item.valor / totais.totalPassivos) * 100 : 0;
+              return (
+                <div key={item.id}>
+                  <div className="flex items-center gap-3 group">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                      style={{ background: `${grupoInfo.cor}22` }}
+                    >
+                      {item.icone}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-white truncate">{item.nome}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-red-300 tabular-nums">{ocultarValor(formatarMoeda(item.valor))}</span>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => { setItemEditar(item); setModalAberto(true); }} className="p-1 text-slate-500 hover:text-purple-400 rounded">
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => handleExcluirManual(item.id)} className="p-1 text-slate-500 hover:text-red-400 rounded">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs" style={{ color: grupoInfo.cor }}>{grupoInfo.icone} {grupoInfo.label}</span>
+                        <span className="text-xs text-slate-600">{pct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <BarraProgresso pct={pct} cor="#EF4444" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
       <section className="glass-card p-5" style={{ borderColor: 'rgba(124,58,237,0.2)' }}>
         <h3 className="text-sm font-semibold text-slate-300 mb-4">Resumo</h3>
         <div className="space-y-2">
@@ -1111,12 +1177,12 @@ export default function Patrimonio() {
             <span className="text-emerald-400 tabular-nums">{ocultarValor(formatarMoeda(totais.totalInvest))}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">💳 Faturas em aberto</span>
-            <span className="text-red-400 tabular-nums">-{ocultarValor(formatarMoeda(totais.faturaCartoes))}</span>
+            <span className="text-slate-500">?? Passivos patrimoniais</span>
+            <span className="text-red-400 tabular-nums">-{ocultarValor(formatarMoeda(totais.totalPassivos))}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">🏠 Outros ativos</span>
-            <span className="text-purple-400 tabular-nums">{ocultarValor(formatarMoeda(totais.totalManual))}</span>
+            <span className="text-slate-500">?? Ativos patrimoniais</span>
+            <span className="text-purple-400 tabular-nums">{ocultarValor(formatarMoeda(totais.totalAtivosManuais))}</span>
           </div>
           <div className="h-px bg-white/[0.06] my-2" />
           <div className="flex justify-between">

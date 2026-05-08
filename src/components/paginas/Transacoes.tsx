@@ -293,6 +293,187 @@ function TimelineGastos({
   );
 }
 
+// ─── Timeline de Receitas ────────────────────────────────────────────────────
+function calcularTimelineReceitas(
+  transacoes: import('@/types').Transacao[],
+  categorias: import('@/types').Categoria[],
+): DadosMesGastos[] {
+  const hoje = tgMesAtual();
+  const [hojeY, hojeM] = hoje.split('-').map(Number);
+  const maxFuturo = Math.max((2027 - hojeY) * 12 + (12 - hojeM), 2);
+
+  const todosMeses: string[] = [];
+  for (let i = -3; i <= maxFuturo; i++) todosMeses.push(tgAddMeses(hoje, i));
+
+  return todosMeses.map((mes) => {
+    const [year, month] = mes.split('-').map(Number);
+    const tipo: DadosMesGastos['tipo'] = mes < hoje ? 'passado' : mes === hoje ? 'atual' : 'futuro';
+    const catMap: Record<string, number> = {};
+
+    if (tipo !== 'futuro') {
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'receita' || !tx.data.startsWith(mes)) return;
+        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+      });
+    } else {
+      // Future: recurring receitas + installments
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'receita') return;
+        if (tx.classificacao === 'fixa') {
+          catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+          return;
+        }
+        if (tx.parcelas && tx.parcelas > 1) {
+          const parcelaAtual = tx.parcela_atual || 1;
+          const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
+          const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
+          if (!tx.data.startsWith(mes) && mes >= primeiroMes && mes <= ultimoMes) {
+            catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+          }
+        }
+      });
+    }
+
+    const por_categoria = Object.entries(catMap)
+      .map(([catId, valor]) => {
+        const cat = categorias.find((c) => c.id === catId);
+        return { id: catId, nome: cat?.nome || 'Outros', icone: cat?.icone || '💰', cor: cat?.cor || '#10B981', valor };
+      })
+      .sort((a, b) => b.valor - a.valor);
+
+    return {
+      mes,
+      label: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][month - 1],
+      ano: String(year),
+      total: por_categoria.reduce((s, c) => s + c.valor, 0),
+      tipo,
+      por_categoria,
+    };
+  });
+}
+
+function TimelineReceitas({
+  transacoes,
+  categorias,
+}: {
+  transacoes: import('@/types').Transacao[];
+  categorias: import('@/types').Categoria[];
+}) {
+  const dados = useMemo(() => calcularTimelineReceitas(transacoes, categorias), [transacoes, categorias]);
+  const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+    if (atualIdx < 0) return;
+    const containerW = scrollRef.current.clientWidth;
+    scrollRef.current.scrollLeft = Math.max(0, atualIdx * TG_CARD_STEP - containerW / 2 + TG_CARD_W / 2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const maxValor = Math.max(...dados.map((d) => d.total), 1);
+  const totalW = dados.length * TG_CARD_STEP - TG_CARD_GAP;
+  const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+  const points = dados.map((d, i) => ({ x: i * TG_CARD_STEP + TG_CARD_W / 2, y: tgDotY(d.total, maxValor) }));
+  const pastPath = tgBuildPath(points.slice(0, atualIdx + 1));
+  const futurePath = atualIdx >= 0 ? tgBuildPath(points.slice(atualIdx)) : '';
+  const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
+
+  return (
+    <div className="glass-card p-5">
+      <h3 className="text-sm font-semibold text-slate-300 mb-1">Histórico e Projeção de Receitas</h3>
+      <p className="text-[11px] text-slate-600 mb-4">Entradas realizadas e projeção de receitas fixas e parceladas</p>
+
+      <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
+        <div className="relative" style={{ width: totalW, height: TG_CARD_H }}>
+          <svg width={totalW} height={TG_CARD_H} className="absolute inset-0 pointer-events-none" style={{ zIndex: 2 }}>
+            <defs>
+              <linearGradient id="trFillGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10B981" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+            {atualIdx >= 0 && (
+              <path
+                d={`M ${atualIdx * TG_CARD_STEP} ${TG_CARD_H} L ${atualIdx * TG_CARD_STEP} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${TG_CARD_H} Z`}
+                fill="url(#trFillGrad)"
+              />
+            )}
+            <path d={pastPath} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+            {futurePath && <path d={futurePath} fill="none" stroke="#34D399" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />}
+            {points.map((pt, i) => {
+              const d = dados[i];
+              const isAtual = d.tipo === 'atual';
+              const isPast = d.tipo === 'passado';
+              return (
+                <g key={d.mes}>
+                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill="#10B981" fillOpacity="0.12" />}
+                  <circle cx={pt.x} cy={pt.y} r={isAtual ? 6 : 5}
+                    fill={isPast ? '#10B981' : isAtual ? 'white' : 'transparent'}
+                    stroke={isPast ? '#10B981' : isAtual ? '#10B981' : '#6B7280'}
+                    strokeWidth={isAtual ? 2.5 : 1.5}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {dados.map((d, i) => {
+            const isAtual = d.tipo === 'atual';
+            const isFuturo = d.tipo === 'futuro';
+            const isSel = mesSelecionado === d.mes;
+            return (
+              <button key={d.mes} type="button"
+                onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
+                className={`absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all ${
+                  isAtual ? 'border-2 border-emerald-500/50 bg-emerald-500/5'
+                    : isSel ? 'border border-purple-500/40 bg-white/4'
+                    : 'border border-white/5 bg-white/2 hover:bg-white/5'
+                }`}
+                style={{ left: i * TG_CARD_STEP, top: 0, width: TG_CARD_W, height: TG_CARD_H, zIndex: 1 }}
+              >
+                <div className={`text-xs font-semibold mb-1 ${isAtual ? 'text-emerald-400' : isFuturo ? 'text-slate-500' : 'text-slate-400'}`}>{d.label}</div>
+                <div className={`text-sm font-bold tabular-nums ${isAtual ? 'text-emerald-300' : isFuturo ? 'text-slate-500' : 'text-white'}`}>
+                  {formatarMoeda(d.total)}
+                </div>
+                {isFuturo && d.total > 0 && <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {mesSel && mesSel.por_categoria.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="text-xs text-slate-500 mb-3">
+            {mesSel.label} {mesSel.ano}
+            {mesSel.tipo === 'futuro' && ' — projeção de receitas fixas'}
+            {mesSel.tipo === 'passado' && ' — receitas do mês'}
+            {mesSel.tipo === 'atual' && ' — receitas até agora'}
+          </div>
+          <div className="space-y-2">
+            {mesSel.por_categoria.slice(0, 6).map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0" style={{ background: `${c.cor}22` }}>{c.icone}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-300 truncate">{c.nome}</span>
+                    <span className="text-xs font-semibold text-emerald-400 tabular-nums shrink-0">+{formatarMoeda(c.valor)}</span>
+                  </div>
+                  <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: c.cor, opacity: 0.7 }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const FILTROS_TIPO = [
   { valor: 'todos', label: 'Todos' },
   { valor: 'despesa', label: 'Despesas' },
@@ -304,6 +485,7 @@ const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set',
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
 type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'ja_debitadas' | 'previstas';
+type VisuTab = 'despesas' | 'receitas';
 type TransacaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
@@ -559,8 +741,8 @@ function ModalDetalheTransacao({
 export default function Transacoes() {
   const { transacoes, categorias, contas, cartoes, excluirTransacao } = useFinanceiroStore();
 
+  const [visuTab, setVisuTab] = useState<VisuTab>('despesas');
   const [busca, setBusca] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes');
@@ -621,9 +803,10 @@ export default function Transacoes() {
 
   const transacoesFiltradas = useMemo(() => {
     return transacoesPorPeriodo.filter(({ transacao }) => {
-      const tipoOk = filtroTipo === 'todos' || transacao.tipo === filtroTipo;
+      const tipoOk = transacao.tipo === (visuTab === 'receitas' ? 'receita' : 'despesa');
       // ja_debitadas e previstas são aplicados em transacoesAgrupadas (precisam de realizadasIds)
-      const classificacaoOk = (filtroLinha2 !== 'padrao' && filtroLinha2 !== 'fixa')
+      const classificacaoOk = visuTab === 'receitas'
+        || (filtroLinha2 !== 'padrao' && filtroLinha2 !== 'fixa')
         || getClassificacaoTransacao(transacao) === filtroLinha2;
       const buscaOk = !busca || transacao.descricao.toLowerCase().includes(busca.toLowerCase());
       const catOk = !catSelecionada || (() => {
@@ -632,7 +815,7 @@ export default function Transacoes() {
       })();
       return tipoOk && classificacaoOk && buscaOk && catOk;
     });
-  }, [transacoesPorPeriodo, filtroTipo, filtroLinha2, busca, catSelecionada, categorias]);
+  }, [transacoesPorPeriodo, visuTab, filtroLinha2, busca, catSelecionada, categorias]);
 
   const referenciaTotais = useMemo(() => {
     if (periodo !== 'mes') return hoje;
@@ -685,6 +868,24 @@ export default function Transacoes() {
 
   const saldo = totais.receitas - totais.despesas;
 
+  // Despesas já saídas do saldo bancário (PIX/débito/transferência, sem cartão)
+  const debitadasSaldo = useMemo(() => {
+    const realizadasIds = new Set(
+      transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
+    );
+    return transacoesFiltradas
+      .filter(({ transacao, dataExibicao }) =>
+        transacao.tipo === 'despesa' &&
+        realizadasIds.has(`${transacao.id}|${dataExibicao}`) &&
+        !transacao.cartao_id &&
+        (!transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento)),
+      )
+      .reduce((s, { transacao }) => s + transacao.valor, 0);
+  }, [transacoesFiltradas, transacoesRealizadasFiltradas]);
+
+  // Tudo que ainda precisa ser pago (cartão + contas futuras)
+  const aPagar = totais.despesas + totais.despesasPrevistas - debitadasSaldo;
+
   const transacoesAgrupadas = useMemo(() => {
     const realizadasIds = new Set(
       transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
@@ -723,185 +924,190 @@ export default function Transacoes() {
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Transacoes</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setTransacaoEditar(undefined);
-              setModalAberto(true);
-            }}
-            className="btn-primary flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-white"
-          >
-            <Plus size={16} /> Novo
-          </button>
-        </div>
+        <h2 className="text-xl font-bold text-white">Transações</h2>
+        <button
+          onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
+          className="btn-primary flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-white"
+        >
+          <Plus size={16} /> Novo
+        </button>
       </div>
 
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-white/5 rounded-2xl p-1 w-fit">
+        <button
+          onClick={() => { setVisuTab('despesas'); setCatSelecionada(null); }}
+          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+            visuTab === 'despesas' ? 'bg-red-500/20 text-red-300 shadow-sm' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Despesas
+        </button>
+        <button
+          onClick={() => { setVisuTab('receitas'); setCatSelecionada(null); setFiltroLinha2('todas'); }}
+          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+            visuTab === 'receitas' ? 'bg-emerald-500/20 text-emerald-300 shadow-sm' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Receitas
+        </button>
+      </div>
+
+      {/* Period selector */}
       <div className="flex gap-2">
         {(['mes', '3meses', 'tudo'] as PeriodoFiltro[]).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriodo(p)}
+          <button key={p} onClick={() => setPeriodo(p)}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
               periodo === p
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                : 'border border-white/10 bg-white/[0.05] text-slate-400 hover:text-white'
+                : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
             }`}
           >
-            {p === 'mes' ? 'Este mes' : p === '3meses' ? '3 meses' : 'Tudo'}
+            {p === 'mes' ? 'Este mês' : p === '3meses' ? '3 meses' : 'Tudo'}
           </button>
         ))}
         {periodo === 'mes' && (
           <div className="ml-auto flex gap-2">
-            <select
-              value={filtroMes}
-              onChange={(e) => setFiltroMes(Number(e.target.value))}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200"
-            >
+            <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))}
+              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200">
               {nomesMeses.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
-            <select
-              value={filtroAno}
-              onChange={(e) => setFiltroAno(Number(e.target.value))}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200"
-            >
-              {[2024, 2025, 2026, 2027].map((ano) => <option key={ano} value={ano}>{ano}</option>)}
+            <select value={filtroAno} onChange={(e) => setFiltroAno(Number(e.target.value))}
+              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200">
+              {[2024, 2025, 2026, 2027].map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
         )}
       </div>
 
-      <div className="space-y-2">
-        {/* Linha 1: Receitas e Saldo */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-emerald-800/40 bg-emerald-950/30 p-3 text-center">
-            <div className="mb-0.5 text-[10px] uppercase tracking-wide text-emerald-400">Receitas</div>
-            <div className="text-base font-bold tabular-nums text-emerald-400">{formatarMoeda(totais.receitas)}</div>
-          </div>
-          <div className={`rounded-2xl border p-3 text-center ${saldo >= 0 ? 'border-blue-800/40 bg-blue-950/30' : 'border-orange-800/40 bg-orange-950/30'}`}>
-            <div className={`mb-0.5 text-[10px] uppercase tracking-wide ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>Saldo</div>
-            <div className={`text-base font-bold tabular-nums ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>
-              {saldo >= 0 ? '+' : ''}{formatarMoeda(saldo)}
+      {/* ── DESPESAS TAB ─────────────────────────────────── */}
+      {visuTab === 'despesas' && (
+        <>
+          {/* Summary */}
+          <div className="space-y-2">
+            <div className="rounded-2xl border border-red-800/30 bg-red-950/20 p-4">
+              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Total do mês</div>
+              <div className="text-2xl font-bold tabular-nums text-white mb-3">
+                {formatarMoeda(totais.despesas + totais.despesasPrevistas)}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Debitadas do saldo</div>
+                  <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(debitadasSaldo)}</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">PIX, boleto, débito</div>
+                </div>
+                <div className="rounded-xl bg-white/5 p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-1">A pagar</div>
+                  <div className="text-base font-bold tabular-nums text-amber-400">{formatarMoeda(Math.max(aPagar, 0))}</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">Cartão, contas, etc.</div>
+                </div>
+              </div>
+              {totais.despesasPrevistas > 0 && (
+                <div className="mt-3">
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-500/60 rounded-full"
+                      style={{ width: `${Math.min((debitadasSaldo / (totais.despesas + totais.despesasPrevistas)) * 100, 100)}%` }} />
+                  </div>
+                  <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+                    <span>debitado do saldo</span>
+                    <span>a pagar</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Linha 2: Despesas detalhadas */}
-        <div className="rounded-2xl border border-red-800/40 bg-red-950/30 p-3">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Já debitadas</div>
-              <div className="text-sm font-bold tabular-nums text-red-400">{formatarMoeda(totais.despesas)}</div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-0.5">Previstas</div>
-              <div className="text-sm font-bold tabular-nums text-amber-400">{formatarMoeda(totais.despesasPrevistas)}</div>
-            </div>
-            <div className="border-l border-red-800/40 pl-2">
-              <div className="text-[10px] uppercase tracking-wide text-red-300 mb-0.5">Total do mês</div>
-              <div className="text-sm font-bold tabular-nums text-white">{formatarMoeda(totais.despesas + totais.despesasPrevistas)}</div>
-            </div>
-          </div>
-          {totais.despesasPrevistas > 0 && (
-            <div className="mt-2.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-red-500/60 rounded-full"
-                style={{ width: `${Math.min((totais.despesas / (totais.despesas + totais.despesasPrevistas)) * 100, 100)}%` }}
-              />
+          <TimelineGastos transacoes={transacoes} categorias={categorias} />
+
+          {/* Category chips */}
+          {chipsCategoria.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button onClick={() => setCatSelecionada(null)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  catSelecionada === null ? 'bg-purple-600 text-white' : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                }`}>
+                Todos
+              </button>
+              {chipsCategoria.map((cat) => (
+                <button key={cat.id} onClick={() => setCatSelecionada(catSelecionada === cat.id ? null : cat.id)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                    catSelecionada === cat.id ? 'text-white shadow-lg' : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                  style={catSelecionada === cat.id ? { background: cat.cor } : {}}>
+                  <span>{cat.icone}</span><span>{cat.nome}</span>
+                  <span className="opacity-70">{formatarMoeda(cat.total)}</span>
+                </button>
+              ))}
             </div>
           )}
-          {totais.despesasPrevistas > 0 && (
-            <div className="mt-1 flex justify-between text-[10px] text-slate-600">
-              <span>debitado</span>
-              <span>previsto</span>
+
+          {/* Filters */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input type="text" placeholder="Buscar por descrição..."
+                value={busca} onChange={(e) => setBusca(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-purple-500" />
             </div>
-          )}
-        </div>
-      </div>
-
-      <TimelineGastos transacoes={transacoes} categorias={categorias} />
-
-      {chipsCategoria.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setCatSelecionada(null)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-              catSelecionada === null
-                ? 'bg-purple-600 text-white'
-                : 'border border-white/10 bg-white/[0.05] text-slate-400 hover:text-white'
-            }`}
-          >
-            Todos
-          </button>
-          {chipsCategoria.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setCatSelecionada(catSelecionada === cat.id ? null : cat.id)}
-              className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                catSelecionada === cat.id
-                  ? 'text-white shadow-lg'
-                  : 'border border-white/10 bg-white/[0.05] text-slate-400 hover:text-white'
-              }`}
-              style={catSelecionada === cat.id ? { background: cat.cor } : {}}
-            >
-              <span>{cat.icone}</span>
-              <span>{cat.nome}</span>
-              <span className="opacity-70">{formatarMoeda(cat.total)}</span>
-            </button>
-          ))}
-        </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {FILTROS_LINHA2.map((f) => (
+                <button key={f.valor} onClick={() => setFiltroLinha2(f.valor)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    filtroLinha2 === f.valor
+                      ? f.valor === 'ja_debitadas' ? 'bg-emerald-700 text-white'
+                        : f.valor === 'previstas' ? 'bg-amber-700 text-white'
+                        : 'bg-purple-600 text-white'
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              "Fixas" são recorrentes. "Já debitadas" mostra PIX, débito e transferências realizados. "Previstas" mostra o que ainda não foi pago.
+            </p>
+          </div>
+        </>
       )}
 
-      <div className="space-y-3">
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Buscar por descricao..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-purple-500"
-          />
-        </div>
-        <div className="flex gap-2">
-          {FILTROS_TIPO.map((f) => (
-            <button
-              key={f.valor}
-              onClick={() => setFiltroTipo(f.valor)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                filtroTipo === f.valor
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {FILTROS_LINHA2.map((f) => (
-            <button
-              key={f.valor}
-              onClick={() => setFiltroLinha2(f.valor)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                filtroLinha2 === f.valor
-                  ? f.valor === 'ja_debitadas'
-                    ? 'bg-emerald-700 text-white'
-                    : f.valor === 'previstas'
-                      ? 'bg-amber-700 text-white'
-                      : 'bg-purple-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-slate-500">
-          "Fixas" são recorrentes. "Já debitadas" mostra apenas pagamentos via PIX, débito ou transferência já realizados. "Previstas" mostra o que ainda não foi pago.
-        </p>
-      </div>
+      {/* ── RECEITAS TAB ─────────────────────────────────── */}
+      {visuTab === 'receitas' && (
+        <>
+          {/* Summary */}
+          <div className="rounded-2xl border border-emerald-800/30 bg-emerald-950/20 p-4">
+            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Total recebido no mês</div>
+            <div className="text-2xl font-bold tabular-nums text-emerald-400 mb-3">
+              +{formatarMoeda(totais.receitas)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-wide text-emerald-500 mb-1">Realizadas</div>
+                <div className="text-base font-bold tabular-nums text-emerald-400">{formatarMoeda(totais.receitas)}</div>
+                <div className="text-[10px] text-slate-600 mt-0.5">já recebidas</div>
+              </div>
+              <div className="rounded-xl bg-white/5 p-3">
+                <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Agendadas</div>
+                <div className="text-base font-bold tabular-nums text-slate-300">
+                  +{formatarMoeda(totais.despesasPrevistas > 0 ? 0 : 0)}
+                </div>
+                <div className="text-[10px] text-slate-600 mt-0.5">receitas fixas futuras</div>
+              </div>
+            </div>
+          </div>
+
+          <TimelineReceitas transacoes={transacoes} categorias={categorias} />
+
+          {/* Search */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input type="text" placeholder="Buscar por descrição..."
+              value={busca} onChange={(e) => setBusca(e.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-emerald-500" />
+          </div>
+        </>
+      )}
 
       <div className="space-y-4">
         {transacoesAgrupadas.length === 0 ? (

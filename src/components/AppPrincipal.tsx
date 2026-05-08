@@ -17,7 +17,6 @@ import Cartoes        from '@/components/paginas/Cartoes';
 import Assistente     from '@/components/paginas/Assistente';
 import Patrimonio     from '@/components/paginas/Patrimonio';
 import Orcamentos     from '@/components/paginas/Orcamentos';
-import Assinaturas    from '@/components/paginas/Assinaturas';
 import Agentes        from '@/components/paginas/Agentes';
 import Calendario     from '@/components/paginas/Calendario';
 import Configuracoes  from '@/components/paginas/Configuracoes';
@@ -28,7 +27,7 @@ import { TipoTransacao } from '@/types';
 
 import { Transacao, Categoria } from '@/types';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'assinaturas' | 'configuracoes' | 'agentes' | 'calendario';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
 
 // ─── Busca Global ─────────────────────────────────────────────────────────────
 const MESES_BUSCA: string[][] = [
@@ -185,7 +184,7 @@ function BuscaGlobal({
                   onClick={() => { onNavegar('transacoes'); onFechar(); }}
                   className="w-full px-4 py-3 text-xs text-purple-400 hover:text-purple-300 hover:bg-white/3 transition-colors border-t border-white/5 text-left"
                 >
-                  Ver todos os resultados em Gastos →
+                  Ver todos os resultados em Transações →
                 </button>
               </>
             )}
@@ -207,7 +206,7 @@ function BuscaGlobal({
 /** Desktop sidebar - all pages */
 const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
-  { id: 'transacoes',   label: 'Gastos',        icone: ArrowLeftRight  },
+  { id: 'transacoes',   label: 'Transações',    icone: ArrowLeftRight  },
   { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
   { id: 'agentes',      label: 'Agentes IA',    icone: BrainCircuit    },
   { id: 'patrimonio',   label: 'Patrimônio',    icone: TrendingUp      },
@@ -215,7 +214,6 @@ const navDesktop = [
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
-  { id: 'assinaturas',  label: 'Assinaturas',   icone: Repeat          },
   { id: 'calendario',   label: 'Calendário',    icone: CalendarDays    },
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
@@ -223,7 +221,7 @@ const navDesktop = [
 /** Mobile bottom nav - 4 primary + "Mais" button */
 const navMobile = [
   { id: 'dashboard',  label: 'Início', icone: LayoutDashboard },
-  { id: 'transacoes', label: 'Gastos', icone: ArrowLeftRight  },
+  { id: 'transacoes', label: 'Transações', icone: ArrowLeftRight  },
   { id: 'assistente', label: 'IA',     icone: Sparkles        },
   { id: 'bancos',     label: 'Bancos', icone: Building2       },
 ] as const;
@@ -234,7 +232,6 @@ const navMais = [
   { id: 'patrimonio',   label: 'Patrimônio', icone: TrendingUp      },
   { id: 'relatorios',   label: 'Relatórios', icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos', icone: Target          },
-  { id: 'assinaturas',  label: 'Assinaturas',icone: Repeat          },
   { id: 'calendario',   label: 'Calendário', icone: CalendarDays    },
   { id: 'agentes',      label: 'Agentes IA', icone: BrainCircuit    },
   { id: 'investimentos',label: 'Investir',   icone: TrendingUp      },
@@ -271,7 +268,7 @@ export default function AppPrincipal() {
       const page = params.get('page');
       const paginasValidas: Pagina[] = [
         'dashboard', 'transacoes', 'relatorios', 'investimentos', 'bancos', 'cartoes',
-        'assistente', 'patrimonio', 'orcamentos', 'assinaturas', 'configuracoes', 'agentes', 'calendario',
+        'assistente', 'patrimonio', 'orcamentos', 'configuracoes', 'agentes', 'calendario',
       ];
 
       if (page && paginasValidas.includes(page as Pagina)) {
@@ -329,7 +326,6 @@ export default function AppPrincipal() {
       case 'investimentos': return <Investimentos />;
       case 'patrimonio':    return <Patrimonio />;
       case 'orcamentos':    return <Orcamentos />;
-      case 'assinaturas':   return <Assinaturas />;
       case 'agentes':       return <Agentes />;
       case 'calendario':    return <Calendario />;
       case 'configuracoes': return <Configuracoes />;
