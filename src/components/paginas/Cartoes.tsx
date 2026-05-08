@@ -14,6 +14,7 @@ import { getDataCobrancaCartaoParaData, getDataOcorrenciaNoMes } from '@/lib/tra
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
+import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 
 const BANDEIRAS: BandeirCartao[] = ['visa', 'mastercard', 'elo', 'amex', 'hipercard'];
 
@@ -453,6 +454,7 @@ export default function Cartoes() {
     adicionarCartao,
     editarCartao,
     excluirCartao,
+    excluirTransacao,
     atualizarFaturaCartao,
     adicionarTransacao,
   } = useFinanceiroStore();
@@ -464,6 +466,8 @@ export default function Cartoes() {
   const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
   const [statusImportacao, setStatusImportacao] = useState<StatusImportacao | null>(null);
   const [filtroLancamentos, setFiltroLancamentos] = useState<FiltroLancamentoCartao>('todos');
+  const [transacaoEditando, setTransacaoEditando] = useState<Transacao | undefined>();
+  const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -549,6 +553,16 @@ export default function Cartoes() {
     if (!Number.isNaN(valor)) atualizarFaturaCartao(id, valor);
     setEditandoId(null);
     setNovaFatura('');
+  }
+
+  function abrirEdicaoLancamento(transacao: Transacao) {
+    setTransacaoEditando(transacao);
+    setModalEdicaoAberto(true);
+  }
+
+  function removerLancamento(transacao: Transacao) {
+    if (!confirm('Excluir este lançamento do cartão?')) return;
+    excluirTransacao(transacao.id);
   }
 
   async function handleImportarArquivoCartao(event: ChangeEvent<HTMLInputElement>) {
@@ -1184,6 +1198,26 @@ export default function Cartoes() {
                                 {` • ${status === 'prevista' ? 'prevista' : 'já debitada'}`}
                               </div>
                             </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => abrirEdicaoLancamento(transacao)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-900/30 hover:text-purple-300 transition-colors"
+                                aria-label="Editar lançamento do cartão"
+                                title="Editar lançamento"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removerLancamento(transacao)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-900/30 hover:text-red-300 transition-colors"
+                                aria-label="Excluir lançamento do cartão"
+                                title="Excluir lançamento"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {transacao.tipo === 'receita' ? '+' : '-'}{formatarMoeda(transacao.valor)}
                             </div>
@@ -1211,6 +1245,16 @@ export default function Cartoes() {
           </div>
         )}
       </div>
+
+      <ModalNovaTransacao
+        aberto={modalEdicaoAberto}
+        onFechar={() => {
+          setModalEdicaoAberto(false);
+          setTransacaoEditando(undefined);
+        }}
+        transacaoEditar={transacaoEditando}
+        tipoInicial={transacaoEditando?.tipo || 'despesa'}
+      />
     </div>
   );
 }
