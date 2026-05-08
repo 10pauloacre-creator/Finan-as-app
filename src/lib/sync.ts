@@ -207,6 +207,7 @@ function mapCartao(c: CartaoCredito) {
     nome: c.nome,
     limite: c.limite,
     fatura_atual: c.fatura_atual,
+    fatura_ajuste_manual: c.fatura_ajuste_manual,
     dia_vencimento: c.dia_vencimento,
     dia_fechamento: c.dia_fechamento,
     bandeira: c.bandeira,

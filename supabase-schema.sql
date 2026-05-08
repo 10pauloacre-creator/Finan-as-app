@@ -33,6 +33,7 @@ create table if not exists cartoes (
   nome                text not null,
   limite              numeric default 0,
   fatura_atual        numeric default 0,
+  fatura_ajuste_manual numeric default 0,
   dia_vencimento      int default 15,
   dia_fechamento      int default 8,
   bandeira            text default 'mastercard',
@@ -172,6 +173,7 @@ alter table contas        add column if not exists saldo_base          numeric;
 alter table cartoes       add column if not exists pluggy_item_id      text;
 alter table cartoes       add column if not exists pluggy_account_id   text;
 alter table cartoes       add column if not exists pluggy_sync_em      timestamptz;
+alter table cartoes       add column if not exists fatura_ajuste_manual numeric default 0;
 alter table transacoes    add column if not exists pluggy_id           text;
 alter table transacoes    add column if not exists pluggy_account_id   text;
 alter table transacoes    add column if not exists horario             text;

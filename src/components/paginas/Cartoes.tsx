@@ -468,6 +468,8 @@ export default function Cartoes() {
           const lista = ordenarTransacoesPorData(transacoesPorCartao[cartao.id] || []);
           const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
           const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
+          const baseLancamentos = compras.reduce((soma, transacao) => soma + transacao.valor, 0)
+            - estornos.reduce((soma, transacao) => soma + transacao.valor, 0);
 
           return (
             <div key={cartao.id} className={`glass-card overflow-hidden ${urgente ? 'border-red-500/30' : ''}`}>
@@ -547,6 +549,14 @@ export default function Cartoes() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-xs text-slate-500 mb-1">Fatura Atual</div>
+                        {!emEdicao && (
+                          <div className="mb-1 text-[11px] text-slate-500">
+                            Soma dos lancamentos: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
+                            {cartao.fatura_ajuste_manual
+                              ? <> {' '}• Ajuste manual: <span className="text-purple-300 tabular-nums">{formatarMoeda(cartao.fatura_ajuste_manual)}</span></>
+                              : null}
+                          </div>
+                        )}
                         {emEdicao ? (
                           <div className="flex items-center gap-2">
                             <input

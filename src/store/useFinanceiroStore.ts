@@ -210,6 +210,39 @@ function persistirContasNormalizadas(contas: ContaBancaria[], sync = false) {
   });
 }
 
+function calcularBaseFaturaCartao(cartaoId: string, transacoes: Transacao[], referencia = startOfTodayLocal()) {
+  return arredondarMoeda(transacoes.reduce((soma, transacao) => {
+    if (transacao.cartao_id !== cartaoId) return soma;
+    const ocorrencias = contarOcorrenciasAteData(transacao, referencia);
+    if (ocorrencias <= 0) return soma;
+    const valorAplicado = transacao.valor * ocorrencias;
+    return soma + (transacao.tipo === 'despesa' ? valorAplicado : -valorAplicado);
+  }, 0));
+}
+
+function normalizarCartoesComTransacoes(cartoes: CartaoCredito[], transacoes: Transacao[]) {
+  const hoje = startOfTodayLocal();
+
+  return cartoes.map((cartao) => {
+    const baseFatura = calcularBaseFaturaCartao(cartao.id, transacoes, hoje);
+    const ajusteManual = cartao.fatura_ajuste_manual ?? arredondarMoeda(cartao.fatura_atual - baseFatura);
+    return {
+      ...cartao,
+      fatura_ajuste_manual: ajusteManual,
+      fatura_atual: arredondarMoeda(baseFatura + ajusteManual),
+    };
+  });
+}
+
+function persistirCartoesNormalizados(cartoes: CartaoCredito[], sync = false) {
+  cartoes.forEach((cartao) => {
+    storageCartoes.save(cartao);
+    if (sync) {
+      void syncSalvarCartao(cartao);
+    }
+  });
+}
+
 function contarRegistrosRemotos(dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) {
   return (
     dados.transacoes.length +
@@ -263,7 +296,9 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       const config = storageConfig.get();
       const transacoes = storageTransacoes.getAll();
       const contas = normalizarContasComTransacoes(storageContas.getAll(), transacoes);
+      const cartoes = normalizarCartoesComTransacoes(storageCartoes.getAll(), transacoes);
       persistirContasNormalizadas(contas);
+      persistirCartoesNormalizados(cartoes);
 
       set({
         transacoes,
@@ -271,7 +306,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         investimentos: storageInvestimentos.getAll(),
         metas: storageMetas.getAll(),
         contas,
-        cartoes: storageCartoes.getAll(),
+        cartoes,
         orcamentos: storageOrcamentos.getAll(),
         ...getEstadoConfig(config),
       });
@@ -281,10 +316,11 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
     executarSemRecargaLocal(() => {
       const contasNormalizadas = normalizarContasComTransacoes(dados.contas, dados.transacoes);
+      const cartoesNormalizados = normalizarCartoesComTransacoes(dados.cartoes, dados.transacoes);
       storageTransacoes.replaceAll(dados.transacoes);
       storageCategoriass.replaceAll(dados.categorias);
       storageContas.replaceAll(contasNormalizadas);
-      storageCartoes.replaceAll(dados.cartoes);
+      storageCartoes.replaceAll(cartoesNormalizados);
       storageInvestimentos.replaceAll(dados.investimentos);
       storageMetas.replaceAll(dados.metas);
       storageOrcamentos.replaceAll(dados.orcamentos);
@@ -297,7 +333,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         transacoes: dados.transacoes,
         categorias: dados.categorias,
         contas: contasNormalizadas,
-        cartoes: dados.cartoes,
+        cartoes: cartoesNormalizados,
         investimentos: dados.investimentos,
         metas: dados.metas,
         orcamentos: dados.orcamentos,
@@ -496,9 +532,11 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const proximasTransacoes = [nova, ...s.transacoes];
           const impacto = aplicarImpactoFinanceiro(s.contas, s.cartoes, nova, 1);
           const contasNormalizadas = normalizarContasComTransacoes(impacto.contas, proximasTransacoes);
+          const cartoesNormalizados = normalizarCartoesComTransacoes(impacto.cartoes, proximasTransacoes);
           persistirContasNormalizadas(contasNormalizadas, true);
+          persistirCartoesNormalizados(cartoesNormalizados, true);
 
-          return { transacoes: proximasTransacoes, contas: contasNormalizadas, cartoes: impacto.cartoes };
+          return { transacoes: proximasTransacoes, contas: contasNormalizadas, cartoes: cartoesNormalizados };
         });
 
         return nova;
@@ -519,11 +557,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
           const reaplicado = aplicarImpactoFinanceiro(revertido.contas, revertido.cartoes, atualizada, 1);
           const contasNormalizadas = normalizarContasComTransacoes(reaplicado.contas, proximasTransacoes);
+          const cartoesNormalizados = normalizarCartoesComTransacoes(reaplicado.cartoes, proximasTransacoes);
           persistirContasNormalizadas(contasNormalizadas, true);
+          persistirCartoesNormalizados(cartoesNormalizados, true);
           return {
             transacoes: proximasTransacoes,
             contas: contasNormalizadas,
-            cartoes: reaplicado.cartoes,
+            cartoes: cartoesNormalizados,
           };
         });
       });
@@ -540,11 +580,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           const proximasTransacoes = s.transacoes.filter((t) => t.id !== id);
           const revertido = aplicarImpactoFinanceiro(s.contas, s.cartoes, atual, -1);
           const contasNormalizadas = normalizarContasComTransacoes(revertido.contas, proximasTransacoes);
+          const cartoesNormalizados = normalizarCartoesComTransacoes(revertido.cartoes, proximasTransacoes);
           persistirContasNormalizadas(contasNormalizadas, true);
+          persistirCartoesNormalizados(cartoesNormalizados, true);
           return {
             transacoes: proximasTransacoes,
             contas: contasNormalizadas,
-            cartoes: revertido.cartoes,
+            cartoes: cartoesNormalizados,
           };
         });
       });
@@ -603,7 +645,16 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     atualizarFaturaCartao: (id, fatura) => {
       executarSemRecargaLocal(() => {
-        const lista = get().cartoes.map((c) => (c.id === id ? { ...c, fatura_atual: fatura } : c));
+        const baseFatura = calcularBaseFaturaCartao(id, get().transacoes);
+        const lista = get().cartoes.map((c) => (
+          c.id === id
+            ? {
+                ...c,
+                fatura_ajuste_manual: arredondarMoeda(fatura - baseFatura),
+                fatura_atual: arredondarMoeda(fatura),
+              }
+            : c
+        ));
         const cartao = lista.find((c) => c.id === id);
         if (cartao) {
           storageCartoes.save(cartao);
@@ -615,7 +666,12 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarCartao: (dados) => {
       executarSemRecargaLocal(() => {
-        const novo: CartaoCredito = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const novo: CartaoCredito = {
+          ...dados,
+          fatura_ajuste_manual: dados.fatura_atual,
+          id: gerarId(),
+          criado_em: new Date().toISOString(),
+        };
         storageCartoes.save(novo);
         void syncSalvarCartao(novo);
         set((s) => ({ cartoes: [...s.cartoes, novo] }));

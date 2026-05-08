@@ -36,6 +36,7 @@ export interface CartaoCredito {
   nome: string;
   limite: number;
   fatura_atual: number;
+  fatura_ajuste_manual?: number;
   dia_vencimento: number;
   dia_fechamento: number;
   bandeira: BandeirCartao;
