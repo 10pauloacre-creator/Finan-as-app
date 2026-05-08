@@ -25,6 +25,13 @@ const TG_CARD_H = 178;
 const TG_DOT_TOP = 22;
 const TG_DOT_BOT = 110;
 
+type TransacaoPrevista = {
+  uid: string;
+  transacao: import('@/types').Transacao;
+  parcelaLabel?: string; // e.g. "3/12"
+  tipoLabel: 'Recorrente' | 'Parcela' | 'Agendada';
+};
+
 type DadosMesGastos = {
   mes: string;
   label: string;
@@ -32,6 +39,7 @@ type DadosMesGastos = {
   total: number;
   tipo: 'passado' | 'atual' | 'futuro';
   por_categoria: { id: string; nome: string; icone: string; cor: string; valor: number }[];
+  transacoes_previstas: TransacaoPrevista[];
 };
 
 function tgAddMeses(mesKey: string, n: number): string {
@@ -67,8 +75,6 @@ function calcularTimelineGastos(
   categorias: import('@/types').Categoria[],
 ): DadosMesGastos[] {
   const hoje = tgMesAtual();
-
-  // Sempre vai até dezembro de 2027
   const [hojeY, hojeM] = hoje.split('-').map(Number);
   const maxFuturo = Math.max((2027 - hojeY) * 12 + (12 - hojeM), 2);
 
@@ -79,6 +85,7 @@ function calcularTimelineGastos(
     const [year, month] = mes.split('-').map(Number);
     const tipo: DadosMesGastos['tipo'] = mes < hoje ? 'passado' : mes === hoje ? 'atual' : 'futuro';
     const catMap: Record<string, number> = {};
+    const txPrevistas: TransacaoPrevista[] = [];
 
     if (tipo !== 'futuro') {
       // Passado e atual: soma transações com data no mês
@@ -87,34 +94,44 @@ function calcularTimelineGastos(
         catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
       });
     } else {
-      // Futuro: transações já agendadas para o mês
+      // 1. Despesas fixas recorrentes — aparecem em todo mês futuro
       transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
+        if (tx.tipo !== 'despesa' || tx.classificacao !== 'fixa') return;
         catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+        txPrevistas.push({ uid: `${tx.id}-fixa-${mes}`, transacao: tx, tipoLabel: 'Recorrente' });
       });
-      // + parcelas projetadas de meses anteriores (sem dupla contagem)
+
+      // 2. Parcelas projetadas para este mês
       transacoes.forEach((tx) => {
-        if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1) return;
-        if (tx.data.startsWith(mes)) return; // já contado acima
+        if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1 || tx.classificacao === 'fixa') return;
         const parcelaAtual = tx.parcela_atual || 1;
         const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
         const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
-        if (mes >= primeiroMes && mes <= ultimoMes) {
-          catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
-        }
+        if (mes < primeiroMes || mes > ultimoMes) return;
+        const [pY, pM] = primeiroMes.split('-').map(Number);
+        const numParcela = (year - pY) * 12 + (month - pM) + 1;
+        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+        txPrevistas.push({
+          uid: `${tx.id}-parcela-${mes}`,
+          transacao: tx,
+          parcelaLabel: `${numParcela}/${tx.parcelas}`,
+          tipoLabel: 'Parcela',
+        });
+      });
+
+      // 3. Despesas avulsas agendadas explicitamente para este mês
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
+        if (tx.classificacao === 'fixa' || (tx.parcelas && tx.parcelas > 1)) return;
+        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+        txPrevistas.push({ uid: `${tx.id}-agendada-${mes}`, transacao: tx, tipoLabel: 'Agendada' });
       });
     }
 
     const por_categoria = Object.entries(catMap)
       .map(([catId, valor]) => {
         const cat = categorias.find((c) => c.id === catId);
-        return {
-          id: catId,
-          nome: cat?.nome || 'Outros',
-          icone: cat?.icone || '$',
-          cor: cat?.cor || '#6B7280',
-          valor,
-        };
+        return { id: catId, nome: cat?.nome || 'Outros', icone: cat?.icone || '$', cor: cat?.cor || '#6B7280', valor };
       })
       .sort((a, b) => b.valor - a.valor);
 
@@ -125,6 +142,7 @@ function calcularTimelineGastos(
       total: por_categoria.reduce((s, c) => s + c.valor, 0),
       tipo,
       por_categoria,
+      transacoes_previstas: txPrevistas,
     };
   });
 }
@@ -249,44 +267,72 @@ function TimelineGastos({
         </div>
       </div>
 
-      {mesSel && mesSel.por_categoria.length > 0 && (
+      {mesSel && (mesSel.por_categoria.length > 0 || mesSel.transacoes_previstas.length > 0) && (
         <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="text-xs text-slate-500 mb-3">
-            {mesSel.label} {mesSel.ano}
-            {mesSel.tipo === 'futuro' && ' — projeção de parcelas'}
-            {mesSel.tipo === 'passado' && ' — despesas do mês'}
-            {mesSel.tipo === 'atual' && ' — despesas até agora'}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-slate-500">
+              {mesSel.label} {mesSel.ano}
+              {mesSel.tipo === 'futuro' && ' — despesas previstas'}
+              {mesSel.tipo === 'passado' && ' — despesas do mês'}
+              {mesSel.tipo === 'atual' && ' — despesas até agora'}
+            </span>
+            <span className="text-xs font-semibold text-white tabular-nums">{formatarMoeda(mesSel.total)}</span>
           </div>
-          <div className="space-y-2">
-            {mesSel.por_categoria.slice(0, 6).map((c) => (
-              <div key={c.id} className="flex items-center gap-3">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
-                  style={{ background: `${c.cor}22` }}
-                >
-                  {c.icone}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-300 truncate">{c.nome}</span>
-                    <span className="text-xs font-semibold text-white tabular-nums shrink-0">
-                      {formatarMoeda(c.valor)}
+
+          {/* Future months: show individual transaction list */}
+          {mesSel.tipo === 'futuro' && mesSel.transacoes_previstas.length > 0 && (
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              {mesSel.transacoes_previstas.map((item) => {
+                const cat = item.transacao.categoria_id
+                  ? categorias.find((c) => c.id === item.transacao.categoria_id)
+                  : null;
+                return (
+                  <div key={item.uid} className="flex items-center gap-2.5 rounded-xl bg-white/4 px-3 py-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
+                      style={{ background: cat ? `${cat.cor}22` : 'rgba(255,255,255,0.06)' }}>
+                      {cat?.icone || '$'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-white truncate">{item.transacao.descricao}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                          item.tipoLabel === 'Recorrente' ? 'bg-purple-500/20 text-purple-300' :
+                          item.tipoLabel === 'Parcela' ? 'bg-blue-500/20 text-blue-300' :
+                          'bg-amber-500/20 text-amber-300'
+                        }`}>{item.tipoLabel}{item.parcelaLabel ? ` ${item.parcelaLabel}` : ''}</span>
+                        {cat && <span className="text-[10px] text-slate-600 truncate">{cat.nome}</span>}
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-red-400 tabular-nums shrink-0">
+                      -{formatarMoeda(item.transacao.valor)}
                     </span>
                   </div>
-                  <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${(c.valor / mesSel.total) * 100}%`,
-                        background: c.cor,
-                        opacity: 0.7,
-                      }}
-                    />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Past/current months: show category breakdown */}
+          {mesSel.tipo !== 'futuro' && (
+            <div className="space-y-2">
+              {mesSel.por_categoria.slice(0, 6).map((c) => (
+                <div key={c.id} className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
+                    style={{ background: `${c.cor}22` }}>{c.icone}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-slate-300 truncate">{c.nome}</span>
+                      <span className="text-xs font-semibold text-white tabular-nums shrink-0">{formatarMoeda(c.valor)}</span>
+                    </div>
+                    <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full"
+                        style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: c.cor, opacity: 0.7 }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -348,6 +394,7 @@ function calcularTimelineReceitas(
       total: por_categoria.reduce((s, c) => s + c.valor, 0),
       tipo,
       por_categoria,
+      transacoes_previstas: [],
     };
   });
 }
