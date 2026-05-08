@@ -1503,7 +1503,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-white truncate">{transacao.descricao}</div>
                               <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} • cobra em {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
                             <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -1800,7 +1800,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                   <div className="text-xs text-slate-500">
                     {cat?.nome || 'Outros'}
                     {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
-                    {' • '}{t.cartao_id ? 'cobranca ' : ''}{parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    {' • '}{parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                   </div>
                 </div>
                 <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -1821,6 +1821,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
     </div>
   );
 }
+
 
 
 
