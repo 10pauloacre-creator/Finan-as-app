@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Edit, Plus, Search, Trash2, X } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
@@ -16,6 +16,292 @@ import {
   transacaoJaOcorreuAteData,
 } from '@/lib/transacoes';
 
+// ─── Timeline de Gastos ──────────────────────────────────────────────────────
+const TG_CARD_W = 140;
+const TG_CARD_GAP = 12;
+const TG_CARD_STEP = TG_CARD_W + TG_CARD_GAP;
+const TG_CARD_H = 178;
+const TG_DOT_TOP = 22;
+const TG_DOT_BOT = 110;
+
+type DadosMesGastos = {
+  mes: string;
+  label: string;
+  ano: string;
+  total: number;
+  tipo: 'passado' | 'atual' | 'futuro';
+  por_categoria: { id: string; nome: string; icone: string; cor: string; valor: number }[];
+};
+
+function tgAddMeses(mesKey: string, n: number): string {
+  const [y, m] = mesKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function tgMesAtual(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function tgDotY(valor: number, maxValor: number): number {
+  if (maxValor === 0) return (TG_DOT_TOP + TG_DOT_BOT) / 2;
+  const norm = Math.min(valor / maxValor, 1);
+  return TG_DOT_BOT - norm * (TG_DOT_BOT - TG_DOT_TOP);
+}
+
+function tgBuildPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return pts.length === 1 ? `M ${pts[0].x} ${pts[0].y}` : '';
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const cp1x = pts[i - 1].x + TG_CARD_STEP * 0.4;
+    const cp2x = pts[i].x - TG_CARD_STEP * 0.4;
+    d += ` C ${cp1x} ${pts[i - 1].y}, ${cp2x} ${pts[i].y}, ${pts[i].x} ${pts[i].y}`;
+  }
+  return d;
+}
+
+function calcularTimelineGastos(
+  transacoes: import('@/types').Transacao[],
+  categorias: import('@/types').Categoria[],
+): DadosMesGastos[] {
+  const hoje = tgMesAtual();
+
+  let maxFuturo = 2;
+  transacoes.forEach((tx) => {
+    if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1) return;
+    const parcelaAtual = tx.parcela_atual || 1;
+    const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
+    const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
+    if (ultimoMes > hoje) {
+      const [y1, m1] = hoje.split('-').map(Number);
+      const [y2, m2] = ultimoMes.split('-').map(Number);
+      const diff = (y2 - y1) * 12 + (m2 - m1);
+      maxFuturo = Math.max(maxFuturo, Math.min(diff, 6));
+    }
+  });
+
+  const todosMeses: string[] = [];
+  for (let i = -3; i <= maxFuturo; i++) todosMeses.push(tgAddMeses(hoje, i));
+
+  return todosMeses.map((mes) => {
+    const [year, month] = mes.split('-').map(Number);
+    const tipo: DadosMesGastos['tipo'] = mes < hoje ? 'passado' : mes === hoje ? 'atual' : 'futuro';
+    const catMap: Record<string, number> = {};
+
+    if (tipo !== 'futuro') {
+      // Passado e atual: soma transações com data no mês
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
+        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+      });
+    } else {
+      // Futuro: transações já agendadas para o mês
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'despesa' || !tx.data.startsWith(mes)) return;
+        catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+      });
+      // + parcelas projetadas de meses anteriores (sem dupla contagem)
+      transacoes.forEach((tx) => {
+        if (tx.tipo !== 'despesa' || !tx.parcelas || tx.parcelas <= 1) return;
+        if (tx.data.startsWith(mes)) return; // já contado acima
+        const parcelaAtual = tx.parcela_atual || 1;
+        const primeiroMes = tgAddMeses(tx.data.substring(0, 7), 1 - parcelaAtual);
+        const ultimoMes = tgAddMeses(primeiroMes, tx.parcelas - 1);
+        if (mes >= primeiroMes && mes <= ultimoMes) {
+          catMap[tx.categoria_id] = (catMap[tx.categoria_id] || 0) + tx.valor;
+        }
+      });
+    }
+
+    const por_categoria = Object.entries(catMap)
+      .map(([catId, valor]) => {
+        const cat = categorias.find((c) => c.id === catId);
+        return {
+          id: catId,
+          nome: cat?.nome || 'Outros',
+          icone: cat?.icone || '$',
+          cor: cat?.cor || '#6B7280',
+          valor,
+        };
+      })
+      .sort((a, b) => b.valor - a.valor);
+
+    return {
+      mes,
+      label: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][month - 1],
+      ano: String(year),
+      total: por_categoria.reduce((s, c) => s + c.valor, 0),
+      tipo,
+      por_categoria,
+    };
+  });
+}
+
+function TimelineGastos({
+  transacoes,
+  categorias,
+}: {
+  transacoes: import('@/types').Transacao[];
+  categorias: import('@/types').Categoria[];
+}) {
+  const dados = useMemo(() => calcularTimelineGastos(transacoes, categorias), [transacoes, categorias]);
+  const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+    if (atualIdx < 0) return;
+    const containerW = scrollRef.current.clientWidth;
+    scrollRef.current.scrollLeft = Math.max(0, atualIdx * TG_CARD_STEP - containerW / 2 + TG_CARD_W / 2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const maxValor = Math.max(...dados.map((d) => d.total), 1);
+  const totalW = dados.length * TG_CARD_STEP - TG_CARD_GAP;
+  const atualIdx = dados.findIndex((d) => d.tipo === 'atual');
+
+  const points = dados.map((d, i) => ({
+    x: i * TG_CARD_STEP + TG_CARD_W / 2,
+    y: tgDotY(d.total, maxValor),
+  }));
+
+  const pastPath = tgBuildPath(points.slice(0, atualIdx + 1));
+  const futurePath = atualIdx >= 0 ? tgBuildPath(points.slice(atualIdx)) : '';
+
+  const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
+
+  return (
+    <div className="glass-card p-5">
+      <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos por Mês</h3>
+      <p className="text-[11px] text-slate-600 mb-4">Despesas realizadas e projeção de parcelas futuras</p>
+
+      <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
+        <div className="relative" style={{ width: totalW, height: TG_CARD_H }}>
+          <svg
+            width={totalW}
+            height={TG_CARD_H}
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 2 }}
+          >
+            <defs>
+              <linearGradient id="tgFillGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#EF4444" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#EF4444" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+
+            {atualIdx >= 0 && (
+              <path
+                d={`M ${atualIdx * TG_CARD_STEP} ${TG_CARD_H} L ${atualIdx * TG_CARD_STEP} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${points[atualIdx].y} L ${atualIdx * TG_CARD_STEP + TG_CARD_W} ${TG_CARD_H} Z`}
+                fill="url(#tgFillGrad)"
+              />
+            )}
+
+            <path d={pastPath} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+
+            {futurePath && (
+              <path d={futurePath} fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+            )}
+
+            {points.map((pt, i) => {
+              const d = dados[i];
+              const isAtual = d.tipo === 'atual';
+              const isPast = d.tipo === 'passado';
+              return (
+                <g key={d.mes}>
+                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill="#EF4444" fillOpacity="0.12" />}
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={isAtual ? 6 : 5}
+                    fill={isPast ? '#10B981' : isAtual ? 'white' : 'transparent'}
+                    stroke={isPast ? '#10B981' : isAtual ? '#EF4444' : '#6B7280'}
+                    strokeWidth={isAtual ? 2.5 : 1.5}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {dados.map((d, i) => {
+            const isAtual = d.tipo === 'atual';
+            const isFuturo = d.tipo === 'futuro';
+            const isSel = mesSelecionado === d.mes;
+            return (
+              <button
+                key={d.mes}
+                type="button"
+                onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
+                className={`absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all ${
+                  isAtual
+                    ? 'border-2 border-red-500/50 bg-red-500/5'
+                    : isSel
+                      ? 'border border-purple-500/40 bg-white/4'
+                      : 'border border-white/5 bg-white/2 hover:bg-white/5'
+                }`}
+                style={{ left: i * TG_CARD_STEP, top: 0, width: TG_CARD_W, height: TG_CARD_H, zIndex: 1 }}
+              >
+                <div className={`text-xs font-semibold mb-1 ${isAtual ? 'text-red-400' : isFuturo ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {d.label}
+                </div>
+                <div className={`text-sm font-bold tabular-nums ${isAtual ? 'text-red-300' : isFuturo ? 'text-slate-500' : 'text-white'}`}>
+                  {formatarMoeda(d.total)}
+                </div>
+                {isFuturo && d.total > 0 && (
+                  <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {mesSel && mesSel.por_categoria.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="text-xs text-slate-500 mb-3">
+            {mesSel.label} {mesSel.ano}
+            {mesSel.tipo === 'futuro' && ' — projeção de parcelas'}
+            {mesSel.tipo === 'passado' && ' — despesas do mês'}
+            {mesSel.tipo === 'atual' && ' — despesas até agora'}
+          </div>
+          <div className="space-y-2">
+            {mesSel.por_categoria.slice(0, 6).map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
+                  style={{ background: `${c.cor}22` }}
+                >
+                  {c.icone}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-300 truncate">{c.nome}</span>
+                    <span className="text-xs font-semibold text-white tabular-nums shrink-0">
+                      {formatarMoeda(c.valor)}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(c.valor / mesSel.total) * 100}%`,
+                        background: c.cor,
+                        opacity: 0.7,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const FILTROS_TIPO = [
   { valor: 'todos', label: 'Todos' },
   { valor: 'despesa', label: 'Despesas' },
@@ -27,6 +313,7 @@ const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set',
 
 type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
 type ClassificacaoFiltro = 'todas' | 'padrao' | 'fixa' | 'futura';
+type StatusFiltro = 'todos' | 'realizadas' | 'previstas';
 type TransacaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
@@ -266,6 +553,7 @@ export default function Transacoes() {
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes');
   const [filtroClassificacao, setFiltroClassificacao] = useState<ClassificacaoFiltro>('todas');
+  const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('todos');
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [transacaoEditar, setTransacaoEditar] = useState<Transacao | undefined>();
@@ -349,26 +637,48 @@ export default function Transacoes() {
     })
   ), [transacoesFiltradas, periodo, referenciaTotais]);
 
-  const totais = useMemo(() => ({
-    receitas: transacoesRealizadasFiltradas
-      .filter(({ transacao }) => transacao.tipo === 'receita')
-      .reduce((soma, { transacao }) => soma + transacao.valor, 0),
-    despesas: transacoesRealizadasFiltradas
-      .filter(({ transacao }) => transacao.tipo === 'despesa')
-      .reduce((soma, { transacao }) => soma + transacao.valor, 0),
-  }), [transacoesRealizadasFiltradas]);
+  const totais = useMemo(() => {
+    const realizadasIds = new Set(
+      transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
+    );
+    const despesasPrevistas = transacoesFiltradas
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'despesa'
+        && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
+    return {
+      receitas: transacoesRealizadasFiltradas
+        .filter(({ transacao }) => transacao.tipo === 'receita')
+        .reduce((soma, { transacao }) => soma + transacao.valor, 0),
+      despesas: transacoesRealizadasFiltradas
+        .filter(({ transacao }) => transacao.tipo === 'despesa')
+        .reduce((soma, { transacao }) => soma + transacao.valor, 0),
+      despesasPrevistas,
+    };
+  }, [transacoesRealizadasFiltradas, transacoesFiltradas]);
 
   const saldo = totais.receitas - totais.despesas;
 
   const transacoesAgrupadas = useMemo(() => {
+    const realizadasIds = new Set(
+      transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
+    );
     const grupos: Record<string, TransacaoExibicao[]> = {};
-    const ordenadas = [...transacoesFiltradas].sort((a, b) => b.dataExibicao.localeCompare(a.dataExibicao));
+    const base = filtroStatus === 'todos'
+      ? transacoesFiltradas
+      : transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
+          const realizada = realizadasIds.has(`${transacao.id}|${dataExibicao}`);
+          return filtroStatus === 'realizadas' ? realizada : !realizada;
+        });
+    const ordenadas = [...base].sort((a, b) => b.dataExibicao.localeCompare(a.dataExibicao));
     ordenadas.forEach((item) => {
       if (!grupos[item.dataExibicao]) grupos[item.dataExibicao] = [];
       grupos[item.dataExibicao].push(item);
     });
     return Object.entries(grupos).sort(([a], [b]) => b.localeCompare(a));
-  }, [transacoesFiltradas]);
+  }, [transacoesFiltradas, transacoesRealizadasFiltradas, filtroStatus]);
 
   const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -432,28 +742,61 @@ export default function Transacoes() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-emerald-800/40 bg-emerald-950/30 p-3 text-center">
-          <div className="mb-0.5 text-[10px] uppercase tracking-wide text-emerald-400">Receitas</div>
-          <div className="text-base font-bold tabular-nums text-emerald-400">{formatarMoeda(totais.receitas)}</div>
-        </div>
-        <div className="rounded-2xl border border-red-800/40 bg-red-950/30 p-3 text-center">
-          <div className="mb-0.5 text-[10px] uppercase tracking-wide text-red-400">Despesas</div>
-          <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(totais.despesas)}</div>
-        </div>
-        <div className={`rounded-2xl border p-3 text-center ${saldo >= 0 ? 'border-blue-800/40 bg-blue-950/30' : 'border-orange-800/40 bg-orange-950/30'}`}>
-          <div className={`mb-0.5 text-[10px] uppercase tracking-wide ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>Saldo</div>
-          <div className={`text-base font-bold tabular-nums ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>
-            {saldo >= 0 ? '+' : ''}{formatarMoeda(saldo)}
+      <div className="space-y-2">
+        {/* Linha 1: Receitas e Saldo */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-emerald-800/40 bg-emerald-950/30 p-3 text-center">
+            <div className="mb-0.5 text-[10px] uppercase tracking-wide text-emerald-400">Receitas</div>
+            <div className="text-base font-bold tabular-nums text-emerald-400">{formatarMoeda(totais.receitas)}</div>
+          </div>
+          <div className={`rounded-2xl border p-3 text-center ${saldo >= 0 ? 'border-blue-800/40 bg-blue-950/30' : 'border-orange-800/40 bg-orange-950/30'}`}>
+            <div className={`mb-0.5 text-[10px] uppercase tracking-wide ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>Saldo</div>
+            <div className={`text-base font-bold tabular-nums ${saldo >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>
+              {saldo >= 0 ? '+' : ''}{formatarMoeda(saldo)}
+            </div>
           </div>
         </div>
+
+        {/* Linha 2: Despesas detalhadas */}
+        <div className="rounded-2xl border border-red-800/40 bg-red-950/30 p-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Já debitadas</div>
+              <div className="text-sm font-bold tabular-nums text-red-400">{formatarMoeda(totais.despesas)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-0.5">Previstas</div>
+              <div className="text-sm font-bold tabular-nums text-amber-400">{formatarMoeda(totais.despesasPrevistas)}</div>
+            </div>
+            <div className="border-l border-red-800/40 pl-2">
+              <div className="text-[10px] uppercase tracking-wide text-red-300 mb-0.5">Total do mês</div>
+              <div className="text-sm font-bold tabular-nums text-white">{formatarMoeda(totais.despesas + totais.despesasPrevistas)}</div>
+            </div>
+          </div>
+          {totais.despesasPrevistas > 0 && (
+            <div className="mt-2.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-red-500/60 rounded-full"
+                style={{ width: `${Math.min((totais.despesas / (totais.despesas + totais.despesasPrevistas)) * 100, 100)}%` }}
+              />
+            </div>
+          )}
+          {totais.despesasPrevistas > 0 && (
+            <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+              <span>debitado</span>
+              <span>previsto</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      <TimelineGastos transacoes={transacoes} categorias={categorias} />
 
       {chipsCategoria.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setCatSelecionada(null)}
-            className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
               catSelecionada === null
                 ? 'bg-purple-600 text-white'
                 : 'border border-white/10 bg-white/[0.05] text-slate-400 hover:text-white'
@@ -465,7 +808,7 @@ export default function Transacoes() {
             <button
               key={cat.id}
               onClick={() => setCatSelecionada(catSelecionada === cat.id ? null : cat.id)}
-              className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                 catSelecionada === cat.id
                   ? 'text-white shadow-lg'
                   : 'border border-white/10 bg-white/[0.05] text-slate-400 hover:text-white'
@@ -511,9 +854,32 @@ export default function Transacoes() {
             <button
               key={f.valor}
               onClick={() => setFiltroClassificacao(f.valor)}
-              className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                 filtroClassificacao === f.valor
                   ? 'bg-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          {([
+            { valor: 'todos', label: 'Todos' },
+            { valor: 'realizadas', label: '✓ Já debitadas' },
+            { valor: 'previstas', label: '⏱ Previstas' },
+          ] as { valor: StatusFiltro; label: string }[]).map((f) => (
+            <button
+              key={f.valor}
+              onClick={() => setFiltroStatus(f.valor)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                filtroStatus === f.valor
+                  ? f.valor === 'realizadas'
+                    ? 'bg-emerald-700 text-white'
+                    : f.valor === 'previstas'
+                      ? 'bg-amber-700 text-white'
+                      : 'bg-purple-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
@@ -565,7 +931,7 @@ export default function Transacoes() {
                         className="group flex w-full items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left"
                       >
                         <div
-                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
                           style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)' }}
                         >
                           {cat?.icone || '$'}
@@ -602,7 +968,7 @@ export default function Transacoes() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2">
                           <span className={`text-sm font-semibold tabular-nums ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                             {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
                           </span>
