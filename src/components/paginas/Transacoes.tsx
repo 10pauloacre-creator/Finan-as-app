@@ -574,6 +574,15 @@ const FILTROS_LINHA2: { valor: FiltroLinha2; label: string }[] = [
   { valor: 'previstas',    label: '⏱ Previstas' },
 ];
 
+const LABEL_FILTRO_DESPESA: Record<FiltroLinha2, string> = {
+  todas: 'Total do mês',
+  padrao: 'Total de gastos normais',
+  fixa: 'Total de gastos fixos',
+  assinaturas: 'Total de assinaturas',
+  ja_debitadas: 'Total já debitado',
+  previstas: 'Total previsto',
+};
+
 const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'emprestimo', 'financiamento']);
 
 function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'futura' {
@@ -943,10 +952,13 @@ export default function Transacoes() {
     })
   ), [transacoesFiltradas, periodo, referenciaTotais]);
 
-  const totais = useMemo(() => {
-    const realizadasIds = new Set(
+  const realizadasIds = useMemo(() => (
+    new Set(
       transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
-    );
+    )
+  ), [transacoesRealizadasFiltradas]);
+
+  const totais = useMemo(() => {
     const despesasPrevistas = transacoesFiltradas
       .filter(({ transacao, dataExibicao }) => (
         transacao.tipo === 'despesa'
@@ -964,15 +976,12 @@ export default function Transacoes() {
         .reduce((soma, { transacao }) => soma + transacao.valor, 0),
       despesasPrevistas,
     };
-  }, [transacoesRealizadasFiltradas, transacoesFiltradas]);
+  }, [realizadasIds, transacoesRealizadasFiltradas, transacoesFiltradas]);
 
   const saldo = totais.receitas - totais.despesas;
 
   // Despesas já saídas do saldo bancário (PIX/débito/transferência, sem cartão)
   const debitadasSaldo = useMemo(() => {
-    const realizadasIds = new Set(
-      transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
-    );
     return transacoesFiltradas
       .filter(({ transacao, dataExibicao }) =>
         transacao.tipo === 'despesa' &&
@@ -981,35 +990,55 @@ export default function Transacoes() {
         (!transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento)),
       )
       .reduce((s, { transacao }) => s + transacao.valor, 0);
-  }, [transacoesFiltradas, transacoesRealizadasFiltradas]);
+  }, [realizadasIds, transacoesFiltradas]);
 
   // Tudo que ainda precisa ser pago (cartão + contas futuras)
   const aPagar = totais.despesas + totais.despesasPrevistas - debitadasSaldo;
 
+  const transacoesBaseExibidas = useMemo(() => {
+    if (filtroLinha2 !== 'ja_debitadas' && filtroLinha2 !== 'previstas') {
+      return transacoesFiltradas;
+    }
+
+    return transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
+      const realizada = realizadasIds.has(`${transacao.id}|${dataExibicao}`);
+      if (filtroLinha2 === 'ja_debitadas') {
+        const naoCartao = !transacao.cartao_id;
+        const metodoOk = !transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento);
+        return realizada && naoCartao && metodoOk;
+      }
+      return !transacao.cartao_id && !realizada;
+    });
+  }, [filtroLinha2, realizadasIds, transacoesFiltradas]);
+
+  const resumoFiltroDespesas = useMemo(() => {
+    const base = transacoesBaseExibidas.filter(({ transacao }) => transacao.tipo === 'despesa');
+    const total = base.reduce((soma, { transacao }) => soma + transacao.valor, 0);
+    const debitadas = base
+      .filter(({ transacao, dataExibicao }) => (
+        realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+        && !transacao.cartao_id
+        && (!transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento))
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
+    return {
+      total,
+      debitadas,
+      aPagar: Math.max(total - debitadas, 0),
+    };
+  }, [realizadasIds, transacoesBaseExibidas]);
+
   const transacoesAgrupadas = useMemo(() => {
-    const realizadasIds = new Set(
-      transacoesRealizadasFiltradas.map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
-    );
     const grupos: Record<string, TransacaoExibicao[]> = {};
-    const base = (filtroLinha2 === 'ja_debitadas' || filtroLinha2 === 'previstas')
-      ? transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
-          const realizada = realizadasIds.has(`${transacao.id}|${dataExibicao}`);
-          if (filtroLinha2 === 'ja_debitadas') {
-            const naoCartao = !transacao.cartao_id;
-            const metodoOk = !transacao.metodo_pagamento
-              || METODOS_DEBITO.has(transacao.metodo_pagamento);
-            return realizada && naoCartao && metodoOk;
-          }
-          return !transacao.cartao_id && !realizada;
-        })
-      : transacoesFiltradas;
+    const base = transacoesBaseExibidas;
     const ordenadas = [...base].sort((a, b) => b.dataOrdenacao.localeCompare(a.dataOrdenacao));
     ordenadas.forEach((item) => {
       if (!grupos[item.dataExibicao]) grupos[item.dataExibicao] = [];
       grupos[item.dataExibicao].push(item);
     });
     return Object.entries(grupos).sort(([a], [b]) => b.localeCompare(a));
-  }, [transacoesFiltradas, transacoesRealizadasFiltradas, filtroLinha2]);
+  }, [transacoesBaseExibidas]);
 
   const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -1088,27 +1117,27 @@ export default function Transacoes() {
           {/* Summary */}
           <div className="space-y-2">
             <div className="rounded-2xl border border-red-800/30 bg-red-950/20 p-4">
-              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Total do mês</div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">{LABEL_FILTRO_DESPESA[filtroLinha2]}</div>
               <div className="text-2xl font-bold tabular-nums text-white mb-3">
-                {formatarMoeda(totais.despesas + totais.despesasPrevistas)}
+                {formatarMoeda(resumoFiltroDespesas.total)}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-white/5 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Debitadas do saldo</div>
-                  <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(debitadasSaldo)}</div>
+                  <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(resumoFiltroDespesas.debitadas)}</div>
                   <div className="text-[10px] text-slate-600 mt-0.5">PIX, boleto, débito</div>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-1">A pagar</div>
-                  <div className="text-base font-bold tabular-nums text-amber-400">{formatarMoeda(Math.max(aPagar, 0))}</div>
+                  <div className="text-base font-bold tabular-nums text-amber-400">{formatarMoeda(resumoFiltroDespesas.aPagar)}</div>
                   <div className="text-[10px] text-slate-600 mt-0.5">Cartão, contas, etc.</div>
                 </div>
               </div>
-              {totais.despesasPrevistas > 0 && (
+              {resumoFiltroDespesas.total > 0 && resumoFiltroDespesas.aPagar > 0 && (
                 <div className="mt-3">
                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-red-500/60 rounded-full"
-                      style={{ width: `${Math.min((debitadasSaldo / (totais.despesas + totais.despesasPrevistas)) * 100, 100)}%` }} />
+                      style={{ width: `${Math.min((resumoFiltroDespesas.debitadas / resumoFiltroDespesas.total) * 100, 100)}%` }} />
                   </div>
                   <div className="mt-1 flex justify-between text-[10px] text-slate-600">
                     <span>debitado do saldo</span>

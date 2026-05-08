@@ -171,6 +171,7 @@ function mapTransacao(t: Transacao) {
     observacoes: t.observacoes,
     itens_compra: t.itens_compra,
     criado_em: t.criado_em,
+    atualizado_em: t.atualizado_em,
   };
 }
 

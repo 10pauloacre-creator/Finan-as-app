@@ -90,6 +90,7 @@ export interface Transacao {
   itens_compra?: ItemCompra[];
   observacoes?: string;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── Investimentos ────────────────────────────────────

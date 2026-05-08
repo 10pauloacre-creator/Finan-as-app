@@ -67,7 +67,8 @@ create table if not exists transacoes (
   itens_compra       jsonb,
   pluggy_id          text,
   pluggy_account_id  text,
-  criado_em          timestamptz default now()
+  criado_em          timestamptz default now(),
+  atualizado_em      timestamptz default now()
 );
 
 -- ── Investimentos ─────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ alter table transacoes    add column if not exists comprovante_url     text;
 alter table transacoes    add column if not exists tags                jsonb;
 alter table transacoes    add column if not exists observacoes         text;
 alter table transacoes    add column if not exists itens_compra        jsonb;
+alter table transacoes    add column if not exists atualizado_em       timestamptz default now();
 alter table configuracoes_app add column if not exists ai_modelo_padrao     text;
 alter table configuracoes_app add column if not exists ai_modelo_ocr_padrao text;
 alter table investimentos add column if not exists valor_atual         numeric default 0;

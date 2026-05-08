@@ -172,6 +172,29 @@ function normalizarTransacoesParaEstado(
   });
 }
 
+function getMarcaAtualizacaoTransacao(transacao: Pick<Transacao, 'atualizado_em' | 'criado_em'>) {
+  const marca = transacao.atualizado_em || transacao.criado_em;
+  const timestamp = marca ? new Date(marca).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function mesclarTransacoesPorAtualizacao(remotas: Transacao[], locais: Transacao[]) {
+  const porId = new Map<string, Transacao>();
+
+  for (const transacao of remotas) {
+    porId.set(transacao.id, transacao);
+  }
+
+  for (const local of locais) {
+    const remota = porId.get(local.id);
+    if (!remota || getMarcaAtualizacaoTransacao(local) >= getMarcaAtualizacaoTransacao(remota)) {
+      porId.set(local.id, local);
+    }
+  }
+
+  return [...porId.values()];
+}
+
 function executarSemRecargaLocal<T>(callback: () => T): T {
   supressaoDeRecargaLocal += 1;
   try {
@@ -394,7 +417,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
     executarSemRecargaLocal(() => {
-      const transacoesNormalizadas = normalizarTransacoesParaEstado(dados.transacoes, dados.categorias, dados.contas, true);
+      const transacoesMescladas = mesclarTransacoesPorAtualizacao(dados.transacoes, storageTransacoes.getAll());
+      const transacoesNormalizadas = normalizarTransacoesParaEstado(transacoesMescladas, dados.categorias, dados.contas, true);
       const contasNormalizadas = normalizarContasComTransacoes(dados.contas, transacoesNormalizadas);
       const cartoesNormalizados = normalizarCartoesComTransacoes(dados.cartoes, transacoesNormalizadas);
       storageTransacoes.replaceAll(transacoesNormalizadas);
@@ -606,8 +630,9 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       return executarSemRecargaLocal(() => {
         const categorias = get().categorias;
         const contas = get().contas;
+        const agora = new Date().toISOString();
         const nova = normalizarTransacaoRelacionamentos(
-          { ...dados, id: gerarId(), criado_em: new Date().toISOString() } as Transacao,
+          { ...dados, id: gerarId(), criado_em: agora, atualizado_em: agora } as Transacao,
           categorias,
           contas,
         );
@@ -635,7 +660,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         if (!atual) return;
 
         const atualizada = normalizarTransacaoRelacionamentos(
-          { ...atual, ...dados },
+          { ...atual, ...dados, atualizado_em: new Date().toISOString() },
           get().categorias,
           get().contas,
         );
