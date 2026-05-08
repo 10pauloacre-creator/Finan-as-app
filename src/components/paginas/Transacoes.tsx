@@ -572,10 +572,10 @@ function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'f
 function getBadgeClassificacao(transacao: Transacao, hoje: Date, dataExibicao?: string) {
   if (transacao.cartao_id && transacao.tipo === 'despesa') {
     const referencia = parseFinancialDate(dataExibicao || transacao.data);
-    const prevista = referencia > hoje;
+    const ativa = referencia > hoje;
     return {
-      label: prevista ? 'Cartao previsto' : 'Cartao ja cobrado',
-      className: prevista
+      label: ativa ? 'Cartao ativo' : 'Cartao ja cobrado',
+      className: ativa
         ? 'bg-amber-500/15 text-amber-300 border-amber-500/20'
         : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20',
     };
@@ -933,6 +933,7 @@ export default function Transacoes() {
     const despesasPrevistas = transacoesFiltradas
       .filter(({ transacao, dataExibicao }) => (
         transacao.tipo === 'despesa'
+        && !transacao.cartao_id
         && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
       ))
       .reduce((soma, { transacao }) => soma + transacao.valor, 0);
@@ -982,7 +983,7 @@ export default function Transacoes() {
               || METODOS_DEBITO.has(transacao.metodo_pagamento);
             return realizada && naoCartao && metodoOk;
           }
-          return !realizada;
+          return !transacao.cartao_id && !realizada;
         })
       : transacoesFiltradas;
     const ordenadas = [...base].sort((a, b) => b.dataOrdenacao.localeCompare(a.dataOrdenacao));

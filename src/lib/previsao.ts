@@ -16,7 +16,7 @@ export function calcularPrevisao(transacoes: Transacao[], diasFuturos = 30): Gas
   const limite = new Date(hoje);
   limite.setDate(limite.getDate() + diasFuturos);
 
-  const assinaturas = detectarAssinaturas(transacoes);
+  const assinaturas = detectarAssinaturas(transacoes.filter((transacao) => !transacao.cartao_id));
   const previsoes: GastoPrevisto[] = [];
   const chaves = new Set<string>();
 
@@ -28,7 +28,7 @@ export function calcularPrevisao(transacoes: Transacao[], diasFuturos = 30): Gas
   };
 
   for (const transacao of transacoes) {
-    if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'futura') continue;
+    if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'futura' || transacao.cartao_id) continue;
 
     const dataTransacao = parseFinancialDate(transacao.data);
     if (dataTransacao < hoje || dataTransacao > limite) continue;
@@ -58,7 +58,7 @@ export function calcularPrevisao(transacoes: Transacao[], diasFuturos = 30): Gas
   }
 
   for (const transacao of transacoes) {
-    if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'fixa') continue;
+    if (transacao.tipo !== 'despesa' || transacao.classificacao !== 'fixa' || transacao.cartao_id) continue;
 
     const base = parseFinancialDate(transacao.data);
     let proxima = new Date(hoje.getFullYear(), hoje.getMonth(), base.getDate());

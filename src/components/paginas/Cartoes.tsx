@@ -148,7 +148,7 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos dos Próximos Meses</h3>
-      <p className="text-[11px] text-slate-600 mb-4">Inclui já debitadas, previstas, recorrentes, futuras e parceladas de todos os cartões</p>
+      <p className="text-[11px] text-slate-600 mb-4">Inclui já debitadas, ativas, recorrentes, futuras e parceladas de todos os cartões</p>
 
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
         <div className="relative" style={{ width: totalW, height: TL_CARD_H }}>
@@ -257,7 +257,7 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
               <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mesSel.total_debitado)}</div>
             </div>
             <div className="rounded-xl bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Previstas</div>
+              <div className="text-[11px] text-slate-500">Ativas</div>
               <div className="mt-1 text-sm font-semibold text-amber-300 tabular-nums">{formatarMoeda(mesSel.total_previsto)}</div>
             </div>
           </div>
@@ -289,12 +289,12 @@ type StatusImportacao = {
   mensagem: string;
 };
 
-type FiltroLancamentoCartao = 'todos' | 'previstas' | 'debitadas';
+type FiltroLancamentoCartao = 'todos' | 'ativas' | 'debitadas';
 
 type LancamentoCartaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
-  status: 'prevista' | 'debitada';
+  status: 'ativa' | 'debitada';
 };
 
 type RespostaImportacao = {
@@ -439,7 +439,7 @@ function construirLancamentosDaFatura(
       lista.push({
         transacao,
         dataExibicao: dataCobranca,
-        status: dataCobrancaDate > referencia ? 'prevista' : 'debitada',
+        status: dataCobrancaDate > referencia ? 'ativa' : 'debitada',
       });
     });
   });
@@ -885,8 +885,8 @@ export default function Cartoes() {
           const lista = listaCompleta.filter((item) => (
             filtroLancamentos === 'todos'
               ? true
-              : filtroLancamentos === 'previstas'
-              ? item.status === 'prevista'
+              : filtroLancamentos === 'ativas'
+              ? item.status === 'ativa'
               : item.status === 'debitada'
           ));
           const compras = listaCompleta.filter((item) => item.transacao.tipo === 'despesa');
@@ -894,7 +894,7 @@ export default function Cartoes() {
           const baseLancamentos = compras.reduce((soma, item) => soma + item.transacao.valor, 0)
             - estornos.reduce((soma, item) => soma + item.transacao.valor, 0);
           const totalPrevistas = listaCompleta
-            .filter((item) => item.status === 'prevista' && item.transacao.tipo === 'despesa')
+            .filter((item) => item.status === 'ativa' && item.transacao.tipo === 'despesa')
             .reduce((soma, item) => soma + item.transacao.valor, 0);
           const totalDebitado = listaCompleta
             .filter((item) => item.status === 'debitada' && item.transacao.tipo === 'despesa')
@@ -1158,7 +1158,7 @@ export default function Cartoes() {
                         <div className="text-sm font-semibold text-emerald-300 mt-1 tabular-nums">{formatarMoeda(totalDebitado)}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Previstas</div>
+                        <div className="text-[11px] text-slate-500">Ativas</div>
                         <div className="text-sm font-semibold text-amber-300 mt-1 tabular-nums">{formatarMoeda(totalPrevistas)}</div>
                       </div>
                     </div>
@@ -1166,7 +1166,7 @@ export default function Cartoes() {
                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                       {([
                         { valor: 'todos', label: 'Todos' },
-                        { valor: 'previstas', label: 'Previstas' },
+                        { valor: 'ativas', label: 'Ativas' },
                         { valor: 'debitadas', label: 'Já debitadas' },
                       ] as const).map((filtro) => (
                         <button
@@ -1201,7 +1201,7 @@ export default function Cartoes() {
                                 cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
                                 {categoria?.nome ? ` • ${categoria.nome}` : ''}
-                                {` • ${status === 'prevista' ? 'prevista' : 'já debitada'}`}
+                                {` • ${status === 'ativa' ? 'ativa' : 'já debitada'}`}
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
