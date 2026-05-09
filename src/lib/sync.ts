@@ -316,6 +316,10 @@ export async function syncSalvarCategoria(c: Categoria) {
   await sincronizarOperacao('categorias', 'upsert', mapCategoria(c));
 }
 
+export async function syncExcluirCategoria(id: string) {
+  await sincronizarOperacao('categorias', 'delete', { id });
+}
+
 export async function syncCarregarCategorias(): Promise<Categoria[]> {
   if (!ok()) return [];
   const { data, error } = await supabase.from('categorias').select('*');

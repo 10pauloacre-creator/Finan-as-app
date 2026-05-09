@@ -451,8 +451,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     if (syncEmAndamento) return syncEmAndamento;
 
     syncEmAndamento = (async () => {
-      const fila = await processarFilaDeSincronizacao();
-      if (fila.pendentes > 0) return;
+      await processarFilaDeSincronizacao();
       let dados = await baixarTudoDoSupabase();
 
       if (!contarRegistrosRemotos(dados)) {
