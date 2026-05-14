@@ -5,10 +5,10 @@ import {
   Settings, Lock, Bell, Palette, Database, RefreshCw,
   Download, Upload, Trash2, Shield, ChevronRight, Check,
   Eye, EyeOff, X, Smartphone, Globe, Info, LogOut,
-  TrendingUp, Cloud, AlertTriangle, Copy, Brain,
+  TrendingUp, Cloud, AlertTriangle, Copy, Brain, HardDrive,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { storageTransacoes } from '@/lib/storage';
+import { aplicarBackupSnapshot, capturarBackupSnapshot, FINANCEIRO_OPEN_BACKUP_EVENT } from '@/lib/storage';
 import AIModelSelect from '@/components/ui/AIModelSelect';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
@@ -173,6 +173,75 @@ function ModalPin({ onFechar, onSalvar }: { onFechar: () => void; onSalvar: (pin
   );
 }
 
+function ModalBackup({
+  aberto,
+  onFechar,
+  onFazerBackup,
+  onRestaurarLocal,
+  onRestaurarNuvem,
+  carregando,
+  localInfo,
+  cloudInfo,
+}: {
+  aberto: boolean;
+  onFechar: () => void;
+  onFazerBackup: () => void;
+  onRestaurarLocal: () => void;
+  onRestaurarNuvem: () => void;
+  carregando: boolean;
+  localInfo: string;
+  cloudInfo: string;
+}) {
+  if (!aberto) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onFechar}>
+      <div
+        className="w-full max-w-md bg-[#0A0E1A] border border-white/[0.08] rounded-2xl p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <HardDrive size={16} className="text-emerald-400" /> Backup e restauração
+          </h3>
+          <button onClick={onFechar} className="text-slate-500 hover:text-white p-1">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-2 text-xs text-slate-500">
+          <p>Último backup local: {localInfo}</p>
+          <p>Último backup na nuvem: {cloudInfo}</p>
+        </div>
+
+        <div className="grid gap-2">
+          <button
+            onClick={onFazerBackup}
+            disabled={carregando}
+            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+          >
+            Fazer backup
+          </button>
+          <button
+            onClick={onRestaurarLocal}
+            disabled={carregando}
+            className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-50 text-slate-200 text-sm font-medium transition-colors"
+          >
+            Restaurar dados locais
+          </button>
+          <button
+            onClick={onRestaurarNuvem}
+            disabled={carregando}
+            className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-50 text-slate-200 text-sm font-medium transition-colors"
+          >
+            Restaurar dados da nuvem
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Configuracoes() {
   const {
     config,
@@ -198,6 +267,10 @@ export default function Configuracoes() {
   const [toast, setToast] = useState('');
   const [buscandoTaxas, setBuscandoTaxas] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [backupAberto, setBackupAberto] = useState(false);
+  const [backupCarregando, setBackupCarregando] = useState(false);
+  const [backupLocalInfo, setBackupLocalInfo] = useState('nenhum');
+  const [backupCloudInfo, setBackupCloudInfo] = useState('nenhum');
   const [aiStatus, setAiStatus] = useState<Array<{
     id: string;
     label: string;
@@ -262,6 +335,32 @@ export default function Configuracoes() {
     };
   }, []);
 
+  async function carregarStatusBackups() {
+    try {
+      const res = await fetch('/api/backups');
+      const data = await res.json();
+      if (!data?.ok) return;
+      setBackupLocalInfo(data.local ? `${data.local.nome} · ${new Date(data.local.exportado_em).toLocaleString('pt-BR')}` : 'nenhum');
+      setBackupCloudInfo(data.cloud ? `${data.cloud.nome} · ${new Date(data.cloud.exportado_em).toLocaleString('pt-BR')}` : 'nenhum');
+    } catch {
+      setBackupLocalInfo('indisponível');
+      setBackupCloudInfo('indisponível');
+    }
+  }
+
+  useEffect(() => {
+    void carregarStatusBackups();
+  }, []);
+
+  useEffect(() => {
+    const abrir = () => {
+      setBackupAberto(true);
+      void carregarStatusBackups();
+    };
+    window.addEventListener(FINANCEIRO_OPEN_BACKUP_EVENT, abrir as EventListener);
+    return () => window.removeEventListener(FINANCEIRO_OPEN_BACKUP_EVENT, abrir as EventListener);
+  }, []);
+
   function mostrarToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
@@ -303,17 +402,7 @@ export default function Configuracoes() {
   }
 
   function exportarDados() {
-    const dados = {
-      exportado_em: new Date().toISOString(),
-      versao: '1.0',
-      transacoes,
-      categorias,
-      contas,
-      cartoes,
-      investimentos,
-      metas,
-      orcamentos,
-    };
+    const dados = capturarBackupSnapshot();
     const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -349,11 +438,7 @@ export default function Configuracoes() {
     reader.onload = () => {
       try {
         const dados = JSON.parse(reader.result as string);
-        if (dados.transacoes) {
-          dados.transacoes.forEach((t: typeof transacoes[0]) => {
-            storageTransacoes.save(t);
-          });
-        }
+        aplicarBackupSnapshot(dados);
         carregarDados();
         mostrarToast(`Importado: ${dados.transacoes?.length || 0} transações`);
       } catch {
@@ -376,6 +461,48 @@ export default function Configuracoes() {
     const r = await enviarParaNuvem();
     setSincronizando(false);
     mostrarToast(r.msg);
+  }
+
+  async function handleFazerBackup() {
+    setBackupCarregando(true);
+    try {
+      const snapshot = capturarBackupSnapshot();
+      const res = await fetch('/api/backups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', snapshot }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Erro ao criar backup.');
+      await carregarStatusBackups();
+      mostrarToast('Backup salvo na pasta local e na nuvem!');
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Erro ao criar backup');
+    } finally {
+      setBackupCarregando(false);
+    }
+  }
+
+  async function restaurarBackup(action: 'restore-local' | 'restore-cloud', mensagem: string) {
+    setBackupCarregando(true);
+    try {
+      const res = await fetch('/api/backups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Erro ao restaurar backup.');
+      aplicarBackupSnapshot(data.snapshot || {});
+      carregarDados();
+      await handleEnviar();
+      await carregarStatusBackups();
+      mostrarToast(mensagem);
+    } catch (error) {
+      mostrarToast(error instanceof Error ? error.message : 'Erro ao restaurar backup');
+    } finally {
+      setBackupCarregando(false);
+    }
   }
 
   function limparTodosDados() {
@@ -659,6 +786,23 @@ export default function Configuracoes() {
         </div>
 
         <Item
+          label="Backup avançado"
+          descricao="Criar backup local + nuvem e restaurar o último salvo"
+          icone={<HardDrive size={15} />}
+          acao={(
+            <button
+              onClick={() => {
+                setBackupAberto(true);
+                void carregarStatusBackups();
+              }}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 transition-colors"
+            >
+              Abrir <ChevronRight size={14} />
+            </button>
+          )}
+        />
+
+        <Item
           label="Exportar backup (JSON)"
           descricao="Todos os dados para restauração"
           icone={<Download size={15} />}
@@ -760,6 +904,16 @@ export default function Configuracoes() {
       </Secao>
 
       {modalPin && <ModalPin onFechar={() => setModalPin(false)} onSalvar={salvarPin} />}
+      <ModalBackup
+        aberto={backupAberto}
+        onFechar={() => setBackupAberto(false)}
+        onFazerBackup={() => void handleFazerBackup()}
+        onRestaurarLocal={() => void restaurarBackup('restore-local', 'Dados locais restaurados do último backup!')}
+        onRestaurarNuvem={() => void restaurarBackup('restore-cloud', 'Dados restaurados do último backup da nuvem!')}
+        carregando={backupCarregando}
+        localInfo={backupLocalInfo}
+        cloudInfo={backupCloudInfo}
+      />
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#1a1f35] border border-white/10 rounded-2xl text-sm text-white shadow-xl flex items-center gap-2 whitespace-nowrap">

@@ -9,7 +9,9 @@
       "Bash(powershell -Command \"Select-String 'adicionarCategoria|editarCategoria|excluirCategoria' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts'\")",
       "Bash(powershell -Command \"Select-String 'reservas' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts' -AllMatches | Select-Object LineNumber, Line | head -20\")",
       "Bash(powershell -Command \"Select-String 'adicionarReserva|editarReserva|excluirReserva' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts'\")",
-      "Bash(powershell -Command \"Select-String 'setInterval|setTimeout|delay|interval' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts' | Select-Object -ExpandProperty Line\")"
+      "Bash(powershell -Command \"Select-String 'setInterval|setTimeout|delay|interval' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts' | Select-Object -ExpandProperty Line\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\projetos\\\\financeiro-ia\\\\src\" -Recurse -Name)",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

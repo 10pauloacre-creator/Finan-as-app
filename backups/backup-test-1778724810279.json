@@ -1,0 +1,17 @@
+{
+  "exportado_em": "2026-05-14T02:13:30.279Z",
+  "versao": "2.0",
+  "transacoes": [],
+  "categorias": [],
+  "contas": [],
+  "cartoes": [],
+  "investimentos": [],
+  "metas": [],
+  "orcamentos": [],
+  "reservas": [],
+  "config": {
+    "tema": "escuro",
+    "moeda": "BRL",
+    "notificacoes_ativas": true
+  }
+}

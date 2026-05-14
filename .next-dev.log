@@ -6,6 +6,6 @@
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.39:3000
 - Environments: .env.local
-✓ Ready in 847ms
+✓ Ready in 1151ms
 Creating turbopack project { dir: 'C:\\projetos\\financeiro-ia', testMode: true }
 

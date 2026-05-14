@@ -5,7 +5,7 @@ import iconV2 from '@/app/icons/Iconv2.png';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
-  Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search,
+  Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search, HardDrive,
 } from 'lucide-react';
 import { formatarMoeda } from '@/lib/storage';
 import Dashboard      from '@/components/paginas/Dashboard';
@@ -26,6 +26,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { TipoTransacao } from '@/types';
 
 import { Transacao, Categoria } from '@/types';
+import { FINANCEIRO_OPEN_BACKUP_EVENT } from '@/lib/storage';
 
 type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
 
@@ -414,6 +415,19 @@ export default function AppPrincipal() {
               </button>
             </div>
           )}
+
+          <button
+            onClick={() => {
+              setPagina('configuracoes');
+              window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent(FINANCEIRO_OPEN_BACKUP_EVENT));
+              }, 50);
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-400 hover:text-amber-300 hover:border-amber-500/30 transition-all mb-2"
+          >
+            <HardDrive size={13} />
+            Backup
+          </button>
 
           {/* Configurações */}
           <button

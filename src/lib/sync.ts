@@ -99,8 +99,53 @@ function erroDeColunaAtualizadoEmAusente(error: unknown) {
   return message.includes('.atualizado_em does not exist');
 }
 
+function getMarcaPayload(payload: Record<string, unknown>) {
+  const marca =
+    (typeof payload.atualizado_em === 'string' && payload.atualizado_em)
+    || (typeof payload.criado_em === 'string' && payload.criado_em)
+    || null;
+  const timestamp = marca ? new Date(marca).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+async function carregarRegistroRemotoParaConflito(entity: SyncEntity, id: string) {
+  let resultado = await supabase
+    .from(entity)
+    .select('id, atualizado_em, criado_em')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (resultado.error && erroDeColunaAtualizadoEmAusente(resultado.error)) {
+    tabelasSemAtualizadoEm.add(entity);
+    resultado = await supabase
+      .from(entity)
+      .select('id, criado_em')
+      .eq('id', id)
+      .maybeSingle();
+  }
+
+  if (resultado.error) throw resultado.error;
+  return (resultado.data || null) as Record<string, unknown> | null;
+}
+
+async function remotoEstaMaisNovo(entity: SyncEntity, payload: Record<string, unknown>) {
+  const id = typeof payload.id === 'string' ? payload.id : null;
+  const marcaLocal = getMarcaPayload(payload);
+  if (!id || marcaLocal <= 0) return false;
+
+  const remoto = await carregarRegistroRemotoParaConflito(entity, id);
+  if (!remoto) return false;
+
+  const marcaRemota = getMarcaPayload(remoto);
+  return marcaRemota > marcaLocal;
+}
+
 async function executarOperacao(op: PendingSyncOp) {
   if (op.action === 'upsert') {
+    if (await remotoEstaMaisNovo(op.entity, op.payload)) {
+      return;
+    }
+
     const payload = tabelasSemAtualizadoEm.has(op.entity) ? semCampoAtualizadoEm(op.payload) : op.payload;
     let { error } = await supabase.from(op.entity).upsert(payload);
     if (error && erroDeColunaAtualizadoEmAusente(error)) {

@@ -20,6 +20,21 @@ const KEYS = {
 
 export const FINANCEIRO_STORAGE_EVENT = 'financeiroia:storage-changed';
 const STORAGE_SYNC_KEY = 'fin_storage_last_change';
+export const FINANCEIRO_OPEN_BACKUP_EVENT = 'financeiroia:open-backup-modal';
+
+export type BackupSnapshot = {
+  exportado_em: string;
+  versao: string;
+  transacoes: Transacao[];
+  categorias: Categoria[];
+  contas: ContaBancaria[];
+  cartoes: CartaoCredito[];
+  investimentos: Investimento[];
+  metas: Meta[];
+  orcamentos: Orcamento[];
+  reservas: Reserva[];
+  config: ConfiguracaoApp;
+};
 
 function notifyStorageChange(changedKey: string): void {
   if (typeof window === 'undefined') return;
@@ -255,6 +270,34 @@ export const storageConfig = {
   set: (c: Partial<ConfiguracaoApp>): void =>
     setObj(KEYS.CONFIG, { ...getObj<ConfiguracaoApp>(KEYS.CONFIG, CONFIG_DEFAULT), ...c }),
 };
+
+export function capturarBackupSnapshot(): BackupSnapshot {
+  return {
+    exportado_em: new Date().toISOString(),
+    versao: '2.0',
+    transacoes: storageTransacoes.getAll(),
+    categorias: storageCategoriass.getAll(),
+    contas: storageContas.getAll(),
+    cartoes: storageCartoes.getAll(),
+    investimentos: storageInvestimentos.getAll(),
+    metas: storageMetas.getAll(),
+    orcamentos: storageOrcamentos.getAll(),
+    reservas: storageReservas.getAll(),
+    config: storageConfig.get(),
+  };
+}
+
+export function aplicarBackupSnapshot(snapshot: Partial<BackupSnapshot>) {
+  storageTransacoes.replaceAll(snapshot.transacoes || []);
+  storageCategoriass.replaceAll(snapshot.categorias || []);
+  storageContas.replaceAll(snapshot.contas || []);
+  storageCartoes.replaceAll(snapshot.cartoes || []);
+  storageInvestimentos.replaceAll(snapshot.investimentos || []);
+  storageMetas.replaceAll(snapshot.metas || []);
+  storageOrcamentos.replaceAll(snapshot.orcamentos || []);
+  storageReservas.replaceAll(snapshot.reservas || []);
+  storageConfig.replace(snapshot.config || CONFIG_DEFAULT);
+}
 
 // ── UTILS ───────────────────────────────────────────────
 export function gerarId(): string {
