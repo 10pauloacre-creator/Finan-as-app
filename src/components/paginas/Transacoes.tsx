@@ -548,7 +548,6 @@ const FILTROS_TIPO = [
 const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-type PeriodoFiltro = 'mes' | '3meses' | 'tudo';
 type FiltroLinha2 = 'todas' | 'padrao' | 'fixa' | 'assinaturas' | 'ja_debitadas' | 'previstas';
 type VisuTab = 'despesas' | 'receitas';
 type TransacaoExibicao = {
@@ -648,9 +647,8 @@ export default function Transacoes() {
 
   const [visuTab, setVisuTab] = useState<VisuTab>('despesas');
   const [busca, setBusca] = useState('');
-  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
-  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes');
+  const [filtroMeses, setFiltroMeses] = useState<number[]>([new Date().getMonth() + 1]);
+  const [filtroAnos, setFiltroAnos] = useState<number[] | 'todos'>([new Date().getFullYear()]);
   const [filtroLinha2, setFiltroLinha2] = useState<FiltroLinha2>('todas');
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
@@ -658,52 +656,55 @@ export default function Transacoes() {
   const [transacaoDetalhe, setTransacaoDetalhe] = useState<Transacao | null>(null);
   const hoje = startOfTodayLocal();
 
+  const anosDisponiveis = useMemo(() => {
+    const anos = new Set<number>();
+    transacoes.forEach((t) => anos.add(parseFinancialDate(t.data).getFullYear()));
+    const lista = [...anos].sort();
+    return lista.length > 0 ? lista : [new Date().getFullYear()];
+  }, [transacoes]);
+
   const transacoesPorPeriodo = useMemo<TransacaoExibicao[]>(() => {
-    const agora = new Date();
+    // "Todos": retorna todas as transações sem filtro de data
+    if (filtroAnos === 'todos') {
+      return transacoes.flatMap((transacao) => {
+        const cartao = transacao.cartao_id ? cartoes.find((c) => c.id === transacao.cartao_id) : undefined;
+        const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+        const dataExibicao = transacao.tipo === 'despesa' ? dataCompetencia : transacao.data;
+        return [{ transacao, dataExibicao, dataOrdenacao: dataExibicao }];
+      });
+    }
+
     return transacoes.flatMap((transacao) => {
       const cartao = transacao.cartao_id ? cartoes.find((c) => c.id === transacao.cartao_id) : undefined;
       const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
       const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataCompetencia);
-      const dataOrdenacao = transacao.tipo === 'despesa' ? dataCompetencia : transacao.data;
+      const results: TransacaoExibicao[] = [];
 
-      if (periodo === 'mes') {
-        // Cartão não-recorrente: aplica ciclo de faturamento
-        if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
-          const [faturaAno, faturaMes] = dataCompetencia.split('-').map(Number);
-          return faturaMes === filtroMes && faturaAno === filtroAno
-            ? [{ transacao, dataExibicao: dataCompetencia, dataOrdenacao }]
-            : [];
+      for (const ano of filtroAnos) {
+        for (const mes of filtroMeses) {
+          // Cartão não-recorrente: aplica ciclo de faturamento
+          if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
+            const [faturaAno, faturaMes] = dataCompetencia.split('-').map(Number);
+            if (faturaMes === mes && faturaAno === ano) {
+              results.push({ transacao, dataExibicao: dataCompetencia, dataOrdenacao: dataCompetencia });
+            }
+          } else {
+            const ocorrencia = getDataOcorrenciaNoMes(
+              transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+              mes,
+              ano,
+            );
+            if (ocorrencia) {
+              const dataExibicao = formatFinancialDate(ocorrencia);
+              results.push({ transacao, dataExibicao, dataOrdenacao: dataExibicao });
+            }
+          }
         }
-        // Demais (débito, pix, recorrentes): lógica padrão
-        const ocorrencia = getDataOcorrenciaNoMes(
-          transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
-          filtroMes,
-          filtroAno,
-        );
-        return ocorrencia
-          ? [{
-              transacao,
-              dataExibicao: formatFinancialDate(ocorrencia),
-              dataOrdenacao: formatFinancialDate(ocorrencia),
-            }]
-          : [];
       }
-      if (periodo === '3meses') {
-        const tresMesesAtras = new Date(agora);
-        tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 2);
-        tresMesesAtras.setDate(1);
-        const dataFiltro = transacao.tipo === 'despesa' ? dataCompetencia : transacao.data;
-        return parseFinancialDate(dataFiltro) >= tresMesesAtras
-          ? [{ transacao, dataExibicao: dataFiltro, dataOrdenacao }]
-          : [];
-      }
-      return [{
-        transacao,
-        dataExibicao: transacao.tipo === 'despesa' ? dataCompetencia : transacao.data,
-        dataOrdenacao,
-      }];
+
+      return results;
     });
-  }, [transacoes, periodo, filtroMes, filtroAno, cartoes]);
+  }, [transacoes, filtroMeses, filtroAnos, cartoes]);
 
   const chipsCategoria = useMemo(() => {
     const mapa: Record<string, { id: string; nome: string; icone: string; cor: string; total: number }> = {};
@@ -739,33 +740,17 @@ export default function Transacoes() {
     });
   }, [transacoesPorPeriodo, visuTab, filtroLinha2, busca, catSelecionada, categorias]);
 
-  const referenciaTotais = useMemo(() => {
-    if (periodo !== 'mes') return hoje;
-    const referenciaSelecionada = new Date(filtroAno, filtroMes - 1, 1);
-    const comparacaoAno = referenciaSelecionada.getFullYear() - hoje.getFullYear();
-    const comparacaoMes = comparacaoAno === 0 ? referenciaSelecionada.getMonth() - hoje.getMonth() : comparacaoAno;
-
-    if (comparacaoMes < 0) {
-      return new Date(filtroAno, filtroMes, 0, 23, 59, 59, 999);
-    }
-
-    if (comparacaoMes > 0) {
-      return new Date(filtroAno, filtroMes, 0, 23, 59, 59, 999);
-    }
-
-    return hoje;
-  }, [periodo, filtroAno, filtroMes, hoje]);
-
   const transacoesRealizadasFiltradas = useMemo(() => (
     transacoesFiltradas.filter(({ transacao, dataExibicao }) => {
       const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao);
-      if (periodo === 'mes') {
-        const data = parseFinancialDate(dataExibicao);
-        return transacaoContaNoMesAteData(transacaoNaCompetencia, data.getMonth() + 1, data.getFullYear(), referenciaTotais);
-      }
-      return transacaoJaOcorreuAteData(transacaoNaCompetencia, referenciaTotais);
+      const data = parseFinancialDate(dataExibicao);
+      const mesOcorrencia = data.getMonth() + 1;
+      const anoOcorrencia = data.getFullYear();
+      const fimDoMes = new Date(anoOcorrencia, mesOcorrencia, 0, 23, 59, 59, 999);
+      const referencia = fimDoMes < hoje ? fimDoMes : hoje;
+      return transacaoContaNoMesAteData(transacaoNaCompetencia, mesOcorrencia, anoOcorrencia, referencia);
     })
-  ), [transacoesFiltradas, periodo, referenciaTotais]);
+  ), [transacoesFiltradas, hoje]);
 
   const realizadasIds = useMemo(() => (
     new Set(
@@ -899,29 +884,66 @@ export default function Transacoes() {
         </button>
       </div>
 
-      {/* Period selector */}
-      <div className="flex gap-2">
-        {(['mes', '3meses', 'tudo'] as PeriodoFiltro[]).map((p) => (
-          <button key={p} onClick={() => setPeriodo(p)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-              periodo === p
+      {/* Filtro multi-seleção de meses e anos */}
+      <div className="space-y-2">
+        {/* Anos */}
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setFiltroAnos('todos')}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+              filtroAnos === 'todos'
                 ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
                 : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
             }`}
           >
-            {p === 'mes' ? 'Este mês' : p === '3meses' ? '3 meses' : 'Tudo'}
+            Todos
           </button>
-        ))}
-        {periodo === 'mes' && (
-          <div className="ml-auto flex gap-2">
-            <select value={filtroMes} onChange={(e) => setFiltroMes(Number(e.target.value))}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200">
-              {nomesMeses.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
-            <select value={filtroAno} onChange={(e) => setFiltroAno(Number(e.target.value))}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-200">
-              {[2024, 2025, 2026, 2027].map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
+          {anosDisponiveis.map((ano) => (
+            <button
+              key={ano}
+              onClick={() => {
+                setFiltroAnos((prev) => {
+                  if (prev === 'todos') return [ano];
+                  if (prev.includes(ano)) return prev.length > 1 ? prev.filter((a) => a !== ano) : prev;
+                  return [...prev, ano];
+                });
+              }}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                filtroAnos !== 'todos' && filtroAnos.includes(ano)
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
+                  : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
+              }`}
+            >
+              {ano}
+            </button>
+          ))}
+        </div>
+        {/* Meses (desabilitado quando "Todos" selecionado) */}
+        {filtroAnos !== 'todos' && (
+          <div className="flex flex-wrap gap-1.5">
+            {nomesMeses.map((nome, i) => {
+              const mes = i + 1;
+              const ativo = filtroMeses.includes(mes);
+              return (
+                <button
+                  key={nome}
+                  onClick={() =>
+                    setFiltroMeses((prev) =>
+                      prev.includes(mes)
+                        ? prev.length > 1 ? prev.filter((m) => m !== mes) : prev
+                        : [...prev, mes],
+                    )
+                  }
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+                    ativo
+                      ? 'bg-slate-600 text-white shadow-sm'
+                      : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {nome}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
