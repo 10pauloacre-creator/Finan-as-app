@@ -1596,9 +1596,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
         />
       )}
 
-      {/* Score de Saúde Financeira */}
-      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
-
       {/* Próximas faturas */}
       <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
 
@@ -2255,6 +2252,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
         </section>
       )}
+
+      {/* Score de Saúde Financeira */}
+      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
 
     </div>
   );
