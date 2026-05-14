@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
@@ -649,6 +649,8 @@ export default function Transacoes() {
   const [busca, setBusca] = useState('');
   const [filtroMeses, setFiltroMeses] = useState<number[]>([new Date().getMonth() + 1]);
   const [filtroAnos, setFiltroAnos] = useState<number[] | 'todos'>([new Date().getFullYear()]);
+  const [painelAnos, setPainelAnos] = useState(false);
+  const [painelMeses, setPainelMeses] = useState(false);
   const [filtroLinha2, setFiltroLinha2] = useState<FiltroLinha2>('todas');
   const [catSelecionada, setCatSelecionada] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
@@ -884,66 +886,108 @@ export default function Transacoes() {
         </button>
       </div>
 
-      {/* Filtro multi-seleção de meses e anos */}
-      <div className="space-y-2">
-        {/* Anos */}
-        <div className="flex flex-wrap gap-1.5">
+      {/* Filtro por período */}
+      <div className="flex gap-2">
+        {(painelAnos || painelMeses) && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => { setPainelAnos(false); setPainelMeses(false); }}
+          />
+        )}
+
+        {/* Botão Ano */}
+        <div className="relative">
           <button
-            onClick={() => setFiltroAnos('todos')}
-            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-              filtroAnos === 'todos'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
-            }`}
+            type="button"
+            onClick={() => { setPainelAnos((v) => !v); setPainelMeses(false); }}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-slate-600 transition-colors"
           >
-            Todos
+            {filtroAnos === 'todos'
+              ? 'Todos os anos'
+              : filtroAnos.length === 1
+              ? String(filtroAnos[0])
+              : filtroAnos.join(' · ')}
+            <ChevronDown size={12} className={`transition-transform ${painelAnos ? 'rotate-180' : ''}`} />
           </button>
-          {anosDisponiveis.map((ano) => (
-            <button
-              key={ano}
-              onClick={() => {
-                setFiltroAnos((prev) => {
-                  if (prev === 'todos') return [ano];
-                  if (prev.includes(ano)) return prev.length > 1 ? prev.filter((a) => a !== ano) : prev;
-                  return [...prev, ano];
-                });
-              }}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                filtroAnos !== 'todos' && filtroAnos.includes(ano)
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                  : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
-              }`}
-            >
-              {ano}
-            </button>
-          ))}
+          {painelAnos && (
+            <div className="absolute left-0 top-full mt-1 z-50 min-w-[140px] rounded-2xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => { setFiltroAnos('todos'); setPainelAnos(false); }}
+                className={`w-full rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                  filtroAnos === 'todos' ? 'bg-purple-600 text-white' : 'text-slate-300 hover:bg-white/5'
+                }`}
+              >
+                Todos
+              </button>
+              {anosDisponiveis.map((ano) => {
+                const ativo = filtroAnos !== 'todos' && filtroAnos.includes(ano);
+                return (
+                  <button
+                    key={ano}
+                    type="button"
+                    onClick={() =>
+                      setFiltroAnos((prev) => {
+                        if (prev === 'todos') return [ano];
+                        if (prev.includes(ano)) return prev.length > 1 ? prev.filter((a) => a !== ano) : prev;
+                        return [...prev, ano];
+                      })
+                    }
+                    className={`w-full rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                      ativo ? 'bg-purple-600 text-white' : 'text-slate-300 hover:bg-white/5'
+                    }`}
+                  >
+                    {ano}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-        {/* Meses (desabilitado quando "Todos" selecionado) */}
+
+        {/* Botão Mês (oculto quando "Todos os anos") */}
         {filtroAnos !== 'todos' && (
-          <div className="flex flex-wrap gap-1.5">
-            {nomesMeses.map((nome, i) => {
-              const mes = i + 1;
-              const ativo = filtroMeses.includes(mes);
-              return (
-                <button
-                  key={nome}
-                  onClick={() =>
-                    setFiltroMeses((prev) =>
-                      prev.includes(mes)
-                        ? prev.length > 1 ? prev.filter((m) => m !== mes) : prev
-                        : [...prev, mes],
-                    )
-                  }
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                    ativo
-                      ? 'bg-slate-600 text-white shadow-sm'
-                      : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {nome}
-                </button>
-              );
-            })}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { setPainelMeses((v) => !v); setPainelAnos(false); }}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-slate-600 transition-colors"
+            >
+              {filtroMeses.length === 1
+                ? nomesMeses[filtroMeses[0] - 1]
+                : filtroMeses.length <= 3
+                ? filtroMeses.map((m) => nomesMeses[m - 1]).join(' · ')
+                : `${filtroMeses.length} meses`}
+              <ChevronDown size={12} className={`transition-transform ${painelMeses ? 'rotate-180' : ''}`} />
+            </button>
+            {painelMeses && (
+              <div className="absolute left-0 top-full mt-1 z-50 rounded-2xl border border-slate-700 bg-slate-900 p-2 shadow-2xl">
+                <div className="grid grid-cols-3 gap-1">
+                  {nomesMeses.map((nome, i) => {
+                    const mes = i + 1;
+                    const ativo = filtroMeses.includes(mes);
+                    return (
+                      <button
+                        key={nome}
+                        type="button"
+                        onClick={() =>
+                          setFiltroMeses((prev) =>
+                            prev.includes(mes)
+                              ? prev.length > 1 ? prev.filter((m) => m !== mes) : prev
+                              : [...prev, mes],
+                          )
+                        }
+                        className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                          ativo ? 'bg-slate-600 text-white' : 'text-slate-300 hover:bg-white/5'
+                        }`}
+                      >
+                        {nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
