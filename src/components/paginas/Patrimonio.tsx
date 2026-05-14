@@ -627,6 +627,7 @@ export default function Patrimonio() {
         descricao: dados.descricao,
         icone: dados.icone,
         cor: infoBanco.cor,
+        atualizado_em: new Date().toISOString(),
       };
       storageReservas.save(atualizada);
       void syncSalvarReserva(atualizada);
@@ -654,6 +655,7 @@ export default function Patrimonio() {
         cor: infoBanco.cor,
         historico: historicoInicial,
         criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
       };
       storageReservas.save(novaReserva);
       void syncSalvarReserva(novaReserva);
@@ -690,6 +692,7 @@ export default function Patrimonio() {
           { id: gerarId(), ...dados },
           ...reserva.historico,
         ],
+        atualizado_em: new Date().toISOString(),
       };
 
       storageReservas.save(atualizada);

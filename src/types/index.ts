@@ -27,6 +27,7 @@ export interface ContaBancaria {
   pluggy_account_id?: string;   // ID da conta no Pluggy
   pluggy_sync_em?: string;      // ISO timestamp da última sincronização
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── Cartões de Crédito ───────────────────────────────
@@ -44,6 +45,7 @@ export interface CartaoCredito {
   pluggy_account_id?: string;
   pluggy_sync_em?: string;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── Categorias ───────────────────────────────────────
@@ -55,6 +57,7 @@ export interface Categoria {
   limite_mensal?: number;
   tipo: TipoTransacao;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 export interface ItemCompra {
@@ -107,6 +110,7 @@ export interface Investimento {
   indice: 'prefixado' | 'cdi' | 'selic' | 'ipca' | 'poupanca';
   isento_ir: boolean;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── Metas ────────────────────────────────────────────
@@ -119,6 +123,7 @@ export interface Meta {
   icone?: string;
   cor?: string;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 export interface MovimentoReserva {
@@ -141,6 +146,7 @@ export interface Reserva {
   cor: string;
   historico: MovimentoReserva[];
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── Orçamento ────────────────────────────────────────
@@ -152,6 +158,7 @@ export interface Orcamento {
   mes: number;
   ano: number;
   criado_em: string;
+  atualizado_em?: string;
 }
 
 // ─── IA ───────────────────────────────────────────────
@@ -179,6 +186,7 @@ export interface ConfiguracaoApp {
   ipca_atual?: number;
   selic_atualizado_em?: string;
   notificacoes_ativas: boolean;
+  atualizado_em?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────

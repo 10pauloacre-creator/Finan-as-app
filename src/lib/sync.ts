@@ -50,6 +50,7 @@ type DadosSincronizaveis = {
 };
 
 const SYNC_QUEUE_KEY = 'fin_sync_queue';
+const tabelasSemAtualizadoEm = new Set<SyncEntity>();
 
 function ok() {
   return isSupabaseConfigured();
@@ -83,9 +84,29 @@ function enqueue(op: Omit<PendingSyncOp, 'id' | 'createdAt'>) {
   setQueue(queue);
 }
 
+function semCampoAtualizadoEm(payload: Record<string, unknown>) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'atualizado_em')) {
+    return payload;
+  }
+
+  const { atualizado_em: _ignorado, ...restante } = payload;
+  return restante;
+}
+
+function erroDeColunaAtualizadoEmAusente(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : '';
+  return message.includes('.atualizado_em does not exist');
+}
+
 async function executarOperacao(op: PendingSyncOp) {
   if (op.action === 'upsert') {
-    const { error } = await supabase.from(op.entity).upsert(op.payload);
+    const payload = tabelasSemAtualizadoEm.has(op.entity) ? semCampoAtualizadoEm(op.payload) : op.payload;
+    let { error } = await supabase.from(op.entity).upsert(payload);
+    if (error && erroDeColunaAtualizadoEmAusente(error)) {
+      tabelasSemAtualizadoEm.add(op.entity);
+      ({ error } = await supabase.from(op.entity).upsert(semCampoAtualizadoEm(op.payload)));
+    }
     if (error) throw error;
     return;
   }
@@ -184,6 +205,7 @@ function mapCategoria(c: Categoria) {
     tipo: c.tipo,
     limite_mensal: c.limite_mensal,
     criado_em: c.criado_em,
+    atualizado_em: c.atualizado_em,
   };
 }
 
@@ -199,6 +221,7 @@ function mapConta(c: ContaBancaria) {
     pluggy_account_id: c.pluggy_account_id,
     pluggy_sync_em: c.pluggy_sync_em,
     criado_em: c.criado_em,
+    atualizado_em: c.atualizado_em,
   };
 }
 
@@ -217,6 +240,7 @@ function mapCartao(c: CartaoCredito) {
     pluggy_account_id: c.pluggy_account_id,
     pluggy_sync_em: c.pluggy_sync_em,
     criado_em: c.criado_em,
+    atualizado_em: c.atualizado_em,
   };
 }
 
@@ -234,6 +258,7 @@ function mapInvestimento(inv: Investimento) {
     indice: inv.indice,
     isento_ir: inv.isento_ir,
     criado_em: inv.criado_em,
+    atualizado_em: inv.atualizado_em,
   };
 }
 
@@ -247,6 +272,7 @@ function mapMeta(meta: Meta) {
     icone: meta.icone,
     cor: meta.cor,
     criado_em: meta.criado_em,
+    atualizado_em: meta.atualizado_em,
   };
 }
 
@@ -258,6 +284,7 @@ function mapOrcamento(orcamento: Orcamento) {
     mes: orcamento.mes,
     ano: orcamento.ano,
     criado_em: orcamento.criado_em,
+    atualizado_em: orcamento.atualizado_em,
   };
 }
 
@@ -274,6 +301,7 @@ function mapReserva(reserva: Reserva) {
     cor: reserva.cor,
     historico: reserva.historico,
     criado_em: reserva.criado_em,
+    atualizado_em: reserva.atualizado_em,
   };
 }
 
@@ -290,6 +318,7 @@ function mapConfig(config: ConfiguracaoApp) {
     ipca_atual: config.ipca_atual,
     selic_atualizado_em: config.selic_atualizado_em,
     notificacoes_ativas: config.notificacoes_ativas,
+    atualizado_em: config.atualizado_em,
   };
 }
 

@@ -9,7 +9,8 @@ create table if not exists categorias (
   cor            text,
   tipo           text default 'despesa',
   limite_mensal  numeric default 0,
-  criado_em      timestamptz default now()
+  criado_em      timestamptz default now(),
+  atualizado_em  timestamptz default now()
 );
 
 -- ── Contas bancárias ──────────────────────────────────────────────────────────
@@ -23,7 +24,8 @@ create table if not exists contas (
   pluggy_item_id      text,
   pluggy_account_id   text,
   pluggy_sync_em      timestamptz,
-  criado_em           timestamptz default now()
+  criado_em           timestamptz default now(),
+  atualizado_em       timestamptz default now()
 );
 
 -- ── Cartões de crédito ────────────────────────────────────────────────────────
@@ -40,7 +42,8 @@ create table if not exists cartoes (
   pluggy_item_id      text,
   pluggy_account_id   text,
   pluggy_sync_em      timestamptz,
-  criado_em           timestamptz default now()
+  criado_em           timestamptz default now(),
+  atualizado_em       timestamptz default now()
 );
 
 -- ── Transações ────────────────────────────────────────────────────────────────
@@ -85,7 +88,8 @@ create table if not exists investimentos (
   indice           text default 'cdi',
   isento_ir        boolean default false,
   pluggy_id        text,
-  criado_em        timestamptz default now()
+  criado_em        timestamptz default now(),
+  atualizado_em    timestamptz default now()
 );
 
 -- ── Metas ───────────────────────────────────────────────────────────────
@@ -97,7 +101,8 @@ create table if not exists metas (
   prazo        text,
   icone        text,
   cor          text,
-  criado_em    timestamptz default now()
+  criado_em    timestamptz default now(),
+  atualizado_em timestamptz default now()
 );
 
 -- ── Orçamentos ──────────────────────────────────────────────────────────
@@ -107,7 +112,8 @@ create table if not exists orcamentos (
   valor_limite  numeric default 0,
   mes           int not null,
   ano           int not null,
-  criado_em     timestamptz default now()
+  criado_em     timestamptz default now(),
+  atualizado_em timestamptz default now()
 );
 
 -- ── Reservas ───────────────────────────────────────────────
@@ -122,7 +128,8 @@ create table if not exists reservas (
   icone              text,
   cor                text,
   historico          jsonb not null default '[]'::jsonb,
-  criado_em          timestamptz default now()
+  criado_em          timestamptz default now(),
+  atualizado_em      timestamptz default now()
 );
 
 -- ── Configuração do app ─────────────────────────────────────────────────
@@ -138,7 +145,8 @@ create table if not exists configuracoes_app (
   ipca_atual                   numeric,
   selic_atualizado_em          timestamptz,
   whatsapp_numero_autorizado   text,
-  notificacoes_ativas          boolean default true
+  notificacoes_ativas          boolean default true,
+  atualizado_em                timestamptz default now()
 );
 
 -- ── Eventos de webhook (notificações Pluggy) ─────────────────────────────────
@@ -188,8 +196,16 @@ alter table transacoes    add column if not exists tags                jsonb;
 alter table transacoes    add column if not exists observacoes         text;
 alter table transacoes    add column if not exists itens_compra        jsonb;
 alter table transacoes    add column if not exists atualizado_em       timestamptz default now();
+alter table categorias    add column if not exists atualizado_em       timestamptz default now();
+alter table contas        add column if not exists atualizado_em       timestamptz default now();
+alter table cartoes       add column if not exists atualizado_em       timestamptz default now();
+alter table investimentos add column if not exists atualizado_em       timestamptz default now();
+alter table metas         add column if not exists atualizado_em       timestamptz default now();
+alter table orcamentos    add column if not exists atualizado_em       timestamptz default now();
+alter table reservas      add column if not exists atualizado_em       timestamptz default now();
 alter table configuracoes_app add column if not exists ai_modelo_padrao     text;
 alter table configuracoes_app add column if not exists ai_modelo_ocr_padrao text;
+alter table configuracoes_app add column if not exists atualizado_em         timestamptz default now();
 alter table investimentos add column if not exists valor_atual         numeric default 0;
 alter table investimentos add column if not exists data_vencimento     text;
 alter table investimentos add column if not exists pluggy_id           text;

@@ -97,6 +97,7 @@ export default function Bancos() {
           pluggy_item_id: c.pluggy_item_id,
           pluggy_account_id: c.pluggy_account_id,
           pluggy_sync_em: agora,
+          atualizado_em: agora,
         });
       } else {
         adicionarConta({
@@ -127,6 +128,7 @@ export default function Bancos() {
           pluggy_item_id: c.pluggy_item_id,
           pluggy_account_id: c.pluggy_account_id,
           pluggy_sync_em: agora,
+          atualizado_em: agora,
         });
         atualizarFaturaCartao(existente.id, c.fatura_atual);
       } else {
@@ -165,6 +167,7 @@ export default function Bancos() {
         conta_id: contaLocal?.id,
         origem: 'open_banking',
         criado_em: agora,
+        atualizado_em: agora,
       } as Transacao);
       idsExistentes.add(txId);
     });
@@ -234,6 +237,7 @@ export default function Bancos() {
           pluggy_item_id: undefined,
           pluggy_account_id: undefined,
           pluggy_sync_em: undefined,
+          atualizado_em: new Date().toISOString(),
         });
       });
     storageCartoes.getAll()
@@ -244,6 +248,7 @@ export default function Bancos() {
           pluggy_item_id: undefined,
           pluggy_account_id: undefined,
           pluggy_sync_em: undefined,
+          atualizado_em: new Date().toISOString(),
         });
       });
     carregarDados();

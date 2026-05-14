@@ -59,6 +59,7 @@ const CONTAS_PADRAO: ContaBancaria[] = [
     tipo: 'digital',
     saldo: 0,
     criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
   },
   {
     id: 'conta-itau',
@@ -67,6 +68,7 @@ const CONTAS_PADRAO: ContaBancaria[] = [
     tipo: 'corrente',
     saldo: 0,
     criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
   },
 ];
 
@@ -82,6 +84,7 @@ const CARTOES_PADRAO: CartaoCredito[] = [
     dia_fechamento: 8,
     bandeira: 'mastercard',
     criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
   },
   {
     id: 'cartao-itau',
@@ -94,6 +97,7 @@ const CARTOES_PADRAO: CartaoCredito[] = [
     dia_fechamento: 15,
     bandeira: 'mastercard',
     criado_em: new Date().toISOString(),
+    atualizado_em: new Date().toISOString(),
   },
 ];
 
@@ -117,14 +121,22 @@ export const storageCategoriass = {
   getAll: (): Categoria[] => {
     const salvas = get<Categoria>(KEYS.CATEGORIAS);
     if (salvas.length === 0) {
-      const padrao = CATEGORIAS_PADRAO.map(c => ({ ...c, criado_em: new Date().toISOString() }));
+      const padrao = CATEGORIAS_PADRAO.map(c => ({
+        ...c,
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+      }));
       set(KEYS.CATEGORIAS, padrao);
       return padrao;
     }
     const idsSalvos = new Set(salvas.map((categoria) => categoria.id));
     const faltantes = CATEGORIAS_PADRAO
       .filter((categoria) => !idsSalvos.has(categoria.id))
-      .map((categoria) => ({ ...categoria, criado_em: new Date().toISOString() }));
+      .map((categoria) => ({
+        ...categoria,
+        criado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+      }));
     if (faltantes.length === 0) return salvas;
 
     const atualizadas = [...salvas, ...faltantes];

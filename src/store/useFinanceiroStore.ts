@@ -18,7 +18,7 @@ import {
   syncSalvarMeta, syncExcluirMeta,
   syncSalvarOrcamento, syncExcluirOrcamento,
   syncSalvarConfig,
-  baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao, SYNC_TABLES,
+  baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao, totalPendenciasDeSync, SYNC_TABLES,
 } from '@/lib/sync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { startOfTodayLocal } from '@/lib/date';
@@ -178,6 +178,37 @@ function getMarcaAtualizacaoTransacao(transacao: Pick<Transacao, 'atualizado_em'
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function getMarcaAtualizacaoRegistro<T extends { atualizado_em?: string; criado_em?: string }>(registro: T | null | undefined) {
+  const marca = registro?.atualizado_em || registro?.criado_em;
+  const timestamp = marca ? new Date(marca).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function mesclarRegistrosPorAtualizacao<T extends { id: string; atualizado_em?: string; criado_em?: string }>(
+  remotos: T[],
+  locais: T[],
+) {
+  const porId = new Map<string, T>();
+
+  for (const remoto of remotos) {
+    porId.set(remoto.id, remoto);
+  }
+
+  for (const local of locais) {
+    const remoto = porId.get(local.id);
+    if (!remoto || getMarcaAtualizacaoRegistro(local) > getMarcaAtualizacaoRegistro(remoto)) {
+      porId.set(local.id, local);
+    }
+  }
+
+  return [...porId.values()];
+}
+
+function mesclarConfigPorAtualizacao(remota: ConfiguracaoApp | null, local: ConfiguracaoApp) {
+  if (!remota) return local;
+  return getMarcaAtualizacaoRegistro(local) > getMarcaAtualizacaoRegistro(remota) ? local : remota;
+}
+
 function mesclarTransacoesPorAtualizacao(remotas: Transacao[], locais: Transacao[]) {
   const porId = new Map<string, Transacao>();
 
@@ -187,7 +218,7 @@ function mesclarTransacoesPorAtualizacao(remotas: Transacao[], locais: Transacao
 
   for (const local of locais) {
     const remota = porId.get(local.id);
-    if (!remota || getMarcaAtualizacaoTransacao(local) >= getMarcaAtualizacaoTransacao(remota)) {
+    if (!remota || getMarcaAtualizacaoTransacao(local) > getMarcaAtualizacaoTransacao(remota)) {
       porId.set(local.id, local);
     }
   }
@@ -209,7 +240,11 @@ function aplicarDeltaConta(contas: ContaBancaria[], contaId: string | undefined,
 
   return contas.map((conta) => {
     if (conta.id !== contaId) return conta;
-    const atualizada = { ...conta, saldo: arredondarMoeda(conta.saldo + delta) };
+    const atualizada = {
+      ...conta,
+      saldo: arredondarMoeda(conta.saldo + delta),
+      atualizado_em: new Date().toISOString(),
+    };
     storageContas.save(atualizada);
     void syncSalvarConta(atualizada);
     return atualizada;
@@ -221,7 +256,11 @@ function aplicarDeltaCartao(cartoes: CartaoCredito[], cartaoId: string | undefin
 
   return cartoes.map((cartao) => {
     if (cartao.id !== cartaoId) return cartao;
-    const atualizado = { ...cartao, fatura_atual: arredondarMoeda(cartao.fatura_atual + delta) };
+    const atualizado = {
+      ...cartao,
+      fatura_atual: arredondarMoeda(cartao.fatura_atual + delta),
+      atualizado_em: new Date().toISOString(),
+    };
     storageCartoes.save(atualizado);
     void syncSalvarCartao(atualizado);
     return atualizado;
@@ -396,7 +435,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       const config = storageConfig.get();
       const categorias = storageCategoriass.getAll();
       const contasOriginais = storageContas.getAll();
-      const transacoes = normalizarTransacoesParaEstado(storageTransacoes.getAll(), categorias, contasOriginais, true);
+      const transacoes = normalizarTransacoesParaEstado(storageTransacoes.getAll(), categorias, contasOriginais, false);
       const contas = normalizarContasComTransacoes(contasOriginais, transacoes);
       const cartoes = normalizarCartoesComTransacoes(storageCartoes.getAll(), transacoes);
       persistirContasNormalizadas(contas);
@@ -417,30 +456,37 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
   const aplicarDadosRemotos = (dados: Awaited<ReturnType<typeof baixarTudoDoSupabase>>) => {
     executarSemRecargaLocal(() => {
+      const categoriasMescladas = mesclarRegistrosPorAtualizacao(dados.categorias, storageCategoriass.getAll());
+      const contasMescladas = mesclarRegistrosPorAtualizacao(dados.contas, storageContas.getAll());
+      const cartoesMesclados = mesclarRegistrosPorAtualizacao(dados.cartoes, storageCartoes.getAll());
+      const investimentosMesclados = mesclarRegistrosPorAtualizacao(dados.investimentos, storageInvestimentos.getAll());
+      const metasMescladas = mesclarRegistrosPorAtualizacao(dados.metas, storageMetas.getAll());
+      const orcamentosMesclados = mesclarRegistrosPorAtualizacao(dados.orcamentos, storageOrcamentos.getAll());
+      const reservasMescladas = mesclarRegistrosPorAtualizacao(dados.reservas, storageReservas.getAll());
       const transacoesMescladas = mesclarTransacoesPorAtualizacao(dados.transacoes, storageTransacoes.getAll());
-      const transacoesNormalizadas = normalizarTransacoesParaEstado(transacoesMescladas, dados.categorias, dados.contas, true);
-      const contasNormalizadas = normalizarContasComTransacoes(dados.contas, transacoesNormalizadas);
-      const cartoesNormalizados = normalizarCartoesComTransacoes(dados.cartoes, transacoesNormalizadas);
+      const transacoesNormalizadas = normalizarTransacoesParaEstado(transacoesMescladas, categoriasMescladas, contasMescladas, false);
+      const contasNormalizadas = normalizarContasComTransacoes(contasMescladas, transacoesNormalizadas);
+      const cartoesNormalizados = normalizarCartoesComTransacoes(cartoesMesclados, transacoesNormalizadas);
       storageTransacoes.replaceAll(transacoesNormalizadas);
-      storageCategoriass.replaceAll(dados.categorias);
+      storageCategoriass.replaceAll(categoriasMescladas);
       storageContas.replaceAll(contasNormalizadas);
       storageCartoes.replaceAll(cartoesNormalizados);
-      storageInvestimentos.replaceAll(dados.investimentos);
-      storageMetas.replaceAll(dados.metas);
-      storageOrcamentos.replaceAll(dados.orcamentos);
-      storageReservas.replaceAll(dados.reservas);
+      storageInvestimentos.replaceAll(investimentosMesclados);
+      storageMetas.replaceAll(metasMescladas);
+      storageOrcamentos.replaceAll(orcamentosMesclados);
+      storageReservas.replaceAll(reservasMescladas);
 
-      const configFinal = dados.config ?? storageConfig.get();
-      if (dados.config) storageConfig.replace(dados.config);
+      const configFinal = mesclarConfigPorAtualizacao(dados.config, storageConfig.get());
+      storageConfig.replace(configFinal);
 
       set({
         transacoes: transacoesNormalizadas,
-        categorias: dados.categorias,
+        categorias: categoriasMescladas,
         contas: contasNormalizadas,
         cartoes: cartoesNormalizados,
-        investimentos: dados.investimentos,
-        metas: dados.metas,
-        orcamentos: dados.orcamentos,
+        investimentos: investimentosMesclados,
+        metas: metasMescladas,
+        orcamentos: orcamentosMesclados,
         ...getEstadoConfig(configFinal),
       });
     });
@@ -451,7 +497,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     if (syncEmAndamento) return syncEmAndamento;
 
     syncEmAndamento = (async () => {
-      await processarFilaDeSincronizacao();
+      const filaInicial = await processarFilaDeSincronizacao();
+      if (filaInicial.pendentes > 0) return;
       let dados = await baixarTudoDoSupabase();
 
       if (!contarRegistrosRemotos(dados)) {
@@ -480,6 +527,7 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
             reservas: storageReservas.getAll(),
             config: estadoLocal.config,
           });
+          if (totalPendenciasDeSync() > 0) return;
           dados = await baixarTudoDoSupabase();
         }
       }
@@ -708,7 +756,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarCategoria: (dados) => {
       executarSemRecargaLocal(() => {
-        const nova: Categoria = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const agora = new Date().toISOString();
+        const nova: Categoria = { ...dados, id: gerarId(), criado_em: agora, atualizado_em: agora };
         storageCategoriass.save(nova);
         void syncSalvarCategoria(nova);
         set((s) => ({ categorias: [...s.categorias, nova] }));
@@ -719,12 +768,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
       executarSemRecargaLocal(() => {
         const hoje = startOfTodayLocal();
         const transacoes = get().transacoes;
+        const agora = new Date().toISOString();
         const lista = get().contas.map((c) => {
           if (c.id !== id) return c;
           const impactoAtual = transacoes.reduce((soma, transacao) => (
             soma + calcularImpactoContaAteData(transacao, id, hoje)
           ), 0);
-          return { ...c, saldo, saldo_base: arredondarMoeda(saldo - impactoAtual) };
+          return { ...c, saldo, saldo_base: arredondarMoeda(saldo - impactoAtual), atualizado_em: agora };
         });
         const conta = lista.find((c) => c.id === id);
         if (conta) {
@@ -737,11 +787,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarConta: (dados) => {
       executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
         const nova: ContaBancaria = {
           ...dados,
           saldo_base: dados.saldo,
           id: gerarId(),
-          criado_em: new Date().toISOString(),
+          criado_em: agora,
+          atualizado_em: agora,
         };
         storageContas.save(nova);
         void syncSalvarConta(nova);
@@ -760,12 +812,14 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
     atualizarFaturaCartao: (id, fatura) => {
       executarSemRecargaLocal(() => {
         const baseFatura = calcularBaseFaturaCartao(id, get().transacoes);
+        const agora = new Date().toISOString();
         const lista = get().cartoes.map((c) => (
           c.id === id
             ? {
                 ...c,
                 fatura_ajuste_manual: arredondarMoeda(fatura - baseFatura),
                 fatura_atual: arredondarMoeda(fatura),
+                atualizado_em: agora,
               }
             : c
         ));
@@ -780,11 +834,13 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarCartao: (dados) => {
       executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
         const novo: CartaoCredito = {
           ...dados,
           fatura_ajuste_manual: dados.fatura_atual,
           id: gerarId(),
-          criado_em: new Date().toISOString(),
+          criado_em: agora,
+          atualizado_em: agora,
         };
         storageCartoes.save(novo);
         void syncSalvarCartao(novo);
@@ -794,9 +850,10 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     editarCartao: (id, dados) => {
       executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
         const lista = get().cartoes.map((cartao) => {
           if (cartao.id !== id) return cartao;
-          return { ...cartao, ...dados, id: cartao.id, criado_em: cartao.criado_em };
+          return { ...cartao, ...dados, id: cartao.id, criado_em: cartao.criado_em, atualizado_em: agora };
         });
         const cartao = lista.find((item) => item.id === id);
         if (cartao) {
@@ -817,7 +874,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarInvestimento: (dados) => {
       executarSemRecargaLocal(() => {
-        const novo: Investimento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const agora = new Date().toISOString();
+        const novo: Investimento = { ...dados, id: gerarId(), criado_em: agora, atualizado_em: agora };
         storageInvestimentos.save(novo);
         void syncSalvarInvestimento(novo);
         set((s) => ({ investimentos: [novo, ...s.investimentos] }));
@@ -834,7 +892,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarMeta: (dados) => {
       executarSemRecargaLocal(() => {
-        const nova: Meta = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const agora = new Date().toISOString();
+        const nova: Meta = { ...dados, id: gerarId(), criado_em: agora, atualizado_em: agora };
         storageMetas.save(nova);
         void syncSalvarMeta(nova);
         set((s) => ({ metas: [nova, ...s.metas] }));
@@ -843,7 +902,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     atualizarMeta: (id, valor_atual) => {
       executarSemRecargaLocal(() => {
-        const lista = get().metas.map((m) => (m.id === id ? { ...m, valor_atual } : m));
+        const agora = new Date().toISOString();
+        const lista = get().metas.map((m) => (m.id === id ? { ...m, valor_atual, atualizado_em: agora } : m));
         const meta = lista.find((m) => m.id === id);
         if (meta) {
           storageMetas.save(meta);
@@ -863,7 +923,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     adicionarOrcamento: (dados) => {
       executarSemRecargaLocal(() => {
-        const novo: Orcamento = { ...dados, id: gerarId(), criado_em: new Date().toISOString() };
+        const agora = new Date().toISOString();
+        const novo: Orcamento = { ...dados, id: gerarId(), criado_em: agora, atualizado_em: agora };
         storageOrcamentos.save(novo);
         void syncSalvarOrcamento(novo);
         set((s) => ({ orcamentos: [...s.orcamentos, novo] }));
@@ -872,7 +933,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     editarOrcamento: (id, dados) => {
       executarSemRecargaLocal(() => {
-        const lista = get().orcamentos.map((o) => (o.id === id ? { ...o, ...dados } : o));
+        const agora = new Date().toISOString();
+        const lista = get().orcamentos.map((o) => (o.id === id ? { ...o, ...dados, atualizado_em: agora } : o));
         const item = lista.find((o) => o.id === id);
         if (item) {
           storageOrcamentos.save(item);
@@ -892,8 +954,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     atualizarConfig: (dados) => {
       executarSemRecargaLocal(() => {
-        const configAtualizada = { ...get().config, ...dados };
-        storageConfig.set(dados);
+        const configAtualizada = { ...get().config, ...dados, atualizado_em: new Date().toISOString() };
+        storageConfig.replace(configAtualizada);
         void syncSalvarConfig(configAtualizada);
         set({
           ...getEstadoConfig(configAtualizada),
@@ -907,7 +969,10 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     sincronizarDoSupabase: async () => {
       try {
-        await processarFilaDeSincronizacao();
+        const fila = await processarFilaDeSincronizacao();
+        if (fila.pendentes > 0) {
+          return { ok: false, msg: `Ainda existem ${fila.pendentes} alteracoes locais pendentes. Use "Enviar pra nuvem" com internet ativa antes de baixar.` };
+        }
         const dados = await baixarTudoDoSupabase();
         const total = contarRegistrosRemotos(dados);
 
@@ -936,6 +1001,15 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           reservas: storageReservas.getAll(),
           config: s.config,
         });
+        const pendencias = totalPendenciasDeSync();
+        if (pendencias > 0) {
+          return { ok: false, msg: `${pendencias} alteracoes ainda nao conseguiram subir para a nuvem. Mantenha o app online e tente novamente.` };
+        }
+
+        const dados = await baixarTudoDoSupabase();
+        if (contarRegistrosRemotos(dados)) {
+          aplicarDadosRemotos(dados);
+        }
 
         const total =
           s.transacoes.length +
