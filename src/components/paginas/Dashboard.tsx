@@ -527,7 +527,305 @@ function salvarCacheAutomacao(cache: AutomacaoCache) {
   }
 }
 
-// Dashboard principal
+// Modal flutuante de detalhe dos cards resumo
+type TipoModalResumo = 'gastos' | 'recebimentos' | 'pago' | 'apagar';
+interface DetalheResumoData {
+  LABEL_METODO: Record<string, string>;
+  gastos: {
+    metodos: Record<string, number>;
+    porCartao: Array<{ id: string; nome: string; banco: string; faturaAtual: number; lancadoNoMes: number }>;
+    totalFaturas: number;
+    semCartao: number;
+    topCats: Array<{ nome: string; valor: number; cor: string; icone: string }>;
+  };
+  recebimentos: {
+    metodos: Record<string, number>;
+    porCategoria: Array<{ nome: string; icone: string; cor: string; valor: number }>;
+    total: number;
+    qtd: number;
+  };
+  pago: {
+    metodos: Record<string, number>;
+    porCategoria: Array<{ nome: string; icone: string; cor: string; valor: number }>;
+    total: number;
+  };
+  apagar: {
+    cartoes: Array<{ id: string; nome: string; banco: string; fatura_atual: number; dia_vencimento: number; diasParaVencer: number }>;
+    despesasFuturas: Array<{ nome: string; icone: string; cor: string; valor: number }>;
+    total: number;
+  };
+}
+
+function ModalResumoCard({
+  tipo, dados, onFechar, ocultar, onNavegar,
+}: {
+  tipo: TipoModalResumo;
+  dados: DetalheResumoData;
+  onFechar: () => void;
+  ocultar: (v: string) => string;
+  onNavegar: () => void;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onFechar(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onFechar]);
+
+  const TITULO: Record<TipoModalResumo, string> = {
+    gastos: 'Total de Gastos',
+    recebimentos: 'Total de Recebimentos',
+    pago: 'Total Pago',
+    apagar: 'Falta Pagar',
+  };
+
+  const COR: Record<TipoModalResumo, string> = {
+    gastos: '#EF4444',
+    recebimentos: '#10B981',
+    pago: '#059669',
+    apagar: '#F59E0B',
+  };
+
+  const cor = COR[tipo];
+
+  function LinhaValor({ label, valor, cor: lCor, sub }: { label: string; valor: number; cor?: string; sub?: string }) {
+    return (
+      <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+        <div>
+          <span className="text-sm text-slate-300">{label}</span>
+          {sub && <div className="text-[10px] text-slate-600 mt-0.5">{sub}</div>}
+        </div>
+        <span className="text-sm font-semibold tabular-nums" style={{ color: lCor || '#F1F5F9' }}>
+          {ocultar(formatarMoeda(valor))}
+        </span>
+      </div>
+    );
+  }
+
+  function SecaoTitulo({ children }: { children: React.ReactNode }) {
+    return (
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1 mt-3 first:mt-0">{children}</p>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onFechar}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-full max-w-sm mx-4 mb-4 sm:mb-0 rounded-2xl border border-white/10 bg-[#0E1220] shadow-2xl overflow-hidden"
+        style={{ borderColor: `${cor}22` }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/8" style={{ borderBottomColor: `${cor}22` }}>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Detalhamento</p>
+            <h2 className="text-base font-bold text-white mt-0.5">{TITULO[tipo]}</h2>
+          </div>
+          <button
+            onClick={onFechar}
+            className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="px-5 py-4 max-h-[70vh] overflow-y-auto space-y-0">
+
+          {/* ── GASTOS ── */}
+          {tipo === 'gastos' && (
+            <>
+              {dados.gastos.porCartao.length > 0 && (
+                <>
+                  <SecaoTitulo>Faturas dos cartões</SecaoTitulo>
+                  {dados.gastos.porCartao.map(c => (
+                    <LinhaValor
+                      key={c.id}
+                      label={c.nome}
+                      valor={c.faturaAtual}
+                      cor="#EF4444"
+                      sub={c.lancadoNoMes > 0 ? `${formatarMoeda(c.lancadoNoMes)} lançados neste mês` : undefined}
+                    />
+                  ))}
+                  <LinhaValor label="Total faturas" valor={dados.gastos.totalFaturas} cor="#EF4444" />
+                </>
+              )}
+
+              <SecaoTitulo>Por forma de pagamento</SecaoTitulo>
+              {Object.entries(dados.gastos.metodos)
+                .filter(([, v]) => v > 0)
+                .sort(([, a], [, b]) => b - a)
+                .map(([metodo, valor]) => (
+                  <LinhaValor key={metodo} label={dados.LABEL_METODO[metodo] || metodo} valor={valor} />
+                ))}
+              {dados.gastos.semCartao > 0 && dados.gastos.porCartao.length > 0 && (
+                <LinhaValor label="Despesas sem cartão" valor={dados.gastos.semCartao} />
+              )}
+
+              {dados.gastos.topCats.length > 0 && (
+                <>
+                  <SecaoTitulo>Top categorias</SecaoTitulo>
+                  {dados.gastos.topCats.map(c => (
+                    <div key={c.nome} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
+                      <span className="text-base">{c.icone}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-300">{c.nome}</span>
+                          <span className="text-sm font-semibold tabular-nums text-slate-200">{ocultar(formatarMoeda(c.valor))}</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full mt-1 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${Math.min((c.valor / (dados.gastos.topCats[0]?.valor || 1)) * 100, 100)}%`, background: c.cor }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+
+          {/* ── RECEBIMENTOS ── */}
+          {tipo === 'recebimentos' && (
+            <>
+              <SecaoTitulo>Por categoria</SecaoTitulo>
+              {dados.recebimentos.porCategoria.length > 0 ? dados.recebimentos.porCategoria.map(c => (
+                <div key={c.nome} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
+                  <span className="text-base">{c.icone}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-300">{c.nome}</span>
+                      <span className="text-sm font-semibold tabular-nums text-emerald-400">{ocultar(formatarMoeda(c.valor))}</span>
+                    </div>
+                    <div className="h-1 bg-white/5 rounded-full mt-1 overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min((c.valor / (dados.recebimentos.total || 1)) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-sm text-slate-600 py-2">Nenhum recebimento registrado</p>
+              )}
+
+              <SecaoTitulo>Por forma de recebimento</SecaoTitulo>
+              {Object.entries(dados.recebimentos.metodos)
+                .filter(([, v]) => v > 0)
+                .sort(([, a], [, b]) => b - a)
+                .map(([metodo, valor]) => (
+                  <LinhaValor key={metodo} label={dados.LABEL_METODO[metodo] || metodo} valor={valor} cor="#10B981" />
+                ))}
+              {Object.keys(dados.recebimentos.metodos).length === 0 && (
+                <p className="text-sm text-slate-600 py-2">Sem dados de forma de recebimento</p>
+              )}
+
+              <div className="mt-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3 flex items-center justify-between">
+                <span className="text-xs text-slate-400">{dados.recebimentos.qtd} entrada{dados.recebimentos.qtd !== 1 ? 's' : ''} no período</span>
+                <span className="text-sm font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(dados.recebimentos.total))}</span>
+              </div>
+            </>
+          )}
+
+          {/* ── TOTAL PAGO ── */}
+          {tipo === 'pago' && (
+            <>
+              {dados.pago.porCategoria.length > 0 && (
+                <>
+                  <SecaoTitulo>Por categoria</SecaoTitulo>
+                  {dados.pago.porCategoria.map(c => (
+                    <div key={c.nome} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
+                      <span className="text-base">{c.icone}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-300">{c.nome}</span>
+                          <span className="text-sm font-semibold tabular-nums text-slate-200">{ocultar(formatarMoeda(c.valor))}</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full mt-1 overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.min((c.valor / (dados.pago.total || 1)) * 100, 100)}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <SecaoTitulo>Por forma de pagamento</SecaoTitulo>
+              {Object.entries(dados.pago.metodos)
+                .filter(([, v]) => v > 0)
+                .sort(([, a], [, b]) => b - a)
+                .map(([metodo, valor]) => (
+                  <LinhaValor key={metodo} label={dados.LABEL_METODO[metodo] || metodo} valor={valor} cor="#059669" />
+                ))}
+              {Object.keys(dados.pago.metodos).length === 0 && (
+                <p className="text-sm text-slate-600 py-2">Nenhuma despesa quitada até o momento</p>
+              )}
+
+              <div className="mt-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total quitado até hoje</span>
+                <span className="text-sm font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(dados.pago.total))}</span>
+              </div>
+            </>
+          )}
+
+          {/* ── FALTA PAGAR ── */}
+          {tipo === 'apagar' && (
+            <>
+              {dados.apagar.cartoes.length > 0 && (
+                <>
+                  <SecaoTitulo>Faturas pendentes dos cartões</SecaoTitulo>
+                  {dados.apagar.cartoes.map(c => (
+                    <LinhaValor
+                      key={c.id}
+                      label={c.nome}
+                      valor={c.fatura_atual}
+                      cor={c.diasParaVencer <= 5 ? '#EF4444' : '#F59E0B'}
+                      sub={c.diasParaVencer === 0 ? 'Vence hoje!' : `Vence em ${c.diasParaVencer} dia${c.diasParaVencer > 1 ? 's' : ''} · dia ${c.dia_vencimento}`}
+                    />
+                  ))}
+                </>
+              )}
+
+              {dados.apagar.despesasFuturas.length > 0 && (
+                <>
+                  <SecaoTitulo>Despesas previstas no mês</SecaoTitulo>
+                  {dados.apagar.despesasFuturas.map(c => (
+                    <div key={c.nome} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
+                      <span className="text-base">{c.icone}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-slate-300">{c.nome}</span>
+                          <span className="text-sm font-semibold tabular-nums text-amber-400">{ocultar(formatarMoeda(c.valor))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {dados.apagar.cartoes.length === 0 && dados.apagar.despesasFuturas.length === 0 && (
+                <p className="text-sm text-slate-600 py-4 text-center">Nenhum pagamento pendente identificado</p>
+              )}
+
+              <div className="mt-3 rounded-xl bg-amber-500/8 border border-amber-500/15 p-3 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total a pagar</span>
+                <span className="text-sm font-bold text-amber-400 tabular-nums">{ocultar(formatarMoeda(dados.apagar.total))}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Rodapé */}
+        <div className="px-5 pb-5 pt-3 border-t border-white/8">
+          <button
+            onClick={() => { onNavegar(); onFechar(); }}
+            className="w-full py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+            style={{ background: `${cor}18`, color: cor, border: `1px solid ${cor}30` }}
+          >
+            Ver transações detalhadas <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Score Widget
 function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: () => void }) {
   const corScore =
@@ -669,6 +967,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const [carregandoAutomacoes, setCarregandoAutomacoes] = useState(false);
   const [transacaoEditando, setTransacaoEditando] = useState<Transacao | undefined>();
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+  const [modalResumo, setModalResumo] = useState<'gastos' | 'recebimentos' | 'pago' | 'apagar' | null>(null);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
   const hoje = startOfTodayLocal();
 
@@ -920,6 +1219,114 @@ export default function Dashboard({ onNovoPagina }: Props) {
     );
   }, [transacoes, mes, ano]);
 
+  const detalheResumo = useMemo(() => {
+    const ref = startOfTodayLocal();
+    const despesasMes = dadosMes.doMes.filter(t => t.tipo === 'despesa');
+    const receitasMes = dadosMes.doMes.filter(t => t.tipo === 'receita');
+
+    const somarPorMetodo = (lista: typeof despesasMes) => {
+      const m: Record<string, number> = {};
+      lista.forEach(t => {
+        const k = t.metodo_pagamento || 'outro';
+        m[k] = (m[k] || 0) + t.valor;
+      });
+      return m;
+    };
+
+    const LABEL_METODO: Record<string, string> = {
+      pix: 'PIX',
+      debito: 'Débito',
+      credito: 'Crédito',
+      dinheiro: 'Dinheiro',
+      transferencia: 'Transferência',
+      emprestimo: 'Empréstimo',
+      financiamento: 'Financiamento',
+      outro: 'Outro',
+    };
+
+    // ── GASTOS ───────────────────────────────────────────────
+    const metodosGastos = somarPorMetodo(despesasMes);
+    const porCartaoLancado = cartoes.map(c => ({
+      id: c.id,
+      nome: c.nome,
+      banco: c.banco,
+      faturaAtual: c.fatura_atual,
+      lancadoNoMes: despesasMes
+        .filter(t => t.cartao_id === c.id)
+        .reduce((s, t) => s + t.valor, 0),
+    })).filter(c => c.faturaAtual > 0 || c.lancadoNoMes > 0);
+
+    const totalFaturas = cartoes.reduce((s, c) => s + c.fatura_atual, 0);
+    const gastosSemCartao = despesasMes.filter(t => !t.cartao_id).reduce((s, t) => s + t.valor, 0);
+
+    // ── RECEBIMENTOS ──────────────────────────────────────────
+    const metodosReceitas = somarPorMetodo(receitasMes);
+    const receitasPorCategoria = receitasMes.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      const nome = cat?.nome || 'Outros';
+      const ex = acc.find(a => a.nome === nome);
+      if (ex) { ex.valor += t.valor; }
+      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
+      return acc;
+    }, []).sort((a, b) => b.valor - a.valor);
+
+    // ── PAGO ─────────────────────────────────────────────────
+    const despesasPagas = despesasMes.filter(t => {
+      if (t.cartao_id) {
+        const cartao = cartoes.find(c => c.id === t.cartao_id);
+        if (!cartao) return false;
+        return parseFinancialDate(getDataCobrancaCartao(t, cartao)) <= ref;
+      }
+      const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
+      return ocorrencia !== null && ocorrencia <= ref;
+    });
+    const metodosPagos = somarPorMetodo(despesasPagas);
+    const totalPagoCalc = despesasPagas.reduce((s, t) => s + t.valor, 0);
+    const catsPagas = despesasPagas.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      const nome = cat?.nome || 'Outros';
+      const ex = acc.find(a => a.nome === nome);
+      if (ex) { ex.valor += t.valor; }
+      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
+      return acc;
+    }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
+
+    // ── A PAGAR ───────────────────────────────────────────────
+    const cartoesPendentes = cartoes.map(c => {
+      const hoje = ref;
+      const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), c.dia_vencimento);
+      if (vencimento <= hoje) vencimento.setMonth(vencimento.getMonth() + 1);
+      const dias = Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000);
+      return { ...c, diasParaVencer: dias };
+    }).filter(c => c.fatura_atual > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
+
+    const despesasFuturas = despesasMes.filter(t => {
+      if (t.cartao_id) {
+        const cartao = cartoes.find(c => c.id === t.cartao_id);
+        if (!cartao) return false;
+        return parseFinancialDate(getDataCobrancaCartao(t, cartao)) > ref;
+      }
+      const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
+      return ocorrencia !== null && ocorrencia > ref;
+    });
+    const despesasFuturasPorCat = despesasFuturas.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      const nome = cat?.nome || 'Outros';
+      const ex = acc.find(a => a.nome === nome);
+      if (ex) { ex.valor += t.valor; }
+      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
+      return acc;
+    }, []).sort((a, b) => b.valor - a.valor);
+
+    return {
+      LABEL_METODO,
+      gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalFaturas, semCartao: gastosSemCartao, topCats: dadosMes.graficoPizza.slice(0, 5) },
+      recebimentos: { metodos: metodosReceitas, porCategoria: receitasPorCategoria, total: dadosMes.receitas, qtd: receitasMes.length },
+      pago: { metodos: metodosPagos, porCategoria: catsPagas, total: totalPagoCalc },
+      apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasPorCat, total: aPagarMesAtual },
+    };
+  }, [dadosMes, cartoes, categorias, aPagarMesAtual, mes, ano, transacoes]);
+
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
   const saldoMesAnimado = useCountUp(saldoProjetado);
@@ -1114,9 +1521,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </div>
 
-      {/* Resumo financeiro - 4 cards */}
+      {/* Resumo financeiro - 4 cards clicáveis */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+        <button
+          type="button"
+          onClick={() => setModalResumo('gastos')}
+          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
+          style={{ borderColor: 'rgba(239,68,68,0.2)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Gastos</span>
             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
@@ -1125,8 +1537,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
           <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
           <div className="text-[10px] text-slate-500 mt-1">Fixos + variáveis + cartão</div>
-        </div>
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalResumo('recebimentos')}
+          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
+          style={{ borderColor: 'rgba(16,185,129,0.2)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Recebimentos</span>
             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
@@ -1135,8 +1552,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
           <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
           <div className="text-[10px] text-slate-500 mt-1">Entradas no período</div>
-        </div>
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.15)' }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalResumo('pago')}
+          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
+          style={{ borderColor: 'rgba(16,185,129,0.15)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total Pago</span>
             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)' }}>
@@ -1145,8 +1567,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
           <div className="text-xl font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(totalPagoAnimado))}</div>
           <div className="text-[10px] text-slate-500 mt-1">Despesas já quitadas</div>
-        </div>
-        <div className="glass-card p-4" style={{ borderColor: 'rgba(245,158,11,0.2)' }}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalResumo('apagar')}
+          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
+          style={{ borderColor: 'rgba(245,158,11,0.2)' }}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Falta Pagar</span>
             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)' }}>
@@ -1155,8 +1582,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
           <div className="text-xl font-bold text-amber-400 tabular-nums">{ocultar(formatarMoeda(aPagarAnimado))}</div>
           <div className="text-[10px] text-slate-500 mt-1">Pendentes + fatura</div>
-        </div>
+        </button>
       </div>
+
+      {/* Modal detalhe dos cards resumo */}
+      {modalResumo && (
+        <ModalResumoCard
+          tipo={modalResumo}
+          dados={detalheResumo}
+          onFechar={() => setModalResumo(null)}
+          ocultar={ocultar}
+          onNavegar={() => onNovoPagina('transacoes')}
+        />
+      )}
 
       {/* Score de Saúde Financeira */}
       <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
