@@ -3,7 +3,8 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
-  ArrowUpRight, ArrowDownLeft, Brain, ChevronDown, FileText, ImageIcon, Loader2, Edit,
+  Brain, ChevronDown, FileText, ImageIcon, Loader2, Edit,
+  TrendingDown, TrendingUp, CheckCircle2, Clock,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
@@ -908,26 +909,28 @@ export default function Dashboard({ onNovoPagina }: Props) {
   // Saldo real = dinheiro em conta − o que ainda precisa ser pago
   const saldoContas = contas.reduce((s, c) => s + c.saldo, 0);
   const saldoProjetado = saldoContas - aPagarMesAtual;
+  const totalPago = Math.max(0, dadosMes.despesas - aPagarMesAtual);
+
+  const gastosFixos = useMemo(() => {
+    const ref = startOfTodayLocal();
+    return transacoes.filter(t =>
+      t.tipo === 'despesa' &&
+      t.classificacao === 'fixa' &&
+      transacaoContaNoMesAteData(t, mes, ano, ref),
+    );
+  }, [transacoes, mes, ano]);
 
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
   const saldoMesAnimado = useCountUp(saldoProjetado);
+  const totalPagoAnimado = useCountUp(totalPago);
+  const aPagarAnimado = useCountUp(aPagarMesAtual);
   const corSaldoMes =
     saldoProjetado > 0 ? '#10B981' :
     saldoProjetado < 0 ? '#EF4444' :
     '#F1F5F9';
 
   const ocultar = (v: string) => saldoOculto ? '??????' : v;
-
-  // Transações filtradas por categoria selecionada no donut
-  const transacoesFiltradas = useMemo(() => {
-    const doMes = dadosMes.doMes;
-    if (!catFiltro) return doMes.slice(0, 8);
-    return doMes.filter(t => {
-      const cat = categorias.find(c => c.id === t.categoria_id);
-      return (cat?.nome || 'Outros') === catFiltro;
-    }).slice(0, 8);
-  }, [dadosMes.doMes, catFiltro, categorias]);
 
   const transacoesPorConta = useMemo(() => {
     const mapa: Record<string, Transacao[]> = {};
@@ -1111,50 +1114,58 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </div>
 
-      {/* Cards resumo */}
-      <div className="order-4 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => onNovoPagina('transacoes')}
-          className="glass-card p-4 text-left"
-          style={{ borderColor: 'rgba(16,185,129,0.2)' }}
-        >
+      {/* Resumo financeiro - 4 cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass-card p-4" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">Entradas</span>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
-              <ArrowDownLeft size={14} className="text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => onNovoPagina('transacoes')}
-          className="glass-card p-4 text-left"
-          style={{ borderColor: 'rgba(239,68,68,0.2)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">Saídas</span>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
-              <ArrowUpRight size={14} className="text-red-400" />
+            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Gastos</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
+              <TrendingDown size={13} className="text-red-400" />
             </div>
           </div>
           <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
-        </button>
+          <div className="text-[10px] text-slate-500 mt-1">Fixos + variáveis + cartão</div>
+        </div>
+        <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Recebimentos</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
+              <TrendingUp size={13} className="text-emerald-400" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
+          <div className="text-[10px] text-slate-500 mt-1">Entradas no período</div>
+        </div>
+        <div className="glass-card p-4" style={{ borderColor: 'rgba(16,185,129,0.15)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total Pago</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)' }}>
+              <CheckCircle2 size={13} className="text-emerald-500" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(totalPagoAnimado))}</div>
+          <div className="text-[10px] text-slate-500 mt-1">Despesas já quitadas</div>
+        </div>
+        <div className="glass-card p-4" style={{ borderColor: 'rgba(245,158,11,0.2)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Falta Pagar</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)' }}>
+              <Clock size={13} className="text-amber-400" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-amber-400 tabular-nums">{ocultar(formatarMoeda(aPagarAnimado))}</div>
+          <div className="text-[10px] text-slate-500 mt-1">Pendentes + fatura</div>
+        </div>
       </div>
 
       {/* Score de Saúde Financeira */}
-      <div className="order-5">
-        <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
-      </div>
+      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
 
       {/* Próximas faturas */}
-      <div className="order-6">
-        <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
-      </div>
+      <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
 
       {/* Contas bancárias com sparkline */}
-      <section className="order-2">
+      <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Building2 size={15} className="text-slate-500" />
@@ -1306,7 +1317,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </section>
 
       {/* Cartões de crédito */}
-      <section className="order-3">
+      <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <CreditCard size={15} className="text-slate-500" />
@@ -1574,37 +1585,28 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </div>
       </section>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Evolução 6 meses */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Evolução - 6 meses</h3>
-          <EvolutionChart data={dadosMes.areaData} />
-        </div>
-
-        {/* Donut categorias */}
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">
-            Gastos por Categoria
-            {catFiltro && (
-              <button onClick={() => setCatFiltro(null)} className="ml-2 text-xs text-purple-400 hover:text-purple-300">
-                ? {catFiltro}
-              </button>
-            )}
-          </h3>
-          {dadosMes.graficoPizza.length > 0 ? (
-            <CategoryDonut
-              items={dadosMes.graficoPizza}
-              selectedCat={catFiltro}
-              onSelect={setCatFiltro}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-40 text-slate-600">
-              <Wallet size={32} className="mb-2 opacity-30" />
-              <p className="text-sm">Sem gastos registrados</p>
-            </div>
+      {/* Gastos por Categoria */}
+      <div className="glass-card p-5">
+        <h3 className="text-sm font-semibold text-slate-300 mb-4">
+          Gastos por Categoria
+          {catFiltro && (
+            <button onClick={() => setCatFiltro(null)} className="ml-2 text-xs text-purple-400 hover:text-purple-300">
+              × {catFiltro}
+            </button>
           )}
-        </div>
+        </h3>
+        {dadosMes.graficoPizza.length > 0 ? (
+          <CategoryDonut
+            items={dadosMes.graficoPizza}
+            selectedCat={catFiltro}
+            onSelect={setCatFiltro}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 text-slate-600">
+            <Wallet size={32} className="mb-2 opacity-30" />
+            <p className="text-sm">Sem gastos registrados</p>
+          </div>
+        )}
       </div>
 
       {/* Análise IA com typewriter */}
@@ -1637,6 +1639,54 @@ export default function Dashboard({ onNovoPagina }: Props) {
             dicas={dicasIA as DicaItem[]}
             onVerAssistente={() => onNovoPagina('assistente')}
           />
+        </section>
+      )}
+
+      {/* Gastos Fixos */}
+      {gastosFixos.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-300">Gastos Fixos</span>
+            </div>
+            <button onClick={() => onNovoPagina('transacoes')}
+              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+              Ver tudo <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {gastosFixos.map(t => {
+              const cat = categorias.find(c => c.id === t.categoria_id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => abrirEdicaoTransacao(t)}
+                  className="glass-card flex items-center gap-3 p-3 w-full text-left"
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                    style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
+                  >
+                    {cat?.icone || '??'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
+                    <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • Fixo</div>
+                  </div>
+                  <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
+                    -{ocultar(formatarMoeda(t.valor))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 glass-card p-3 flex items-center justify-between">
+            <span className="text-xs text-slate-400">Total gastos fixos</span>
+            <span className="text-sm font-bold text-red-400 tabular-nums">
+              -{ocultar(formatarMoeda(gastosFixos.reduce((s, t) => s + t.valor, 0)))}
+            </span>
+          </div>
         </section>
       )}
 
@@ -1768,56 +1818,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </section>
       )}
 
-      {/* Últimas transações */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-slate-300">
-            {catFiltro ? `Transações • ${catFiltro}` : 'Últimas Transações'}
-          </span>
-          <button onClick={() => onNovoPagina('transacoes')}
-            className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-            Ver todas <ArrowRight size={12} />
-          </button>
-        </div>
-        <div className="space-y-2">
-          {transacoesFiltradas.map(t => {
-            const cat = categorias.find(c => c.id === t.categoria_id);
-            const cartao = cartoes.find((item) => item.id === t.cartao_id);
-            const dataLista = t.cartao_id ? getDataCobrancaCartao(t, cartao) : t.data;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onNovoPagina('transacoes')}
-                className="glass-card flex items-center gap-3 p-3 w-full text-left"
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
-                  style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                  {cat?.icone || '??'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                  <div className="text-xs text-slate-500">
-                    {cat?.nome || 'Outros'}
-                    {t.metodo_pagamento && ` • ${t.metodo_pagamento}`}
-                    {' • '}{parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </div>
-                </div>
-                <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
-                </div>
-              </button>
-            );
-          })}
-          {dadosMes.doMes.length === 0 && (
-            <div className="glass-card flex flex-col items-center justify-center py-12 text-slate-600">
-              <Wallet size={36} className="mb-3 opacity-30" />
-              <p className="text-sm font-medium text-slate-500">Nenhuma transação este mês</p>
-              <p className="text-xs mt-1 text-slate-600">Use o botão + ou a importação por I.A. para começar.</p>
-            </div>
-          )}
-        </div>
-      </section>
     </div>
   );
 }
