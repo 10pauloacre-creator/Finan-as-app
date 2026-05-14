@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
-  Brain, ChevronDown, FileText, ImageIcon, Loader2, Edit,
+  Brain, ChevronDown, FileText, ImageIcon, Loader2,
   TrendingDown, TrendingUp, CheckCircle2, Clock,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
@@ -25,6 +25,7 @@ import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
+import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
 import { useCountUp } from '@/hooks/useCountUp';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
 
@@ -967,6 +968,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const [carregandoAutomacoes, setCarregandoAutomacoes] = useState(false);
   const [transacaoEditando, setTransacaoEditando] = useState<Transacao | undefined>();
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+  const [transacaoDetalhe, setTransacaoDetalhe] = useState<Transacao | null>(null);
   const [modalResumo, setModalResumo] = useState<'gastos' | 'recebimentos' | 'pago' | 'apagar' | null>(null);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
   const hoje = startOfTodayLocal();
@@ -1358,6 +1360,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   }, [transacoes]);
 
   function abrirEdicaoTransacao(transacao: Transacao) {
+    setTransacaoDetalhe(null);
     setTransacaoEditando(transacao);
     setModalEdicaoAberto(true);
   }
@@ -1698,8 +1701,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         const cartao = cartoes.find((item) => item.id === transacao.cartao_id);
                         const dataLista = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : transacao.data;
                         return (
-                          <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
+                          <button
+                            key={transacao.id}
+                            type="button"
+                            onClick={() => setTransacaoDetalhe(transacao)}
+                            className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors"
+                          >
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
                               {categoria?.icone || '??'}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1708,28 +1716,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
                                 {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => abrirEdicaoTransacao(transacao)}
-                              className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all flex items-center justify-center flex-shrink-0"
-                              aria-label="Editar lançamento"
-                              title="Editar lançamento"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => abrirEdicaoTransacao(transacao)}
-                              className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all flex items-center justify-center flex-shrink-0"
-                              aria-label="Editar lançamento"
-                              title="Editar lançamento"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                       {lista.length === 0 && (
@@ -1942,8 +1932,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
                         const dataLista = getDataCobrancaCartao(transacao, cartaoExpandido);
                         return (
-                          <div key={transacao.id} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
+                          <button
+                            key={transacao.id}
+                            type="button"
+                            onClick={() => setTransacaoDetalhe(transacao)}
+                            className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors"
+                          >
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
                               {categoria?.icone || '??'}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1952,10 +1947,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
                                 {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                               </div>
                             </div>
-                            <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                       {lista.length === 0 && (
@@ -2096,7 +2091,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => abrirEdicaoTransacao(t)}
+                  onClick={() => setTransacaoDetalhe(t)}
                   className="glass-card flex items-center gap-3 p-3 w-full text-left"
                 >
                   <div
@@ -2134,6 +2129,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
         transacaoEditar={transacaoEditando}
         tipoInicial={transacaoEditando?.tipo || 'despesa'}
       />
+
+      {transacaoDetalhe && (
+        <ModalDetalheTransacao
+          transacao={transacaoDetalhe}
+          conta={contas.find(c => c.id === transacaoDetalhe.conta_id)}
+          cartao={cartoes.find(c => c.id === transacaoDetalhe.cartao_id)}
+          categoriaNome={categorias.find(c => c.id === transacaoDetalhe.categoria_id)?.nome || 'Outros'}
+          onEditar={() => abrirEdicaoTransacao(transacaoDetalhe)}
+          onFechar={() => setTransacaoDetalhe(null)}
+        />
+      )}
 
       {/* Alertas de Orçamento */}
       {(() => {

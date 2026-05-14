@@ -22,6 +22,7 @@ import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
+import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
 
 const BANDEIRAS: BandeirCartao[] = ['visa', 'mastercard', 'elo', 'amex', 'hipercard'];
 
@@ -456,6 +457,7 @@ export default function Cartoes() {
   const {
     cartoes,
     categorias,
+    contas,
     transacoes,
     config,
     adicionarCartao,
@@ -475,6 +477,7 @@ export default function Cartoes() {
   const [filtroLancamentos, setFiltroLancamentos] = useState<FiltroLancamentoCartao>('todos');
   const [transacaoEditando, setTransacaoEditando] = useState<Transacao | undefined>();
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+  const [transacaoDetalhe, setTransacaoDetalhe] = useState<Transacao | null>(null);
   const arquivoCartaoRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -563,6 +566,7 @@ export default function Cartoes() {
   }
 
   function abrirEdicaoLancamento(transacao: Transacao) {
+    setTransacaoDetalhe(null);
     setTransacaoEditando(transacao);
     setModalEdicaoAberto(true);
   }
@@ -1201,42 +1205,37 @@ export default function Cartoes() {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
                         return (
                           <div key={`${transacao.id}-${dataExibicao}`} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
-                            <div
-                              className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
-                              style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)' }}
+                            <button
+                              type="button"
+                              onClick={() => setTransacaoDetalhe(transacao)}
+                              className="flex items-center gap-3 flex-1 min-w-0 text-left"
                             >
-                              {categoria?.icone || '•'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-white truncate">{transacao.descricao}</div>
-                              <div className="text-[11px] text-slate-500">
-                                cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
-                                {categoria?.nome ? ` • ${categoria.nome}` : ''}
-                                {` • ${status === 'ativa' ? 'ativa' : 'já debitada'}`}
+                              <div
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                                style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)' }}
+                              >
+                                {categoria?.icone || '•'}
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => abrirEdicaoLancamento(transacao)}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-purple-900/30 hover:text-purple-300 transition-colors"
-                                aria-label="Editar lançamento do cartão"
-                                title="Editar lançamento"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removerLancamento(transacao)}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-900/30 hover:text-red-300 transition-colors"
-                                aria-label="Excluir lançamento do cartão"
-                                title="Excluir lançamento"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                            <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-white truncate">{transacao.descricao}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
+                                  {categoria?.nome ? ` • ${categoria.nome}` : ''}
+                                  {` • ${status === 'ativa' ? 'ativa' : 'já debitada'}`}
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removerLancamento(transacao)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-red-900/30 hover:text-red-300 transition-colors flex-shrink-0"
+                              aria-label="Excluir lançamento do cartão"
+                              title="Excluir lançamento"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {transacao.tipo === 'receita' ? '+' : '-'}{formatarMoeda(transacao.valor)}
                             </div>
                           </div>
@@ -1273,6 +1272,17 @@ export default function Cartoes() {
         transacaoEditar={transacaoEditando}
         tipoInicial={transacaoEditando?.tipo || 'despesa'}
       />
+
+      {transacaoDetalhe && (
+        <ModalDetalheTransacao
+          transacao={transacaoDetalhe}
+          conta={contas.find(c => c.id === transacaoDetalhe.conta_id)}
+          cartao={cartoes.find(c => c.id === transacaoDetalhe.cartao_id)}
+          categoriaNome={categorias.find(c => c.id === transacaoDetalhe.categoria_id)?.nome || 'Outros'}
+          onEditar={() => abrirEdicaoLancamento(transacaoDetalhe)}
+          onFechar={() => setTransacaoDetalhe(null)}
+        />
+      )}
     </div>
   );
 }

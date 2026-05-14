@@ -11,7 +11,8 @@
       "Bash(powershell -Command \"Select-String 'adicionarReserva|editarReserva|excluirReserva' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts'\")",
       "Bash(powershell -Command \"Select-String 'setInterval|setTimeout|delay|interval' 'c:\\\\projetos\\\\financeiro-ia\\\\src\\\\store\\\\useFinanceiroStore.ts' | Select-Object -ExpandProperty Line\")",
       "Bash(Get-ChildItem -Path \"c:\\\\projetos\\\\financeiro-ia\\\\src\" -Recurse -Name)",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(xargs grep -l \"onClick.*transacao\\\\|setTransacaoDetalhe\\\\|setModalAberto\\\\|abrirEdicaoTransacao\\\\|abrirEdicaoLancamento\")"
     ]
   }
 }
