@@ -8,6 +8,7 @@ import {
   Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search, HardDrive,
 } from 'lucide-react';
 import { formatarMoeda } from '@/lib/storage';
+import { capturarBackupSnapshot } from '@/lib/storage';
 import Dashboard      from '@/components/paginas/Dashboard';
 import Transacoes     from '@/components/paginas/Transacoes';
 import Relatorios     from '@/components/paginas/Relatorios';
@@ -26,7 +27,6 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { TipoTransacao } from '@/types';
 
 import { Transacao, Categoria } from '@/types';
-import { FINANCEIRO_OPEN_BACKUP_EVENT } from '@/lib/storage';
 
 type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
 
@@ -244,6 +244,7 @@ export default function AppPrincipal() {
   const [modalAberto, setModalAberto] = useState(false);
   const [tipoInicialModal, setTipoInicialModal] = useState<TipoTransacao>('despesa');
   const [sincronizando, setSincronizando] = useState(false);
+  const [fazendoBackup, setFazendoBackup] = useState(false);
   const [maisAberto, setMaisAberto]   = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
   const { sincronizarDoSupabase, enviarParaNuvem, transacoes, categorias } = useFinanceiroStore();
@@ -314,6 +315,27 @@ export default function AppPrincipal() {
     const r = await enviarParaNuvem();
     setSincronizando(false);
     alert(r.msg);
+  }
+
+  async function handleBackup() {
+    setFazendoBackup(true);
+    try {
+      const snapshot = capturarBackupSnapshot();
+      const res = await fetch('/api/backups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', snapshot }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || 'Erro ao criar backup.');
+      }
+      alert(`Backup criado com sucesso: ${data.nome}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Erro ao criar backup.');
+    } finally {
+      setFazendoBackup(false);
+    }
   }
 
   function renderizarPagina() {
@@ -417,15 +439,11 @@ export default function AppPrincipal() {
           )}
 
           <button
-            onClick={() => {
-              setPagina('configuracoes');
-              window.setTimeout(() => {
-                window.dispatchEvent(new CustomEvent(FINANCEIRO_OPEN_BACKUP_EVENT));
-              }, 50);
-            }}
+            onClick={handleBackup}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-400 hover:text-amber-300 hover:border-amber-500/30 transition-all mb-2"
+            disabled={fazendoBackup}
           >
-            <HardDrive size={13} />
+            {fazendoBackup ? <RefreshCw size={13} className="animate-spin" /> : <HardDrive size={13} />}
             Backup
           </button>
 

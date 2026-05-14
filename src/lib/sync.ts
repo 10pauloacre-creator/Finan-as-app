@@ -74,14 +74,23 @@ function setQueue(queue: PendingSyncOp[]) {
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 }
 
-function enqueue(op: Omit<PendingSyncOp, 'id' | 'createdAt'>) {
+function upsertNaFila(op: Omit<PendingSyncOp, 'id' | 'createdAt'>) {
   const queue = getQueue();
-  queue.push({
+  const payloadId = typeof op.payload.id === 'string' ? op.payload.id : null;
+
+  const filtrada = queue.filter((item) => {
+    const itemId = typeof item.payload.id === 'string' ? item.payload.id : null;
+    if (item.entity !== op.entity || itemId !== payloadId) return true;
+    if (op.action === 'delete') return false;
+    return item.action === 'delete';
+  });
+
+  filtrada.push({
     ...op,
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     createdAt: new Date().toISOString(),
   });
-  setQueue(queue);
+  setQueue(filtrada);
 }
 
 function semCampoAtualizadoEm(payload: Record<string, unknown>) {
@@ -168,20 +177,16 @@ async function sincronizarOperacao(
   if (!ok()) return;
 
   const opBase = { entity, action, payload };
+  upsertNaFila(opBase);
+
   if (!podeSincronizarAgora()) {
-    enqueue(opBase);
     return;
   }
 
   try {
-    await executarOperacao({
-      ...opBase,
-      id: 'live',
-      createdAt: new Date().toISOString(),
-    });
+    await processarFilaDeSincronizacao();
   } catch (error) {
     console.error('[sync] falha ao sincronizar operacao', { entity, action, error });
-    enqueue(opBase);
   }
 }
 
