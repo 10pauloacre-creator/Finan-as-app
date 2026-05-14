@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
   Brain, ChevronDown, FileText, ImageIcon, Loader2,
@@ -566,7 +567,9 @@ function ModalResumoCard({
   ocultar: (v: string) => string;
   onNavegar: () => void;
 }) {
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onFechar(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
@@ -608,8 +611,8 @@ function ModalResumoCard({
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onFechar}>
+  const modal = (
+    <div className="fixed inset-0 z-9999 flex items-end sm:items-center justify-center" onClick={onFechar}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
         className="relative z-10 w-full max-w-sm mx-4 mb-4 sm:mb-0 rounded-2xl border border-white/10 bg-[#0E1220] shadow-2xl overflow-hidden"
@@ -825,6 +828,9 @@ function ModalResumoCard({
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
 }
 
 // Score Widget
@@ -1214,11 +1220,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const gastosFixos = useMemo(() => {
     const ref = startOfTodayLocal();
-    return transacoes.filter(t =>
+    const doMes = transacoes.filter(t =>
       t.tipo === 'despesa' &&
-      t.classificacao === 'fixa' &&
       transacaoContaNoMesAteData(t, mes, ano, ref),
     );
+    const fixos = doMes.filter(t => t.classificacao === 'fixa');
+    const parcelados = doMes.filter(t =>
+      t.classificacao !== 'fixa' &&
+      t.parcelas && t.parcelas > 1,
+    );
+    // deduplicar por id (parcelado pode ter classificacao fixa também)
+    const ids = new Set(fixos.map(t => t.id));
+    const parceladosSemDup = parcelados.filter(t => !ids.has(t.id));
+    return { fixos, parcelados: parceladosSemDup };
   }, [transacoes, mes, ano]);
 
   const detalheResumo = useMemo(() => {
@@ -2072,49 +2086,80 @@ export default function Dashboard({ onNovoPagina }: Props) {
         </section>
       )}
 
-      {/* Gastos Fixos */}
-      {gastosFixos.length > 0 && (
+      {/* Gastos Fixos e Recorrentes */}
+      {(gastosFixos.fixos.length > 0 || gastosFixos.parcelados.length > 0) && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-300">Gastos Fixos</span>
-            </div>
+            <span className="text-sm font-semibold text-slate-300">Fixos e Recorrentes</span>
             <button onClick={() => onNovoPagina('transacoes')}
               className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
               Ver tudo <ArrowRight size={12} />
             </button>
           </div>
-          <div className="space-y-2">
-            {gastosFixos.map(t => {
-              const cat = categorias.find(c => c.id === t.categoria_id);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTransacaoDetalhe(t)}
-                  className="glass-card flex items-center gap-3 p-3 w-full text-left"
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                    style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
-                  >
-                    {cat?.icone || '??'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                    <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • Fixo</div>
-                  </div>
-                  <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
-                    -{ocultar(formatarMoeda(t.valor))}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 glass-card p-3 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Total gastos fixos</span>
+
+          {gastosFixos.fixos.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Gastos fixos</p>
+              <div className="space-y-2 mb-3">
+                {gastosFixos.fixos.map(t => {
+                  const cat = categorias.find(c => c.id === t.categoria_id);
+                  return (
+                    <button key={t.id} type="button" onClick={() => setTransacaoDetalhe(t)}
+                      className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
+                        {cat?.icone || '??'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
+                        <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • Recorrente mensal</div>
+                      </div>
+                      <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
+                        -{ocultar(formatarMoeda(t.valor))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {gastosFixos.parcelados.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Parcelados em andamento</p>
+              <div className="space-y-2 mb-3">
+                {gastosFixos.parcelados.map(t => {
+                  const cat = categorias.find(c => c.id === t.categoria_id);
+                  return (
+                    <button key={t.id} type="button" onClick={() => setTransacaoDetalhe(t)}
+                      className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
+                        {cat?.icone || '??'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
+                        <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • {t.parcelas}x parcelado</div>
+                      </div>
+                      <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
+                        -{ocultar(formatarMoeda(t.valor))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <div className="glass-card p-3 flex items-center justify-between">
+            <span className="text-xs text-slate-400">
+              Total fixos + recorrentes
+              <span className="text-slate-600 ml-1">({gastosFixos.fixos.length + gastosFixos.parcelados.length} itens)</span>
+            </span>
             <span className="text-sm font-bold text-red-400 tabular-nums">
-              -{ocultar(formatarMoeda(gastosFixos.reduce((s, t) => s + t.valor, 0)))}
+              -{ocultar(formatarMoeda(
+                [...gastosFixos.fixos, ...gastosFixos.parcelados].reduce((s, t) => s + t.valor, 0)
+              ))}
             </span>
           </div>
         </section>

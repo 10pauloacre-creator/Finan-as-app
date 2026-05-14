@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Edit, X } from 'lucide-react';
 import { formatarMoeda } from '@/lib/storage';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
@@ -51,8 +53,11 @@ export default function ModalDetalheTransacao({
     ? 'Futura'
     : 'Padrão';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const modal = (
+    <div className="fixed inset-0 z-9999 flex items-end lg:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onFechar} />
       <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-3xl lg:rounded-2xl border border-slate-700 bg-slate-900">
 
@@ -239,4 +244,7 @@ export default function ModalDetalheTransacao({
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
 }
