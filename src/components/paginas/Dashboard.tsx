@@ -5,16 +5,16 @@ import { createPortal } from 'react-dom';
 import {
   Wallet, ArrowRight, Eye, EyeOff, CreditCard, Building2, Sparkles,
   Brain, ChevronDown, FileText, ImageIcon, Loader2,
-  TrendingDown, TrendingUp, CheckCircle2, Clock,
+  TrendingDown, TrendingUp, CheckCircle2, Clock, X,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
 import { formatarMoeda, mesAtual } from '@/lib/storage';
-import { BANCO_INFO, BancoSlug, Categoria, Transacao } from '@/types';
+import { BANCO_INFO, BancoSlug, CartaoCredito, ContaBancaria, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
-import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { getDataCobrancaCartao, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { getDataCobrancaCartao, getDataCompetenciaDespesa, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import {
   existeValorNaFaturaDoMes,
   getDataCobrancaPorReferencia,
@@ -958,6 +958,39 @@ function diasAte(dia: number) {
   return dia >= hoje ? dia - hoje : 30 - hoje + dia;
 }
 
+function aplicarDataDeExibicaoNaTransacao(transacao: Transacao, dataExibicao: string): Transacao {
+  if (transacao.tipo !== 'despesa') return transacao;
+  return {
+    ...transacao,
+    data: dataExibicao,
+    data_cobranca: dataExibicao,
+  };
+}
+
+function getDataExibicaoNoMes(
+  transacao: Transacao,
+  cartoes: CartaoCredito[],
+  mes: number,
+  ano: number,
+) {
+  const cartao = transacao.cartao_id ? cartoes.find((item) => item.id === transacao.cartao_id) : undefined;
+  const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+  const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataCompetencia);
+
+  if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
+    const [faturaAno, faturaMes] = dataCompetencia.split('-').map(Number);
+    return faturaMes === mes && faturaAno === ano ? dataCompetencia : null;
+  }
+
+  const ocorrencia = getDataOcorrenciaNoMes(
+    transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+    mes,
+    ano,
+  );
+
+  return ocorrencia ? formatFinancialDate(ocorrencia) : null;
+}
+
 export default function Dashboard({ onNovoPagina }: Props) {
   const {
     transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual,
@@ -981,9 +1014,27 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const dadosMes = useMemo(() => {
     const referenciaHoje = startOfTodayLocal();
-    const doMes = ordenarTransacoesPorDataDesc(transacoes.filter(t => {
-      return transacaoContaNoMesAteData(t, mes, ano, referenciaHoje);
-    }));
+    const registrosMes = transacoes.flatMap((transacao) => {
+      const dataExibicao = getDataExibicaoNoMes(transacao, cartoes, mes, ano);
+      if (!dataExibicao) return [];
+
+      const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao);
+      const realizada = transacaoContaNoMesAteData(
+        transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+        mes,
+        ano,
+        referenciaHoje,
+      );
+
+      return [{ transacao, dataExibicao, realizada }];
+    });
+
+    const doMes = ordenarTransacoesPorDataDesc(registrosMes.map(({ transacao, dataExibicao }) => (
+      transacao.tipo === 'despesa'
+        ? aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao)
+        : { ...transacao, data: dataExibicao }
+    )));
+    const doMesAteHoje = doMes.filter((transacao) => transacaoContaNoMesAteData(transacao, mes, ano, referenciaHoje));
     const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
     const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
     const saldo = receitas - despesas;
@@ -1004,8 +1055,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
     const areaData = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
       const m = d.getMonth() + 1; const a = d.getFullYear();
-      const filtrado = transacoes.filter(t => {
-        return transacaoContaNoMesAteData(t, m, a, referenciaHoje);
+      const filtrado = transacoes.flatMap((transacao) => {
+        const dataExibicao = getDataExibicaoNoMes(transacao, cartoes, m, a);
+        if (!dataExibicao) return [];
+
+        return [transacao.tipo === 'despesa'
+          ? aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao)
+          : { ...transacao, data: dataExibicao }];
       });
       return {
         mes: MESES_ABREV[m - 1],
@@ -1014,29 +1070,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
       };
     });
 
-    return { receitas, despesas, saldo, graficoPizza, areaData, doMes };
-  }, [transacoes, categorias, mes, ano]);
+    return { receitas, despesas, saldo, graficoPizza, areaData, doMes, doMesAteHoje, registrosMes };
+  }, [transacoes, categorias, cartoes, mes, ano]);
 
   // Despesas que ainda não ocorreram neste mês = "A pagar"
   const aPagarMesAtual = useMemo(() => {
-    const hoje = startOfTodayLocal();
-    let total = 0;
-    transacoes.forEach((t) => {
-      if (t.tipo !== 'despesa') return;
-      const cartao = t.cartao_id ? cartoes.find((c) => c.id === t.cartao_id) : undefined;
-      if (cartao && t.classificacao !== 'fixa') {
-        const dataCobranca = getDataCobrancaCartao(t, cartao);
-        const [cAno, cMes] = dataCobranca.split('-').map(Number);
-        if (cMes !== mes || cAno !== ano) return;
-        if (parseFinancialDate(dataCobranca) <= hoje) return;
-      } else {
-        const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
-        if (!ocorrencia || ocorrencia <= hoje) return;
-      }
-      total += t.valor;
-    });
-    return total;
-  }, [transacoes, cartoes, mes, ano]);
+    return dadosMes.registrosMes.reduce((total, registro) => (
+      registro.transacao.tipo === 'despesa' && !registro.realizada
+        ? total + registro.transacao.valor
+        : total
+    ), 0);
+  }, [dadosMes]);
 
   const snapshotProjeto = useMemo(() => construirSnapshotFinanceiro({
     transacoes,
