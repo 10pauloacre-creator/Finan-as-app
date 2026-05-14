@@ -553,8 +553,8 @@ interface DetalheResumoData {
     total: number;
   };
   apagar: {
-    cartoes: Array<{ id: string; nome: string; banco: string; valor_pendente: number; dia_vencimento: number; diasParaVencer: number }>;
-    despesasFuturas: Array<{ nome: string; icone: string; cor: string; valor: number }>;
+    cartoes: Array<{ id: string; nome: string; banco: string; valor_total_fatura: number; dia_vencimento: number; diasParaVencer: number }>;
+    despesasFuturas: Array<{ id: string; nome: string; icone: string; cor: string; valor: number }>;
     total: number;
   };
 }
@@ -779,7 +779,7 @@ function ModalResumoCard({
                     <LinhaValor
                       key={c.id}
                       label={c.nome}
-                      valor={c.valor_pendente}
+                      valor={c.valor_total_fatura}
                       cor={c.diasParaVencer <= 5 ? '#EF4444' : '#F59E0B'}
                       sub={c.diasParaVencer === 0 ? 'Vence hoje!' : `Vence em ${c.diasParaVencer} dia${c.diasParaVencer > 1 ? 's' : ''} · dia ${c.dia_vencimento}`}
                     />
@@ -791,7 +791,7 @@ function ModalResumoCard({
                 <>
                   <SecaoTitulo>Despesas previstas no mês</SecaoTitulo>
                   {dados.apagar.despesasFuturas.map(c => (
-                    <div key={c.nome} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
+                    <div key={c.id} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
                       <span className="text-base">{c.icone}</span>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
@@ -1451,12 +1451,15 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   // Despesas que ainda não ocorreram neste mês = "A pagar"
   const aPagarMesAtual = useMemo(() => {
-    return dadosMes.registrosMes.reduce((total, registro) => (
-      registro.transacao.tipo === 'despesa' && !registro.realizada
+    const totalFaturas = cartoes.reduce((total, cartao) => total + cartao.fatura_atual, 0);
+    const despesasExtrasPendentes = dadosMes.registrosMes.reduce((total, registro) => (
+      registro.transacao.tipo === 'despesa' && !registro.realizada && !registro.transacao.cartao_id
         ? total + registro.transacao.valor
         : total
     ), 0);
-  }, [dadosMes]);
+
+    return totalFaturas + despesasExtrasPendentes;
+  }, [cartoes, dadosMes]);
 
   const snapshotProjeto = useMemo(() => construirSnapshotFinanceiro({
     transacoes,
@@ -1725,31 +1728,20 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
     // ── A PAGAR ───────────────────────────────────────────────
-    const despesasFuturas = despesasMes.filter(t => {
-      if (t.cartao_id) {
-        const cartao = cartoes.find(c => c.id === t.cartao_id);
-        if (!cartao) return false;
-        return parseFinancialDate(getDataCobrancaCartao(t, cartao)) > ref;
-      }
+    const despesasFuturasExtras = despesasMes.filter(t => {
+      if (t.cartao_id) return false;
       const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
       return ocorrencia !== null && ocorrencia > ref;
-    });
-    const despesasFuturasPorCat = despesasFuturas.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
+    }).map((t) => {
       const cat = categorias.find(c => c.id === t.categoria_id);
-      const nome = cat?.nome || 'Outros';
-      const ex = acc.find(a => a.nome === nome);
-      if (ex) { ex.valor += t.valor; }
-      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
-      return acc;
-    }, []).sort((a, b) => b.valor - a.valor);
-
-    const cartoesPendentesMap = despesasFuturas
-      .filter(t => t.cartao_id)
-      .reduce<Record<string, number>>((acc, t) => {
-        if (!t.cartao_id) return acc;
-        acc[t.cartao_id] = (acc[t.cartao_id] || 0) + t.valor;
-        return acc;
-      }, {});
+      return {
+        id: t.id,
+        nome: t.descricao,
+        icone: cat?.icone || '??',
+        cor: cat?.cor || '#6B7280',
+        valor: t.valor,
+      };
+    }).sort((a, b) => b.valor - a.valor);
 
     const cartoesPendentes = cartoes.map(c => {
       const hoje = ref;
@@ -1762,16 +1754,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
         banco: c.banco,
         dia_vencimento: c.dia_vencimento,
         diasParaVencer: dias,
-        valor_pendente: cartoesPendentesMap[c.id] || 0,
+        valor_total_fatura: c.fatura_atual,
       };
-    }).filter(c => c.valor_pendente > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
+    }).filter(c => c.valor_total_fatura > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
 
     return {
       LABEL_METODO,
       gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalCartoesNoMes, semCartao: gastosSemCartao, topCats: dadosMes.graficoPizza.slice(0, 5) },
       recebimentos: { metodos: metodosReceitas, porCategoria: receitasPorCategoria, total: dadosMes.receitas, qtd: receitasMes.length },
       pago: { metodos: metodosPagos, porCategoria: catsPagas, total: totalPagoCalc },
-      apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasPorCat, total: aPagarMesAtual },
+      apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasExtras, total: aPagarMesAtual },
     };
   }, [dadosMes, cartoes, categorias, aPagarMesAtual, mes, ano, transacoes]);
 

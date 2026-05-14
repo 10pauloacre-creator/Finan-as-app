@@ -769,14 +769,31 @@ export default function Transacoes() {
       ))
       .reduce((soma, { transacao }) => soma + transacao.valor, 0);
 
+    const despesasCartaoPendentes = transacoesFiltradas
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'despesa'
+        && !!transacao.cartao_id
+        && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
+    const receitasAgendadas = transacoesFiltradas
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'receita'
+        && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
     return {
       receitas: transacoesRealizadasFiltradas
         .filter(({ transacao }) => transacao.tipo === 'receita')
         .reduce((soma, { transacao }) => soma + transacao.valor, 0),
+      receitasAgendadas,
       despesas: transacoesRealizadasFiltradas
         .filter(({ transacao }) => transacao.tipo === 'despesa')
         .reduce((soma, { transacao }) => soma + transacao.valor, 0),
       despesasPrevistas,
+      despesasCartaoPendentes,
     };
   }, [realizadasIds, transacoesRealizadasFiltradas, transacoesFiltradas]);
 
@@ -795,7 +812,7 @@ export default function Transacoes() {
   }, [realizadasIds, transacoesFiltradas]);
 
   // Tudo que ainda precisa ser pago (cartão + contas futuras)
-  const aPagar = totais.despesas + totais.despesasPrevistas - debitadasSaldo;
+  const aPagar = totais.despesasCartaoPendentes + totais.despesasPrevistas;
 
   const transacoesBaseExibidas = useMemo(() => {
     if (filtroLinha2 !== 'ja_debitadas' && filtroLinha2 !== 'previstas') {
@@ -809,7 +826,7 @@ export default function Transacoes() {
         const metodoOk = !transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento);
         return realizada && naoCartao && metodoOk;
       }
-      return !transacao.cartao_id && !realizada;
+      return !realizada;
     });
   }, [filtroLinha2, realizadasIds, transacoesFiltradas]);
 
@@ -1100,7 +1117,7 @@ export default function Transacoes() {
               <div className="rounded-xl bg-white/5 p-3">
                 <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Agendadas</div>
                 <div className="text-base font-bold tabular-nums text-slate-300">
-                  +{formatarMoeda(totais.despesasPrevistas > 0 ? 0 : 0)}
+                  +{formatarMoeda(totais.receitasAgendadas)}
                 </div>
                 <div className="text-[10px] text-slate-600 mt-0.5">receitas fixas futuras</div>
               </div>
