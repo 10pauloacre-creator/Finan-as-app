@@ -25,6 +25,7 @@ import {
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
+import type { AIModelId } from '@/lib/ai/aiModels';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -991,6 +992,381 @@ function getDataExibicaoNoMes(
   return ocorrencia ? formatFinancialDate(ocorrencia) : null;
 }
 
+// ─── Modal Conta Bancária ────────────────────────────────────────────────────
+function ModalContaBancaria({
+  conta, lista, categorias, cartoes: todosCartoes, ocultar, mes, ano, hoje, onFechar, onTransacao,
+}: {
+  conta: ContaBancaria;
+  lista: Transacao[];
+  categorias: Categoria[];
+  cartoes: CartaoCredito[];
+  ocultar: (v: string) => string;
+  mes: number;
+  ano: number;
+  hoje: Date;
+  onFechar: () => void;
+  onTransacao: (t: Transacao) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onFechar(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onFechar]);
+
+  const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
+  const ordenada = ordenarTransacoesPorDataDesc(lista);
+  const entradasMes = lista
+    .filter((t) => t.tipo === 'receita' && transacaoContaNoMesAteData(t, mes, ano, hoje))
+    .reduce((s, t) => s + t.valor, 0);
+  const saidasMes = lista
+    .filter((t) => (t.tipo === 'despesa' || t.tipo === 'transferencia') && transacaoContaNoMesAteData(t, mes, ano, hoje))
+    .reduce((s, t) => s + t.valor, 0);
+
+  const modal = (
+    <div className="fixed inset-0 z-9999 flex items-end lg:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onFechar} />
+      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-3xl lg:rounded-2xl border border-slate-700 bg-slate-900">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900 p-5">
+          <div className="flex items-center gap-3">
+            <BankLogo banco={conta.banco} size={36} className="h-9 w-9 object-contain" />
+            <div>
+              <h3 className="text-lg font-bold text-white">{info.nome}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{conta.nome} • {conta.tipo}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Saldo atual</div>
+              <div className="mt-1 text-base font-bold text-white tabular-nums">{ocultar(formatarMoeda(conta.saldo))}</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+              <div className="text-[11px] text-slate-500">Entradas no mês</div>
+              <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(entradasMes))}</div>
+            </div>
+            <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-3">
+              <div className="text-[11px] text-slate-500">Saídas no mês</div>
+              <div className="mt-1 text-sm font-semibold text-red-400 tabular-nums">{ocultar(formatarMoeda(saidasMes))}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Tipo de conta</div>
+              <div className="mt-1 text-sm font-semibold text-white capitalize">{conta.tipo}</div>
+            </div>
+            {conta.saldo_base != null && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="text-[11px] text-slate-500">Saldo inicial</div>
+                <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(conta.saldo_base))}</div>
+              </div>
+            )}
+            {conta.agencia && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="text-[11px] text-slate-500">Agência</div>
+                <div className="mt-1 text-sm font-semibold text-white">{conta.agencia}</div>
+              </div>
+            )}
+            {conta.conta && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="text-[11px] text-slate-500">Número da conta</div>
+                <div className="mt-1 text-sm font-semibold text-white">{conta.conta}</div>
+              </div>
+            )}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Cadastrada em</div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {parseFinancialDate(conta.criado_em).toLocaleDateString('pt-BR')}
+              </div>
+            </div>
+            {conta.atualizado_em && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="text-[11px] text-slate-500">Última atualização</div>
+                <div className="mt-1 text-sm font-semibold text-white">
+                  {parseFinancialDate(conta.atualizado_em).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+            )}
+          </div>
+          {conta.pluggy_item_id && (
+            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-3">
+              <div className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
+              {conta.pluggy_sync_em && (
+                <div>
+                  <div className="text-[11px] text-slate-500">Última sincronização</div>
+                  <div className="mt-0.5 text-sm text-white">{new Date(conta.pluggy_sync_em).toLocaleString('pt-BR')}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-400">Todos os lançamentos</span>
+              <span className="text-[11px] text-slate-600">{ordenada.length} lançamentos</span>
+            </div>
+            <div className="space-y-2">
+              {ordenada.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
+                  Nenhuma movimentação vinculada a essa conta ainda.
+                </div>
+              ) : ordenada.map((t) => {
+                const cat = categorias.find((c) => c.id === t.categoria_id);
+                const cartao = todosCartoes.find((c) => c.id === t.cartao_id);
+                const dataLista = t.cartao_id ? getDataCobrancaCartao(t, cartao) : t.data;
+                return (
+                  <button key={t.id} type="button" onClick={() => onTransacao(t)}
+                    className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                      style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
+                      {cat?.icone || '??'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white truncate">{t.descricao}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {cat?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </div>
+                    </div>
+                    <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {t.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(t.valor))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
+}
+
+// ─── Modal Cartão de Crédito ─────────────────────────────────────────────────
+function ModalCartaoCredito({
+  cartao, lista, categorias, ocultar, statusImportacao, cartaoImportandoId,
+  configOcr, onImportar, onAtualizarOcr, onFechar, onTransacao,
+}: {
+  cartao: CartaoCredito;
+  lista: Transacao[];
+  categorias: Categoria[];
+  ocultar: (v: string) => string;
+  statusImportacao: { cartaoId: string; tipo: 'sucesso' | 'erro' | 'info'; mensagem: string } | null;
+  cartaoImportandoId: string | null;
+  configOcr: AIModelId;
+  onImportar: () => void;
+  onAtualizarOcr: (v: AIModelId) => void;
+  onFechar: () => void;
+  onTransacao: (t: Transacao) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onFechar(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onFechar]);
+
+  const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
+  const ordenada = ordenarTransacoesPorDataDesc(lista);
+  const compras = lista.filter((t) => t.tipo === 'despesa');
+  const estornos = lista.filter((t) => t.tipo === 'receita');
+  const totalCompras = compras.reduce((s, t) => s + t.valor, 0);
+  const totalEstornos = estornos.reduce((s, t) => s + t.valor, 0);
+  const maiorCompra = compras.reduce((m, t) => Math.max(m, t.valor), 0);
+  const ticketMedio = compras.length > 0 ? totalCompras / compras.length : 0;
+  const limiteDisponivel = cartao.limite - cartao.fatura_atual;
+  const usoLimite = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;
+  const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
+  const importando = cartaoImportandoId === cartao.id;
+
+  const modal = (
+    <div className="fixed inset-0 z-9999 flex items-end lg:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onFechar} />
+      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-3xl lg:rounded-2xl border border-slate-700 bg-slate-900">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900 p-5">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <BankLogo banco={cartao.banco} size={36} className="h-9 w-9 object-contain" />
+              <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={18} className="absolute -bottom-1 -right-1 h-[18px] w-[18px] object-contain shadow-sm" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">{cartao.nome}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{info.nome} • {cartao.bandeira}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-3">
+              <div className="text-[11px] text-slate-500">Fatura atual</div>
+              <div className="mt-1 text-sm font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Limite total</div>
+              <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(cartao.limite))}</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+              <div className="text-[11px] text-slate-500">Disponível</div>
+              <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(limiteDisponivel))}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Fecha / Vence</div>
+              <div className="mt-1 text-sm font-semibold text-white">Dia {cartao.dia_fechamento} / {cartao.dia_vencimento}</div>
+            </div>
+          </div>
+          {cartao.limite > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-slate-500">Uso do limite</span>
+                <span className={`text-xs font-bold tabular-nums ${usoLimite >= 90 ? 'text-red-400' : usoLimite >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {usoLimite.toFixed(1)}%
+                </span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(usoLimite, 100)}%`, background: usoLimite >= 90 ? '#EF4444' : usoLimite >= 70 ? '#F59E0B' : '#10B981' }} />
+              </div>
+              <div className="mt-1.5 text-[10px] text-slate-600">
+                Vencimento em {diasAte(cartao.dia_vencimento)} dia(s)
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Compras no app</div>
+              <div className="mt-1 text-sm font-semibold text-white">{compras.length}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Ticket médio</div>
+              <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(ticketMedio))}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Maior compra</div>
+              <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(maiorCompra))}</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+              <div className="text-[11px] text-slate-500">Estornos / créditos</div>
+              <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(totalEstornos))}</div>
+            </div>
+          </div>
+          {cartao.fatura_ajuste_manual != null && cartao.fatura_ajuste_manual !== 0 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <div className="text-[11px] text-amber-400">Fatura com ajuste manual</div>
+              <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(cartao.fatura_ajuste_manual))}</div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-[11px] text-slate-500">Cadastrado em</div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {parseFinancialDate(cartao.criado_em).toLocaleDateString('pt-BR')}
+              </div>
+            </div>
+            {cartao.atualizado_em && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="text-[11px] text-slate-500">Última atualização</div>
+                <div className="mt-1 text-sm font-semibold text-white">
+                  {parseFinancialDate(cartao.atualizado_em).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+            )}
+          </div>
+          {cartao.pluggy_item_id && (
+            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-3">
+              <div className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
+              {cartao.pluggy_sync_em && (
+                <div>
+                  <div className="text-[11px] text-slate-500">Última sincronização</div>
+                  <div className="mt-0.5 text-sm text-white">{new Date(cartao.pluggy_sync_em).toLocaleString('pt-BR')}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-[11px] text-slate-500 mb-3">Importar fatura</div>
+            <div className="flex flex-wrap gap-2">
+              <div className="min-w-[200px]">
+                <OCRModelSelect value={configOcr} onChange={onAtualizarOcr} compact />
+              </div>
+              <button type="button" onClick={onImportar}
+                className="px-3 py-2 rounded-xl text-xs font-medium bg-purple-600/15 border border-purple-500/25 text-purple-300 hover:bg-purple-600/25 transition-all flex items-center gap-1.5">
+                {importando ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+                I.A
+              </button>
+              <button type="button" onClick={onImportar}
+                className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5">
+                <FileText size={14} />
+                PDF
+              </button>
+              <button type="button" onClick={onImportar}
+                className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5">
+                <ImageIcon size={14} />
+                Imagem
+              </button>
+            </div>
+            {statusAtual && (
+              <div className={`mt-3 rounded-2xl px-3 py-2 text-xs border ${
+                statusAtual.tipo === 'sucesso' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                  : statusAtual.tipo === 'erro' ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                  : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
+              }`}>
+                {statusAtual.mensagem}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-400">Compras lançadas</span>
+              <span className="text-[11px] text-slate-600">{ordenada.length} lançamentos</span>
+            </div>
+            <div className="space-y-2">
+              {ordenada.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
+                  Nenhuma compra vinculada a esse cartão ainda.
+                </div>
+              ) : ordenada.map((t) => {
+                const cat = categorias.find((c) => c.id === t.categoria_id);
+                const dataLista = getDataCobrancaCartao(t, cartao);
+                return (
+                  <button key={t.id} type="button" onClick={() => onTransacao(t)}
+                    className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+                      style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
+                      {cat?.icone || '??'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white truncate">{t.descricao}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {cat?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </div>
+                    </div>
+                    <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {t.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(t.valor))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
+}
+
 export default function Dashboard({ onNovoPagina }: Props) {
   const {
     transacoes, categorias, contas, cartoes, orcamentos, metas, dicasIA, setDicasIA, selicAtual,
@@ -1000,8 +1376,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const { mes, ano } = mesAtual();
   const [saldoOculto, setSaldoOculto] = useState(false);
   const [catFiltro, setCatFiltro] = useState<string | null>(null);
-  const [contaExpandidaId, setContaExpandidaId] = useState<string | null>(null);
-  const [cartaoExpandidoId, setCartaoExpandidoId] = useState<string | null>(null);
+  const [contaModalId, setContaModalId] = useState<string | null>(null);
+  const [cartaoModalId, setCartaoModalId] = useState<string | null>(null);
   const [cartaoImportandoId, setCartaoImportandoId] = useState<string | null>(null);
   const [statusImportacao, setStatusImportacao] = useState<{ cartaoId: string; tipo: 'sucesso' | 'erro' | 'info'; mensagem: string } | null>(null);
   const [carregandoAutomacoes, setCarregandoAutomacoes] = useState(false);
@@ -1435,8 +1811,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
     setModalEdicaoAberto(true);
   }
 
-  const contaExpandida = contas.find((conta) => conta.id === contaExpandidaId) || null;
-  const cartaoExpandido = cartoes.find((cartao) => cartao.id === cartaoExpandidoId) || null;
+  const contaModal = contas.find((conta) => conta.id === contaModalId) || null;
+  const cartaoModal = cartoes.find((cartao) => cartao.id === cartaoModalId) || null;
 
   async function handleImportarArquivoCartao(event: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = event.target.files?.[0];
@@ -1534,7 +1910,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         importadas += 1;
       });
 
-      setCartaoExpandidoId(cartao.id);
+      setCartaoModalId(cartao.id);
       setStatusImportacao({
         cartaoId: cartao.id,
         tipo: 'sucesso',
@@ -1690,17 +2066,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
               <div className="flex gap-2 min-w-max">
                 {contas.map((conta) => {
                   const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
-                  const ativa = contaExpandidaId === conta.id;
                   return (
                     <button
                       key={conta.id}
                       type="button"
-                      onClick={() => setContaExpandidaId((atual) => atual === conta.id ? null : conta.id)}
-                      className={`min-w-[120px] rounded-xl border px-2.5 py-2 text-left transition-all ${
-                        ativa
-                          ? 'bg-white/[0.07] text-white border-purple-500/35 shadow-lg shadow-black/20'
-                          : 'bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06]'
-                      }`}
+                      onClick={() => setContaModalId(conta.id)}
+                      className="min-w-[120px] rounded-xl border border-white/10 bg-white/[0.03] text-white px-2.5 py-2 text-left transition-all hover:bg-white/[0.06] hover:border-purple-500/35"
                     >
                       <div className="flex items-center gap-2">
                         <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
@@ -1708,7 +2079,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                           <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{info.nome}</div>
                           <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(conta.saldo))}</div>
                         </div>
-                        <ChevronDown size={12} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                        <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
                       </div>
                     </button>
                   );
@@ -1716,92 +2087,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
               </div>
             </div>
 
-            {contaExpandida && (() => {
-              const info = BANCO_INFO[contaExpandida.banco] || BANCO_INFO.outro;
-              const lista = ordenarTransacoesPorDataDesc(transacoesPorConta[contaExpandida.id] || []);
-              const entradasMes = lista.filter((transacao) => (
-                transacao.tipo === 'receita' && transacaoContaNoMesAteData(transacao, mes, ano, hoje)
-              )).reduce((soma, transacao) => soma + transacao.valor, 0);
-              const saidasMes = lista.filter((transacao) => (
-                (transacao.tipo === 'despesa' || transacao.tipo === 'transferencia') && transacaoContaNoMesAteData(transacao, mes, ano, hoje)
-              )).reduce((soma, transacao) => soma + transacao.valor, 0);
-
-              return (
-                <div className="glass-card mt-2 p-3.5" style={{ borderColor: `${info.cor}33` }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <BankLogo banco={contaExpandida.banco} size={36} className="h-9 w-9 object-contain" />
-                      <div>
-                        <h3 className="text-sm font-semibold text-white">{info.nome}</h3>
-                        <p className="text-xs text-slate-500">{contaExpandida.nome} • {contaExpandida.tipo}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onNovoPagina('bancos')}
-                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      Abrir conta completa
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mt-3">
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <div className="text-[11px] text-slate-500">Saldo</div>
-                      <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(contaExpandida.saldo))}</div>
-                    </div>
-                    <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">Entradas no mês</div>
-                      <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(entradasMes))}</div>
-                    </div>
-                    <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">Saídas no mês</div>
-                      <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(saidasMes))}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">Movimentações recentes</span>
-                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
-                    </div>
-                    <div className="space-y-2">
-                      {lista.slice(0, 5).map((transacao) => {
-                        const categoria = categorias.find((item) => item.id === transacao.categoria_id);
-                        const cartao = cartoes.find((item) => item.id === transacao.cartao_id);
-                        const dataLista = transacao.cartao_id ? getDataCobrancaCartao(transacao, cartao) : transacao.data;
-                        return (
-                          <button
-                            key={transacao.id}
-                            type="button"
-                            onClick={() => setTransacaoDetalhe(transacao)}
-                            className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors"
-                          >
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
-                              {categoria?.icone || '??'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-white truncate">{transacao.descricao}</div>
-                              <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </div>
-                            </div>
-                            <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
-                            </div>
-                          </button>
-                        );
-                      })}
-                      {lista.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
-                          Nenhuma movimentação vinculada a essa conta ainda.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
           </>
         ) : (
           <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
@@ -1827,212 +2112,29 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <>
             <div className="overflow-x-auto pb-1">
               <div className="flex gap-2 min-w-max">
-                {cartoes.map((cartao) => {
-                  const ativa = cartaoExpandidoId === cartao.id;
-                  return (
-                    <button
-                      key={cartao.id}
-                      type="button"
-                      onClick={() => setCartaoExpandidoId((atual) => atual === cartao.id ? null : cartao.id)}
-                      className={`min-w-[128px] rounded-xl border px-2.5 py-2 text-left transition-all ${
-                        ativa
-                          ? 'bg-white/[0.07] text-white border-purple-500/35 shadow-lg shadow-black/20'
-                          : 'bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-shrink-0">
-                          <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 object-contain" />
-                          <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{BANCO_INFO[cartao.banco].nome}</div>
-                          <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
-                        </div>
-                        <ChevronDown size={12} className={`text-slate-500 transition-transform ${ativa ? 'rotate-180' : ''}`} />
+                {cartoes.map((cartao) => (
+                  <button
+                    key={cartao.id}
+                    type="button"
+                    onClick={() => setCartaoModalId(cartao.id)}
+                    className="min-w-[128px] rounded-xl border border-white/10 bg-white/[0.03] text-white px-2.5 py-2 text-left transition-all hover:bg-white/[0.06] hover:border-purple-500/35"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-shrink-0">
+                        <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 object-contain" />
+                        <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
                       </div>
-                    </button>
-                  );
-                })}
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{BANCO_INFO[cartao.banco].nome}</div>
+                        <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
+                      </div>
+                      <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {cartaoExpandido && (() => {
-              const info = BANCO_INFO[cartaoExpandido.banco] || BANCO_INFO.outro;
-              const lista = ordenarTransacoesPorDataDesc(transacoesPorCartao[cartaoExpandido.id] || []);
-              const compras = lista.filter((transacao) => transacao.tipo === 'despesa');
-              const estornos = lista.filter((transacao) => transacao.tipo === 'receita');
-              const totalCompras = compras.reduce((soma, transacao) => soma + transacao.valor, 0);
-              const maiorCompra = compras.reduce((maior, transacao) => Math.max(maior, transacao.valor), 0);
-              const ticketMedio = compras.length > 0 ? totalCompras / compras.length : 0;
-              const limiteDisponivel = cartaoExpandido.limite - cartaoExpandido.fatura_atual;
-              const usoLimite = cartaoExpandido.limite > 0 ? (cartaoExpandido.fatura_atual / cartaoExpandido.limite) * 100 : 0;
-              const statusAtual = statusImportacao?.cartaoId === cartaoExpandido.id ? statusImportacao : null;
-
-              return (
-                <div className="glass-card mt-2 p-3.5" style={{ borderColor: `${info.cor}33` }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <BankLogo banco={cartaoExpandido.banco} size={36} className="h-9 w-9 object-contain" />
-                        <CardBrandLogo banco={cartaoExpandido.banco} nomeCartao={cartaoExpandido.nome} bandeira={cartaoExpandido.bandeira} size={18} className="absolute -bottom-1 -right-1 h-[18px] w-[18px] object-contain shadow-sm" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-white">{cartaoExpandido.nome}</h3>
-                        <p className="text-xs text-slate-500">{info.nome} • {cartaoExpandido.bandeira}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onNovoPagina('cartoes')}
-                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      Abrir cartão completo
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
-                    <div className="rounded-2xl bg-red-500/8 border border-red-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">Fatura atual</div>
-                      <div className="text-sm font-semibold text-red-400 tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.fatura_atual))}</div>
-                    </div>
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <div className="text-[11px] text-slate-500">Limite total</div>
-                      <div className="text-sm font-semibold text-white tabular-nums mt-1">{ocultar(formatarMoeda(cartaoExpandido.limite))}</div>
-                    </div>
-                    <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/10 p-3">
-                      <div className="text-[11px] text-slate-500">Disponível</div>
-                      <div className="text-sm font-semibold text-emerald-400 tabular-nums mt-1">{ocultar(formatarMoeda(limiteDisponivel))}</div>
-                    </div>
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
-                      <div className="text-[11px] text-slate-500">Fecha / paga</div>
-                      <div className="text-sm font-semibold text-white mt-1">Dia {cartaoExpandido.dia_fechamento} / {cartaoExpandido.dia_vencimento}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-400">Relatório individual do cartão</p>
-                        <p className="text-[11px] text-slate-600 mt-1">Uso do limite: {usoLimite.toFixed(1)}% • vencimento em {diasAte(cartaoExpandido.dia_vencimento)} dia(s)</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs text-slate-500">Média por compra</div>
-                        <div className="text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(ticketMedio))}</div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Compras no app</div>
-                        <div className="text-sm font-semibold text-white mt-1">{compras.length}</div>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Maior compra</div>
-                        <div className="text-sm font-semibold text-white mt-1 tabular-nums">{ocultar(formatarMoeda(maiorCompra))}</div>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Estornos / créditos</div>
-                        <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">{ocultar(formatarMoeda(estornos.reduce((soma, transacao) => soma + transacao.valor, 0)))}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <div className="min-w-[220px]">
-                      <OCRModelSelect
-                        value={config.ai_modelo_ocr_padrao || 'automatico'}
-                        onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
-                        compact
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCartaoImportandoId(cartaoExpandido.id);
-                        arquivoCartaoRef.current?.click();
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-medium bg-purple-600/15 border border-purple-500/25 text-purple-300 hover:bg-purple-600/25 transition-all flex items-center gap-1.5"
-                    >
-                      {cartaoImportandoId === cartaoExpandido.id ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
-                      I.A
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCartaoImportandoId(cartaoExpandido.id);
-                        arquivoCartaoRef.current?.click();
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
-                    >
-                      <FileText size={14} />
-                      Ler fatura PDF
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCartaoImportandoId(cartaoExpandido.id);
-                        arquivoCartaoRef.current?.click();
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
-                    >
-                      <ImageIcon size={14} />
-                      Ler imagem / histórico
-                    </button>
-                  </div>
-
-                  {statusAtual && (
-                    <div className={`mt-3 rounded-2xl px-3 py-2 text-xs border ${
-                      statusAtual.tipo === 'sucesso'
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                        : statusAtual.tipo === 'erro'
-                        ? 'bg-red-500/10 border-red-500/20 text-red-300'
-                        : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
-                    }`}>
-                      {statusAtual.mensagem}
-                    </div>
-                  )}
-
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">Compras lançadas nesse cartão</span>
-                      <span className="text-[11px] text-slate-600">{lista.length} lançamentos</span>
-                    </div>
-                    <div className="space-y-2">
-                      {lista.slice(0, 8).map((transacao) => {
-                        const categoria = categorias.find((item) => item.id === transacao.categoria_id);
-                        const dataLista = getDataCobrancaCartao(transacao, cartaoExpandido);
-                        return (
-                          <button
-                            key={transacao.id}
-                            type="button"
-                            onClick={() => setTransacaoDetalhe(transacao)}
-                            className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors"
-                          >
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0" style={{ background: categoria?.cor ? `${categoria.cor}22` : 'rgba(255,255,255,0.05)', color: categoria?.cor || '#94A3B8' }}>
-                              {categoria?.icone || '??'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm text-white truncate">{transacao.descricao}</div>
-                              <div className="text-[11px] text-slate-500">
-                                {categoria?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </div>
-                            </div>
-                            <div className={`text-sm font-semibold tabular-nums flex-shrink-0 ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {transacao.tipo === 'receita' ? '+' : '-'}{ocultar(formatarMoeda(transacao.valor))}
-                            </div>
-                          </button>
-                        );
-                      })}
-                      {lista.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-600">
-                          Nenhuma compra vinculada a esse cartão ainda. Use o botão I.A. para importar uma fatura ou histórico.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
           </>
         ) : (
           <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
@@ -2362,6 +2464,37 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
       {/* Score de Saúde Financeira */}
       <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
+
+      {contaModal && (
+        <ModalContaBancaria
+          conta={contaModal}
+          lista={ordenarTransacoesPorDataDesc(transacoesPorConta[contaModal.id] || [])}
+          categorias={categorias}
+          cartoes={cartoes}
+          ocultar={ocultar}
+          mes={mes}
+          ano={ano}
+          hoje={hoje}
+          onFechar={() => setContaModalId(null)}
+          onTransacao={(t) => { setContaModalId(null); setTransacaoDetalhe(t); }}
+        />
+      )}
+
+      {cartaoModal && (
+        <ModalCartaoCredito
+          cartao={cartaoModal}
+          lista={ordenarTransacoesPorDataDesc(transacoesPorCartao[cartaoModal.id] || [])}
+          categorias={categorias}
+          ocultar={ocultar}
+          statusImportacao={statusImportacao}
+          cartaoImportandoId={cartaoImportandoId}
+          configOcr={(config.ai_modelo_ocr_padrao || 'automatico') as AIModelId}
+          onImportar={() => { setCartaoImportandoId(cartaoModal.id); arquivoCartaoRef.current?.click(); }}
+          onAtualizarOcr={(v) => atualizarConfig({ ai_modelo_ocr_padrao: v })}
+          onFechar={() => setCartaoModalId(null)}
+          onTransacao={(t) => { setCartaoModalId(null); setTransacaoDetalhe(t); }}
+        />
+      )}
 
     </div>
   );
