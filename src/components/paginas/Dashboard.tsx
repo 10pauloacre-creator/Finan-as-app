@@ -535,8 +535,8 @@ interface DetalheResumoData {
   LABEL_METODO: Record<string, string>;
   gastos: {
     metodos: Record<string, number>;
-    porCartao: Array<{ id: string; nome: string; banco: string; faturaAtual: number; lancadoNoMes: number }>;
-    totalFaturas: number;
+    porCartao: Array<{ id: string; nome: string; banco: string; valorNoMes: number }>;
+    totalCartoesNoMes: number;
     semCartao: number;
     topCats: Array<{ nome: string; valor: number; cor: string; icone: string }>;
   };
@@ -552,7 +552,7 @@ interface DetalheResumoData {
     total: number;
   };
   apagar: {
-    cartoes: Array<{ id: string; nome: string; banco: string; fatura_atual: number; dia_vencimento: number; diasParaVencer: number }>;
+    cartoes: Array<{ id: string; nome: string; banco: string; valor_pendente: number; dia_vencimento: number; diasParaVencer: number }>;
     despesasFuturas: Array<{ nome: string; icone: string; cor: string; valor: number }>;
     total: number;
   };
@@ -641,17 +641,17 @@ function ModalResumoCard({
             <>
               {dados.gastos.porCartao.length > 0 && (
                 <>
-                  <SecaoTitulo>Faturas dos cartões</SecaoTitulo>
+                  <SecaoTitulo>Cartões no mês</SecaoTitulo>
                   {dados.gastos.porCartao.map(c => (
                     <LinhaValor
                       key={c.id}
                       label={c.nome}
-                      valor={c.faturaAtual}
+                      valor={c.valorNoMes}
                       cor="#EF4444"
-                      sub={c.lancadoNoMes > 0 ? `${formatarMoeda(c.lancadoNoMes)} lançados neste mês` : undefined}
+                      sub="Lançamentos deste mês"
                     />
                   ))}
-                  <LinhaValor label="Total faturas" valor={dados.gastos.totalFaturas} cor="#EF4444" />
+                  <LinhaValor label="Total no cartão" valor={dados.gastos.totalCartoesNoMes} cor="#EF4444" />
                 </>
               )}
 
@@ -778,7 +778,7 @@ function ModalResumoCard({
                     <LinhaValor
                       key={c.id}
                       label={c.nome}
-                      valor={c.fatura_atual}
+                      valor={c.valor_pendente}
                       cor={c.diasParaVencer <= 5 ? '#EF4444' : '#F59E0B'}
                       sub={c.diasParaVencer === 0 ? 'Vence hoje!' : `Vence em ${c.diasParaVencer} dia${c.diasParaVencer > 1 ? 's' : ''} · dia ${c.dia_vencimento}`}
                     />
@@ -1216,8 +1216,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
   // Saldo real = dinheiro em conta − o que ainda precisa ser pago
   const saldoContas = contas.reduce((s, c) => s + c.saldo, 0);
   const saldoProjetado = saldoContas - aPagarMesAtual;
-  const totalPago = Math.max(0, dadosMes.despesas - aPagarMesAtual);
-
   const gastosFixos = useMemo(() => {
     const ref = startOfTodayLocal();
     const doMes = transacoes.filter(t =>
@@ -1266,13 +1264,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
       id: c.id,
       nome: c.nome,
       banco: c.banco,
-      faturaAtual: c.fatura_atual,
-      lancadoNoMes: despesasMes
+      valorNoMes: despesasMes
         .filter(t => t.cartao_id === c.id)
         .reduce((s, t) => s + t.valor, 0),
-    })).filter(c => c.faturaAtual > 0 || c.lancadoNoMes > 0);
+    })).filter(c => c.valorNoMes > 0);
 
-    const totalFaturas = cartoes.reduce((s, c) => s + c.fatura_atual, 0);
+    const totalCartoesNoMes = porCartaoLancado.reduce((s, c) => s + c.valorNoMes, 0);
     const gastosSemCartao = despesasMes.filter(t => !t.cartao_id).reduce((s, t) => s + t.valor, 0);
 
     // ── RECEBIMENTOS ──────────────────────────────────────────
@@ -1308,14 +1305,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
     // ── A PAGAR ───────────────────────────────────────────────
-    const cartoesPendentes = cartoes.map(c => {
-      const hoje = ref;
-      const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), c.dia_vencimento);
-      if (vencimento <= hoje) vencimento.setMonth(vencimento.getMonth() + 1);
-      const dias = Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000);
-      return { ...c, diasParaVencer: dias };
-    }).filter(c => c.fatura_atual > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
-
     const despesasFuturas = despesasMes.filter(t => {
       if (t.cartao_id) {
         const cartao = cartoes.find(c => c.id === t.cartao_id);
@@ -1334,9 +1323,32 @@ export default function Dashboard({ onNovoPagina }: Props) {
       return acc;
     }, []).sort((a, b) => b.valor - a.valor);
 
+    const cartoesPendentesMap = despesasFuturas
+      .filter(t => t.cartao_id)
+      .reduce<Record<string, number>>((acc, t) => {
+        if (!t.cartao_id) return acc;
+        acc[t.cartao_id] = (acc[t.cartao_id] || 0) + t.valor;
+        return acc;
+      }, {});
+
+    const cartoesPendentes = cartoes.map(c => {
+      const hoje = ref;
+      const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), c.dia_vencimento);
+      if (vencimento <= hoje) vencimento.setMonth(vencimento.getMonth() + 1);
+      const dias = Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000);
+      return {
+        id: c.id,
+        nome: c.nome,
+        banco: c.banco,
+        dia_vencimento: c.dia_vencimento,
+        diasParaVencer: dias,
+        valor_pendente: cartoesPendentesMap[c.id] || 0,
+      };
+    }).filter(c => c.valor_pendente > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
+
     return {
       LABEL_METODO,
-      gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalFaturas, semCartao: gastosSemCartao, topCats: dadosMes.graficoPizza.slice(0, 5) },
+      gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalCartoesNoMes, semCartao: gastosSemCartao, topCats: dadosMes.graficoPizza.slice(0, 5) },
       recebimentos: { metodos: metodosReceitas, porCategoria: receitasPorCategoria, total: dadosMes.receitas, qtd: receitasMes.length },
       pago: { metodos: metodosPagos, porCategoria: catsPagas, total: totalPagoCalc },
       apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasPorCat, total: aPagarMesAtual },
@@ -1346,7 +1358,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
   const saldoMesAnimado = useCountUp(saldoProjetado);
-  const totalPagoAnimado = useCountUp(totalPago);
+  const totalPagoAnimado = useCountUp(detalheResumo.pago.total);
   const aPagarAnimado = useCountUp(aPagarMesAtual);
   const corSaldoMes =
     saldoProjetado > 0 ? '#10B981' :
@@ -1511,7 +1523,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-400 text-sm font-medium mb-0.5">Olá, Paulo!</p>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo do mês</p>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo disponível</p>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tabular-nums" style={{
               color: corSaldoMes,
