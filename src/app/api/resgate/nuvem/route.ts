@@ -195,9 +195,18 @@ async function upsertLista(
   if (!registros?.length) return 0;
   const supabase = getSupabaseServer();
   const dados = registros.map(mapRegistro);
-  const resultado = await supabase.from(tabela).upsert(dados);
-  if (resultado.error) throw resultado.error;
-  return dados.length;
+  let total = 0;
+
+  for (let indice = 0; indice < dados.length; indice += 100) {
+    const lote = dados.slice(indice, indice + 100);
+    const resultado = await supabase.from(tabela).upsert(lote);
+    if (resultado.error) {
+      throw new Error(`[${tabela}] ${resultado.error.message}`);
+    }
+    total += lote.length;
+  }
+
+  return total;
 }
 
 async function upsertConfig(config: Record<string, unknown> | null | undefined) {
@@ -205,7 +214,7 @@ async function upsertConfig(config: Record<string, unknown> | null | undefined) 
   const supabase = getSupabaseServer();
   const payload = mapConfig(config);
   const resultado = await supabase.from('configuracoes_app').upsert(payload);
-  if (resultado.error) throw resultado.error;
+  if (resultado.error) throw new Error(`[configuracoes_app] ${resultado.error.message}`);
   return 1;
 }
 
@@ -234,6 +243,7 @@ export async function POST(request: NextRequest) {
       total: totais.reduce((soma, valor) => soma + valor, 0),
     });
   } catch (error) {
+    console.error('[resgate-nuvem] falha', error);
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Erro ao resgatar dados locais para a nuvem.' },
       { status: 500 },

@@ -86,6 +86,9 @@ export default function ResgatePage() {
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
           <p className="text-sm text-slate-300">{status}</p>
           <p className="text-xs text-slate-500">Total local detectado: {total} registros</p>
+          <p className="text-[11px] text-slate-600">
+            Se aparecer erro, copie o texto completo exibido aqui.
+          </p>
         </div>
 
         <div className="grid gap-3">
