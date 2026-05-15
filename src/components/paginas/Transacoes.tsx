@@ -24,9 +24,9 @@ import {
 const TG_CARD_W = 140;
 const TG_CARD_GAP = 12;
 const TG_CARD_STEP = TG_CARD_W + TG_CARD_GAP;
-const TG_CARD_H = 178;
-const TG_DOT_TOP = 22;
-const TG_DOT_BOT = 110;
+const TG_CARD_H = 196;
+const TG_DOT_TOP = 26;
+const TG_DOT_BOT = 118;
 
 type TransacaoPrevista = {
   uid: string;
@@ -77,8 +77,8 @@ function tgBuildPath(pts: { x: number; y: number }[]): string {
 
 function tgCorPorTotal(total: number) {
   const proporcao = Math.max(0, Math.min(total / 7000, 1));
-  const origem = { r: 16, g: 185, b: 129 };
-  const destino = { r: 69, g: 10, b: 10 };
+  const origem = { r: 34, g: 211, b: 153 };
+  const destino = { r: 239, g: 68, b: 68 };
   const r = Math.round(origem.r + (destino.r - origem.r) * proporcao);
   const g = Math.round(origem.g + (destino.g - origem.g) * proporcao);
   const b = Math.round(origem.b + (destino.b - origem.b) * proporcao);
@@ -92,7 +92,23 @@ function tgFundoPorTotal(total: number) {
 
 function tgBordaPorTotal(total: number) {
   const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
-  return `rgba(${cor}, 0.38)`;
+  return `rgba(${cor}, 0.52)`;
+}
+
+function tgGlowPorTotal(total: number) {
+  const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
+  return `0 0 0 1px rgba(${cor}, 0.2), 0 16px 32px rgba(${cor}, 0.16)`;
+}
+
+function tgGradientePorTipo(tipo: DadosMesGastos['tipo'], total: number) {
+  const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
+  if (tipo === 'atual') {
+    return `linear-gradient(180deg, rgba(${cor}, 0.24) 0%, rgba(${cor}, 0.1) 48%, rgba(15, 23, 42, 0.92) 100%)`;
+  }
+  if (tipo === 'futuro') {
+    return `linear-gradient(180deg, rgba(99, 102, 241, 0.18) 0%, rgba(59, 130, 246, 0.08) 42%, rgba(15, 23, 42, 0.92) 100%)`;
+  }
+  return `linear-gradient(180deg, rgba(${cor}, 0.16) 0%, rgba(15, 23, 42, 0.9) 100%)`;
 }
 
 function getParcelaLabelNoMes(transacao: Transacao, dataOcorrencia: string) {
@@ -210,9 +226,24 @@ function TimelineGastos({
   const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
 
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card overflow-hidden p-5">
+      <div className="hidden">
       <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos por Mês</h3>
       <p className="text-[11px] text-slate-600 mb-4">Despesas realizadas e projeção de parcelas futuras</p>
+
+      </div>
+      <div className="mb-4 rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-1">Estimativa de Gastos por MÃªs</h3>
+            <p className="text-[11px] text-slate-400 mb-0">Despesas realizadas, cobranÃ§as ativas e projeÃ§Ã£o de parcelas futuras</p>
+          </div>
+          <div className="rounded-2xl border border-red-400/15 bg-red-500/10 px-3 py-2 text-right">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Pico</div>
+            <div className="mt-1 text-sm font-bold tabular-nums text-red-300">{formatarMoeda(maxValor)}</div>
+          </div>
+        </div>
+      </div>
 
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
         <div className="relative" style={{ width: totalW, height: TG_CARD_H }}>
@@ -222,10 +253,21 @@ function TimelineGastos({
             className="absolute inset-0 pointer-events-none"
             style={{ zIndex: 2 }}
           >
-            <path d={pastPath} fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+            <defs>
+              <linearGradient id="tg-line-past" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#34D399" />
+                <stop offset="55%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#EF4444" />
+              </linearGradient>
+              <linearGradient id="tg-line-future" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#A78BFA" />
+                <stop offset="100%" stopColor="#60A5FA" />
+              </linearGradient>
+            </defs>
+            <path d={pastPath} fill="none" stroke="url(#tg-line-past)" strokeWidth="3" strokeLinecap="round" />
 
             {futurePath && (
-              <path d={futurePath} fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+              <path d={futurePath} fill="none" stroke="url(#tg-line-future)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="6 5" opacity="0.9" />
             )}
 
             {points.map((pt, i) => {
@@ -233,16 +275,17 @@ function TimelineGastos({
               const isAtual = d.tipo === 'atual';
               const isPast = d.tipo === 'passado';
               const corMes = tgCorPorTotal(d.total);
+              const isFuture = d.tipo === 'futuro';
               return (
                 <g key={d.mes}>
-                  {isAtual && <circle cx={pt.x} cy={pt.y} r={12} fill={tgFundoPorTotal(d.total)} />}
+                  {(isAtual || isFuture) && <circle cx={pt.x} cy={pt.y} r={isAtual ? 14 : 10} fill={isAtual ? tgFundoPorTotal(d.total) : 'rgba(99,102,241,0.12)'} />}
                   <circle
                     cx={pt.x}
                     cy={pt.y}
-                    r={isAtual ? 6 : 5}
-                    fill={isPast ? corMes : isAtual ? 'white' : 'transparent'}
-                    stroke={isAtual ? corMes : isPast ? corMes : '#6B7280'}
-                    strokeWidth={isAtual ? 2.5 : 1.5}
+                    r={isAtual ? 6.5 : isFuture ? 5.5 : 5}
+                    fill={isPast ? corMes : isAtual ? 'white' : '#0F172A'}
+                    stroke={isAtual ? corMes : isPast ? corMes : '#818CF8'}
+                    strokeWidth={isAtual ? 3 : isFuture ? 2 : 1.8}
                   />
                 </g>
               );
@@ -259,25 +302,40 @@ function TimelineGastos({
                 key={d.mes}
                 type="button"
                 onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
-                className="absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all hover:bg-white/5"
+                className="absolute flex flex-col items-center justify-end pb-4 rounded-[26px] transition-all duration-200 hover:-translate-y-1"
                 style={{ left: i * TG_CARD_STEP, top: 0, width: TG_CARD_W, height: TG_CARD_H, zIndex: 1 }}
               >
                 <div
-                  className="absolute inset-0 rounded-2xl border"
+                  className="absolute inset-0 rounded-[26px] border"
                   style={{
-                    background: isAtual || isSel ? tgFundoPorTotal(d.total) : 'rgba(255,255,255,0.02)',
-                    borderColor: isAtual || isSel ? tgBordaPorTotal(d.total) : 'rgba(255,255,255,0.06)',
-                    borderWidth: isAtual ? 2 : 1,
+                    background: tgGradientePorTipo(d.tipo, d.total),
+                    borderColor: isAtual || isSel ? tgBordaPorTotal(d.total) : isFuturo ? 'rgba(129,140,248,0.24)' : 'rgba(255,255,255,0.08)',
+                    borderWidth: isAtual ? 2 : isSel ? 1.5 : 1,
+                    boxShadow: isAtual || isSel ? tgGlowPorTotal(d.total) : 'none',
                   }}
                 />
-                <div className="relative text-xs font-semibold mb-1" style={{ color: d.total > 0 ? corMes : isFuturo ? '#64748B' : '#94A3B8' }}>
+                <div className="relative mb-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                  style={{
+                    color: isAtual ? '#F8FAFC' : isFuturo ? '#C7D2FE' : '#CBD5E1',
+                    borderColor: isAtual ? `${corMes.replace('rgb', 'rgba').replace(')', ', 0.35)')}` : isFuturo ? 'rgba(129,140,248,0.28)' : 'rgba(255,255,255,0.08)',
+                    background: isAtual ? `${corMes.replace('rgb', 'rgba').replace(')', ', 0.18)')}` : isFuturo ? 'rgba(99,102,241,0.14)' : 'rgba(255,255,255,0.04)',
+                  }}>
                   {d.label}
                 </div>
-                <div className="relative text-sm font-bold tabular-nums" style={{ color: d.total > 0 ? corMes : isFuturo ? '#64748B' : '#FFFFFF' }}>
+                <div className="relative text-base font-black tabular-nums" style={{ color: d.total > 0 ? corMes : isFuturo ? '#94A3B8' : '#FFFFFF' }}>
                   {formatarMoeda(d.total)}
                 </div>
-                <div className="relative text-[10px] text-slate-600 mt-0.5">
-                  {isFuturo ? 'estimado' : isAtual ? 'no mes' : 'fechado'}
+                <div className="relative mt-1 text-[10px] font-medium text-slate-400">
+                  {isFuturo ? 'projetado' : isAtual ? 'em andamento' : 'fechado'}
+                </div>
+                <div className="relative mt-2 h-1.5 w-20 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.max(12, (d.total / maxValor) * 100)}%`,
+                      background: isFuturo ? 'linear-gradient(90deg,#818CF8,#38BDF8)' : `linear-gradient(90deg, ${corMes}, rgba(255,255,255,0.92))`,
+                    }}
+                  />
                 </div>
               </button>
             );
@@ -286,32 +344,32 @@ function TimelineGastos({
       </div>
 
       {mesSel && (mesSel.por_categoria.length > 0 || mesSel.transacoes_previstas.length > 0) && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-slate-500">
+        <div className="mt-5 rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="text-xs text-slate-400">
               {mesSel.label} {mesSel.ano}
               {mesSel.tipo === 'futuro' && ' — despesas previstas'}
               {mesSel.tipo === 'passado' && ' — despesas do mês'}
               {mesSel.tipo === 'atual' && ' — despesas até agora'}
             </span>
-            <span className="text-xs font-semibold text-white tabular-nums">{formatarMoeda(mesSel.total)}</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white tabular-nums">{formatarMoeda(mesSel.total)}</span>
           </div>
 
           {/* Future months: show individual transaction list */}
           {mesSel.tipo === 'futuro' && mesSel.transacoes_previstas.length > 0 && (
-            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {mesSel.transacoes_previstas.map((item) => {
                 const cat = item.transacao.categoria_id
                   ? categorias.find((c) => c.id === item.transacao.categoria_id)
                   : null;
                 return (
-                  <div key={item.uid} className="flex items-center gap-2.5 rounded-xl bg-white/4 px-3 py-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
-                      style={{ background: cat ? `${cat.cor}22` : 'rgba(255,255,255,0.06)' }}>
+                  <div key={item.uid} className="flex items-center gap-3 rounded-2xl border border-white/6 bg-white/[0.045] px-3 py-2.5 transition-colors hover:bg-white/[0.07]">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+                      style={{ background: cat ? `${cat.cor}2B` : 'rgba(255,255,255,0.08)', boxShadow: cat ? `0 8px 18px ${cat.cor}22` : 'none' }}>
                       {cat?.icone || '$'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-white truncate">{item.transacao.descricao}</div>
+                      <div className="text-xs font-semibold text-white truncate">{item.transacao.descricao}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                           item.tipoLabel === 'Recorrente' ? 'bg-purple-500/20 text-purple-300' :
@@ -332,20 +390,23 @@ function TimelineGastos({
 
           {/* Past/current months: show category breakdown */}
           {mesSel.tipo !== 'futuro' && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {mesSel.por_categoria.slice(0, 6).map((c) => (
-                <div key={c.id} className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0"
-                    style={{ background: `${c.cor}22` }}>{c.icone}</div>
+                <div key={c.id} className="rounded-2xl border border-white/6 bg-white/[0.035] px-3 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+                      style={{ background: `${c.cor}2A`, boxShadow: `0 8px 18px ${c.cor}22` }}>{c.icone}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-slate-300 truncate">{c.nome}</span>
-                      <span className="text-xs font-semibold text-white tabular-nums shrink-0">{formatarMoeda(c.valor)}</span>
+                      <span className="text-xs font-semibold text-slate-200 truncate">{c.nome}</span>
+                      <span className="text-xs font-bold text-white tabular-nums shrink-0">{formatarMoeda(c.valor)}</span>
                     </div>
-                    <div className="mt-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="mt-2 h-1.5 bg-white/6 rounded-full overflow-hidden">
                       <div className="h-full rounded-full"
-                        style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: c.cor, opacity: 0.7 }} />
+                        style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: `linear-gradient(90deg, ${c.cor}, rgba(255,255,255,0.92))`, opacity: 0.95 }} />
                     </div>
+                    <div className="mt-1 text-[10px] text-slate-500">{((c.valor / mesSel.total) * 100).toFixed(0)}% do mÃªs</div>
+                  </div>
                   </div>
                 </div>
               ))}
