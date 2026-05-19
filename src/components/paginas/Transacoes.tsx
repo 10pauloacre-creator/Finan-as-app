@@ -234,9 +234,13 @@ function TimelineGastos({
       </div>
       <div className="mb-4 rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="hidden">
             <h3 className="text-sm font-semibold text-white mb-1">Estimativa de Gastos por MÃªs</h3>
             <p className="text-[11px] text-slate-400 mb-0">Despesas realizadas, cobranÃ§as ativas e projeÃ§Ã£o de parcelas futuras</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-1">Estimativa de Gastos por Mes</h3>
+            <p className="text-[11px] text-slate-400 mb-0">Despesas realizadas, cobrancas ativas e projecao de parcelas futuras</p>
           </div>
           <div className="rounded-2xl border border-red-400/15 bg-red-500/10 px-3 py-2 text-right">
             <div className="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Pico</div>
