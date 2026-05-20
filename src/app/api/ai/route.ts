@@ -514,9 +514,9 @@ async function handleFormDataRequest(formData: FormData) {
   }
 
   if (task === 'analisar_imagem_financeira') {
-    const imagem = formData.get('imagem') as File | null;
+    const imagens = formData.getAll('imagem').filter((item): item is File => item instanceof File);
     const legenda = String(formData.get('legenda') || '').trim();
-    if (!imagem) {
+    if (!imagens.length) {
       return Response.json({ success: false, error: 'Imagem obrigatória.' }, { status: 400 });
     }
 
@@ -525,11 +525,11 @@ async function handleFormDataRequest(formData: FormData) {
       provider,
       mode,
       input: { customPrompt: enrichImportPrompt(imagePrompt(legenda || null), periodoReferencia, memoria24h) },
-      attachments: [{
+      attachments: await Promise.all(imagens.map(async (imagem) => ({
         mimeType: imagem.type || 'image/jpeg',
         data: Buffer.from(await imagem.arrayBuffer()).toString('base64'),
         fileName: imagem.name,
-      }],
+      }))),
       options: { temperature: 0.1, maxTokens: 1200 },
     });
 
@@ -820,3 +820,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

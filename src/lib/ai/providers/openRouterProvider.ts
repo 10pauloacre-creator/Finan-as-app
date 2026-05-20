@@ -102,9 +102,12 @@ export async function callOpenRouterText(input: OpenRouterInput) {
   };
 }
 
-export async function callOpenRouterVision(input: OpenRouterInput & { attachment: OpenRouterAttachment }) {
+export async function callOpenRouterVision(
+  input: OpenRouterInput & { attachment?: OpenRouterAttachment; attachments?: OpenRouterAttachment[] },
+) {
   const client = createClient();
   const modelName = resolveModel('OPENROUTER_VISION_MODEL');
+  const attachments = input.attachments?.length ? input.attachments : input.attachment ? [input.attachment] : [];
   const result = await client.chat.completions.create({
     model: modelName,
     temperature: input.temperature,
@@ -115,12 +118,12 @@ export async function callOpenRouterVision(input: OpenRouterInput & { attachment
         role: 'user',
         content: [
           { type: 'text', text: input.prompt },
-          {
+          ...attachments.map((attachment) => ({
             type: 'image_url',
             image_url: {
-              url: asDataUrl(input.attachment.mimeType, input.attachment.data),
+              url: asDataUrl(attachment.mimeType, attachment.data),
             },
-          },
+          })),
         ],
       },
     ],
@@ -230,7 +233,7 @@ export async function runOpenRouterProvider(input: OpenRouterInput) {
   }
 
   if (attachment.mimeType.startsWith('image/')) {
-    return callOpenRouterVision({ ...input, attachment });
+    return callOpenRouterVision({ ...input, attachments: input.attachments || [attachment] });
   }
 
   if (attachment.mimeType === 'application/pdf') {

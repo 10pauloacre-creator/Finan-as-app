@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic, MicOff, ImageIcon, Camera, Send, Bot, CheckCircle2, XCircle,
-  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet,
+  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet, X,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto, construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
@@ -26,6 +26,7 @@ interface Mensagem {
   papel: MsgPapel;
   texto: string;
   imagemPreview?: string;
+  imagensPreview?: string[];
   pdfNome?: string;
   pdfInfo?: string;
   eAudio?: boolean;
@@ -45,6 +46,12 @@ type AcaoAssistente =
   | 'analise_profunda'
   | 'alerta_gastos'
   | 'automacao_interna';
+
+interface ImagemPendente {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 
@@ -345,14 +352,19 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
       <div className={`max-w-[85%] min-w-0 ${isUser ? '' : 'flex-1'}`}>
 
         {/* Preview de imagem */}
-        {msg.imagemPreview && (
+        {(msg.imagensPreview?.length || msg.imagemPreview) && (
           <div className={`mb-2 ${isUser ? 'flex justify-end' : ''}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={msg.imagemPreview}
-              alt="Imagem enviada"
-              className="max-w-[200px] max-h-[160px] rounded-xl object-cover border border-white/10"
-            />
+            <div className="flex flex-wrap gap-2 max-w-[240px]">
+              {(msg.imagensPreview ?? (msg.imagemPreview ? [msg.imagemPreview] : [])).map((preview, index) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={`${msg.id}-img-${index}`}
+                  src={preview}
+                  alt={`Imagem enviada ${index + 1}`}
+                  className="max-w-[200px] max-h-[160px] rounded-xl object-cover border border-white/10"
+                />
+              ))}
+            </div>
           </div>
         )}
 
@@ -487,6 +499,7 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
 export default function Assistente() {
   const [msgs, setMsgs]         = useState<Mensagem[]>([MSG_BOAS_VINDAS]);
   const [texto, setTexto]       = useState('');
+  const [imagensPendentes, setImagensPendentes] = useState<ImagemPendente[]>([]);
   const [gravando, setGravando] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
@@ -498,6 +511,7 @@ export default function Assistente() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const streamRef        = useRef<MediaStream | null>(null);
+  const imagensPendentesRef = useRef<ImagemPendente[]>([]);
 
   const {
     adicionarTransacao,
@@ -525,6 +539,16 @@ export default function Assistente() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs]);
+
+  useEffect(() => {
+    imagensPendentesRef.current = imagensPendentes;
+  }, [imagensPendentes]);
+
+  useEffect(() => {
+    return () => {
+      imagensPendentesRef.current.forEach((imagem) => URL.revokeObjectURL(imagem.previewUrl));
+    };
+  }, []);
 
   function addMsg(parcial: Omit<Mensagem, 'id' | 'ts'> & { id?: string }): string {
     const id = parcial.id ?? gerarId();
@@ -722,8 +746,12 @@ export default function Assistente() {
 
   async function enviarTexto() {
     const t = texto.trim();
-    if (!t || enviando) return;
+    if ((!t && !imagensPendentes.length) || enviando) return;
     setTexto('');
+    if (imagensPendentes.length) {
+      await enviarImagens(t);
+      return;
+    }
     await enviarPergunta(t);
   }
 
@@ -792,33 +820,62 @@ export default function Assistente() {
 
   // ── Enviar imagem ────────────────────────────────────────────────────────────
 
-  async function handleImagem(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleImagem(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (!files.length) return;
 
-    const imagemPreview = URL.createObjectURL(file);
+    setImagensPendentes((prev) => [
+      ...prev,
+      ...files.map((file) => ({
+        id: gerarId(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+  }
+
+  function removerImagemPendente(id: string) {
+    setImagensPendentes((prev) => {
+      const imagem = prev.find((item) => item.id === id);
+      if (imagem) URL.revokeObjectURL(imagem.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
+  async function enviarImagens(legenda: string) {
+    if (!imagensPendentes.length || enviando) return;
+
+    const imagensDoEnvio = [...imagensPendentes];
+    const previews = imagensDoEnvio.map((imagem) => imagem.previewUrl);
+    setImagensPendentes([]);
     setEnviando(true);
-    addMsg({ papel: 'user', texto: '', imagemPreview });
+
+    addMsg({
+      papel: 'user',
+      texto: legenda,
+      imagensPreview: previews,
+    });
     const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
 
     try {
       const fd = new FormData();
       fd.append('task', 'analisar_imagem_financeira');
-      fd.append('imagem', file);
+      imagensDoEnvio.forEach((imagem) => fd.append('imagem', imagem.file));
+      if (legenda.trim()) {
+        fd.append('legenda', legenda.trim());
+      }
       fd.append('provider', config.ai_modelo_ocr_padrao || 'automatico');
       fd.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
       fd.append('financialProvider', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/ai', { method: 'POST', body: fd });
       await processarResposta(aiId, res);
     } catch {
-      updateMsg(aiId, { carregando: false, texto: '❌ Erro ao analisar imagem.' });
+      updateMsg(aiId, { carregando: false, texto: 'Erro ao analisar imagem.' });
     } finally {
       setEnviando(false);
-      URL.revokeObjectURL(imagemPreview);
     }
   }
-
   // ── Enviar PDF ──────────────────────────────────────────────────────────────
 
   async function handlePDF(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1028,6 +1085,7 @@ export default function Assistente() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={handleImagem}
             />
@@ -1086,6 +1144,34 @@ export default function Assistente() {
               onChange={handleCSV}
             />
 
+            {imagensPendentes.length > 0 && (
+              <div className="flex-1 min-w-0">
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {imagensPendentes.map((imagem, index) => (
+                    <div
+                      key={imagem.id}
+                      className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-[#0F1629]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagem.previewUrl}
+                        alt={`Imagem pendente ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removerImagemPendente(imagem.id)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+                        aria-label={`Remover imagem ${index + 1}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Campo de texto */}
             <div className="flex-1 relative">
               <textarea
@@ -1106,7 +1192,7 @@ export default function Assistente() {
             </div>
 
             {/* Botão mic / enviar */}
-            {texto.trim() ? (
+            {texto.trim() || imagensPendentes.length ? (
               <button
                 onClick={enviarTexto}
                 disabled={enviando}
@@ -1134,7 +1220,7 @@ export default function Assistente() {
           {/* Dica */}
           <p className="text-[10px] text-slate-700 text-center mt-2">
             <AlertCircle size={9} className="inline mr-1" />
-            IA pode cometer erros. Confira os dados antes de confirmar.
+            IA pode cometer erros. Envie contexto junto com as imagens e confira os dados antes de confirmar.
           </p>
         </div>
       </div>
@@ -1159,6 +1245,10 @@ export default function Assistente() {
     </>
   );
 }
+
+
+
+
 
 
 

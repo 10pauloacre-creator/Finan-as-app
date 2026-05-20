@@ -1101,12 +1101,12 @@ export default function Transacoes() {
                 <div className="rounded-xl bg-white/5 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Debitadas do saldo</div>
                   <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(resumoFiltroDespesas.debitadas)}</div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">PIX, boleto, débito</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">Saídas que já saíram da conta</div>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
                   <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-1">A pagar</div>
                   <div className="text-base font-bold tabular-nums text-amber-400">{formatarMoeda(resumoFiltroDespesas.aPagar)}</div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">Cartão, contas, etc.</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">Faturas + pendências do mês</div>
                 </div>
               </div>
               {resumoFiltroDespesas.total > 0 && resumoFiltroDespesas.aPagar > 0 && (
@@ -1117,7 +1117,7 @@ export default function Transacoes() {
                   </div>
                   <div className="mt-1 flex justify-between text-[10px] text-slate-600">
                     <span>debitado do saldo</span>
-                    <span>a pagar</span>
+                    <span>faturas e pendências</span>
                   </div>
                 </div>
               )}

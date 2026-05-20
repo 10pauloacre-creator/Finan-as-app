@@ -580,7 +580,7 @@ function ModalResumoCard({
   const TITULO: Record<TipoModalResumo, string> = {
     gastos: 'Total de Gastos',
     recebimentos: 'Total de Recebimentos',
-    pago: 'Total Pago',
+    pago: 'Debitado do Saldo',
     apagar: 'Falta Pagar',
   };
 
@@ -760,11 +760,11 @@ function ModalResumoCard({
                   <LinhaValor key={metodo} label={dados.LABEL_METODO[metodo] || metodo} valor={valor} cor="#059669" />
                 ))}
               {Object.keys(dados.pago.metodos).length === 0 && (
-                <p className="text-sm text-slate-600 py-2">Nenhuma despesa quitada até o momento</p>
+                <p className="text-sm text-slate-600 py-2">Nenhuma saída debitada do saldo até o momento</p>
               )}
 
               <div className="mt-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3 flex items-center justify-between">
-                <span className="text-xs text-slate-400">Total quitado até hoje</span>
+                <span className="text-xs text-slate-400">Total debitado do saldo até hoje</span>
                 <span className="text-sm font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(dados.pago.total))}</span>
               </div>
             </>
@@ -2014,13 +2014,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
           style={{ borderColor: 'rgba(16,185,129,0.15)' }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total Pago</span>
+            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Debitado do Saldo</span>
             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)' }}>
               <CheckCircle2 size={13} className="text-emerald-500" />
             </div>
           </div>
           <div className="text-xl font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(totalPagoAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Despesas já quitadas</div>
+          <div className="text-[10px] text-slate-500 mt-1">Saídas que já saíram da conta</div>
         </button>
         <button
           type="button"
@@ -2035,7 +2035,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             </div>
           </div>
           <div className="text-xl font-bold text-amber-400 tabular-nums">{ocultar(formatarMoeda(aPagarAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Pendentes + fatura</div>
+          <div className="text-[10px] text-slate-500 mt-1">Faturas + pendências do mês</div>
         </button>
       </div>
 
