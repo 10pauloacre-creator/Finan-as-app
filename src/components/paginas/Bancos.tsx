@@ -40,9 +40,9 @@ import { syncSalvarConta, syncSalvarCartao, syncSalvarTransacao } from '@/lib/sy
 
 const TIPOS_CONTA: TipoConta[] = ['corrente', 'poupanca', 'digital', 'investimento'];
 const LABELS_STATUS = {
-  ja_pago: 'Ja pago',
+  ja_pago: 'Já pago',
   vence_em_breve: 'Vence em breve',
-  pendente_mes: 'Pendente no mes',
+  pendente_mes: 'Pendente no mês',
   futuro: 'Futuro',
 } as const;
 
@@ -265,7 +265,7 @@ export default function Bancos() {
         textoAnalise.includes('financiamento') ||
         textoAnalise.includes('emprestimo');
       const contaOrigem = transacao.conta_id ? contasPorId.get(transacao.conta_id)?.nome : undefined;
-      const origem = contaOrigem || (transacao.metodo_pagamento ? `Pago via ${transacao.metodo_pagamento}` : 'Lancamento manual');
+      const origem = contaOrigem || (transacao.metodo_pagamento ? `Pago via ${transacao.metodo_pagamento}` : 'Lançamento manual');
       const secao: SecaoPainel = isReserva ? 'reservas' : isDivida ? 'dividas' : 'fixas';
       const subtituloBase = categoria?.nome || 'Sem categoria';
       const subtitulo = transacao.classificacao === 'fixa'
@@ -293,7 +293,7 @@ export default function Bancos() {
           id: `cartao-${cartao.id}`,
           titulo: cartao.nome,
           subtitulo: `${BANCO_INFO[cartao.banco].nome} • fecha dia ${cartao.dia_fechamento}`,
-          origem: 'Cartao de credito',
+          origem: 'Cartão de crédito',
           valor: cartao.fatura_atual,
           dataISO: formatFinancialDate(vencimento),
           dataLabel: vencimento.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
@@ -349,7 +349,7 @@ export default function Bancos() {
           : `Saldo acumulado ${formatarMoeda(saldoAtual)}`,
         origem: 'Reserva planejada',
         valor: reserva.tem_meta ? (concluida ? saldoAtual : restante) : saldoAtual,
-        dataLabel: reserva.tem_meta ? 'Planejamento continuo' : 'Acompanhamento',
+        dataLabel: reserva.tem_meta ? 'Planejamento contínuo' : 'Acompanhamento',
         status: concluida ? 'ja_pago' : reserva.tem_meta ? 'pendente_mes' : 'futuro',
         secao: 'reservas',
       };
@@ -538,7 +538,7 @@ export default function Bancos() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId }),
       });
-      if (!res.ok) throw new Error('Falha na sincronizacao');
+      if (!res.ok) throw new Error('Falha na sincronização');
       const data = await res.json() as SyncResult;
       handlePluggySincronizado(data);
       await fetch('/api/webhooks/events', {
@@ -555,7 +555,7 @@ export default function Bancos() {
   }
 
   async function handleDesconectar(itemId: string) {
-    if (!confirm('Desconectar este banco? As contas e transacoes importadas serao mantidas.')) return;
+    if (!confirm('Desconectar este banco? As contas e transações importadas serão mantidas.')) return;
 
     await fetch('/api/pluggy/disconnect', {
       method: 'DELETE',
@@ -601,11 +601,11 @@ export default function Bancos() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-              Versao 2.0
+              Versão 2.0
             </div>
-            <h2 className="text-2xl font-bold text-white">Central de contas e obrigacoes</h2>
+            <h2 className="text-2xl font-bold text-white">Central de contas e obrigações</h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Agora a leitura prioriza o que exige acao primeiro: cartoes, contas fixas, boletos, reservas e tudo o que ja saiu do saldo.
+              Agora a leitura prioriza o que exige ação primeiro: cartões, contas fixas, boletos, reservas e tudo o que já saiu do saldo.
             </p>
           </div>
 
@@ -625,11 +625,11 @@ export default function Bancos() {
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Proximo vencimento</div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Próximo vencimento</div>
               <div className="mt-2 text-sm font-bold text-white">
                 {painelFinanceiro.proximoVencimento?.dataISO
                   ? parseFinancialDate(painelFinanceiro.proximoVencimento.dataISO).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                  : 'Sem pendencias'}
+                  : 'Sem pendências'}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
                 {painelFinanceiro.proximoVencimento ? painelFinanceiro.proximoVencimento.titulo : 'Nada aberto agora'}
@@ -643,7 +643,7 @@ export default function Bancos() {
         <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
             <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />
-            <p className="text-xs font-medium text-amber-200">Dados novos disponiveis. Atualize para refletir os ultimos lancamentos.</p>
+            <p className="text-xs font-medium text-amber-200">Dados novos disponíveis. Atualize para refletir os últimos lançamentos.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {itemsPendentes.map((itemId) => (
@@ -695,32 +695,32 @@ export default function Bancos() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <SectionPanel
-          title="Faturas dos cartoes"
-          subtitle="Status de faturas inteiras para vencer, sem misturar com outras despesas do mes."
+          title="Faturas dos cartões"
+          subtitle="Status de faturas inteiras para vencer, sem misturar com outras despesas do mês."
           icon={<CreditCard size={18} />}
           items={painelFinanceiro.cartoesPendentes}
           emptyText="Nenhuma fatura pendente agora."
         />
 
         <SectionPanel
-          title="Contas fixas do mes"
-          subtitle="Compromissos recorrentes organizados pelo que precisa de atencao antes."
+          title="Contas fixas do mês"
+          subtitle="Compromissos recorrentes organizados pelo que precisa de atenção antes."
           icon={<CalendarClock size={18} />}
           items={painelFinanceiro.contasFixas}
-          emptyText="Nenhuma conta fixa pendente no mes atual."
+          emptyText="Nenhuma conta fixa pendente no mês atual."
         />
 
         <SectionPanel
-          title="Dividas e boletos"
-          subtitle="Financiamentos, emprestimos e cobrancas avulsas com leitura por urgencia."
+          title="Dívidas e boletos"
+          subtitle="Financiamentos, empréstimos e cobranças avulsas com leitura por urgência."
           icon={<Landmark size={18} />}
           items={painelFinanceiro.dividasBoletos}
-          emptyText="Nenhum boleto ou divida extra aguardando pagamento."
+          emptyText="Nenhum boleto ou dívida extra aguardando pagamento."
         />
 
         <SectionPanel
           title="Reservas e metas"
-          subtitle="Aportes planejados, metas financeiras e reservas visiveis no mesmo fluxo."
+          subtitle="Aportes planejados, metas financeiras e reservas visíveis no mesmo fluxo."
           icon={<PiggyBank size={18} />}
           items={painelFinanceiro.reservasMetas}
           emptyText="Nenhuma reserva ou meta cadastrada ainda."
@@ -729,17 +729,17 @@ export default function Bancos() {
 
       <SectionPanel
         title="Pagos recentemente"
-        subtitle="Saidas ja debitadas do saldo neste mes para voce acompanhar o que ja foi resolvido."
+        subtitle="Saídas já debitadas do saldo neste mês para você acompanhar o que já foi resolvido."
         icon={<Target size={18} />}
         items={painelFinanceiro.pagosRecentemente}
-        emptyText="Ainda nao houve debitacoes registradas neste mes."
+        emptyText="Ainda não houve debitações registradas neste mês."
       />
 
       <section className="glass-card overflow-hidden border border-white/10">
         <div className="flex flex-col gap-4 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-white">Saldos das contas e conexoes</h3>
-            <p className="text-xs text-slate-400">A area operacional continua aqui para ajuste de saldo, conexao bancaria e cadastro manual.</p>
+            <h3 className="text-base font-semibold text-white">Saldos das contas e conexões</h3>
+            <p className="text-xs text-slate-400">A área operacional continua aqui para ajuste de saldo, conexão bancária e cadastro manual.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -853,8 +853,8 @@ export default function Bancos() {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-white">{info.nome}</div>
                       <div className="text-xs text-slate-500 capitalize">
-                        {conta.tipo} • {conta.nome}
-                        {conectado && <span className="ml-1 text-emerald-500">• Open Finance</span>}
+                        {conta.tipo} - {conta.nome}
+                        {conectado && <span className="ml-1 text-emerald-500">- Open Finance</span>}
                       </div>
                     </div>
 
@@ -917,15 +917,15 @@ export default function Bancos() {
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold tabular-nums text-emerald-400">{formatarMoeda(recMes)}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Entradas/mes</div>
+                      <div className="mt-0.5 text-[11px] text-slate-600">Entradas do mês</div>
                     </div>
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold tabular-nums text-red-400">{formatarMoeda(despMes)}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Saidas/mes</div>
+                      <div className="mt-0.5 text-[11px] text-slate-600">Saídas do mês</div>
                     </div>
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold text-slate-300">{txConta.length}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Transacoes</div>
+                      <div className="mt-0.5 text-[11px] text-slate-600">Transações</div>
                     </div>
                   </div>
 
@@ -934,7 +934,7 @@ export default function Bancos() {
                       onClick={() => setContaSel(isOpen ? null : conta.id)}
                       className="mt-3 w-full py-1 text-center text-xs text-slate-500 transition-colors hover:text-sky-300"
                     >
-                      {isOpen ? 'Ocultar ▲' : `Ver ${txConta.length} transacoes ▼`}
+                      {isOpen ? 'Ocultar' : `Ver ${txConta.length} transações`}
                     </button>
                   )}
                 </div>
@@ -957,7 +957,7 @@ export default function Bancos() {
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-xs font-medium text-slate-300">{transacao.descricao}</div>
                             <div className="text-[11px] text-slate-600">
-                              {categoria?.nome} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              {categoria?.nome} - {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                             </div>
                           </div>
                           <div className={`text-xs font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
