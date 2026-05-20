@@ -13,7 +13,7 @@ import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, CartaoCredito, ContaBancaria, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
-import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { getDataCobrancaCartao, getDataCompetenciaDespesa, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import {
   existeValorNaFaturaDoMes,
@@ -1390,6 +1390,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const dadosMes = useMemo(() => {
     const referenciaHoje = startOfTodayLocal();
+    const despesasLancadas = transacoes.filter((transacao) => (
+      transacao.tipo === 'despesa' && isSameFinancialMonth(transacao.data, mes, ano)
+    ));
     const registrosMes = transacoes.flatMap((transacao) => {
       const dataExibicao = getDataExibicaoNoMes(transacao, cartoes, mes, ano);
       if (!dataExibicao) return [];
@@ -1412,7 +1415,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
     )));
     const doMesAteHoje = doMes.filter((transacao) => transacaoContaNoMesAteData(transacao, mes, ano, referenciaHoje));
     const receitas = doMes.filter(t => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0);
-    const despesas = doMes.filter(t => t.tipo === 'despesa').reduce((s, t) => s + t.valor, 0);
+    const despesas = despesasLancadas.reduce((s, t) => s + t.valor, 0);
     const saldo = receitas - despesas;
 
     const porCat: Record<string, { valor: number; cor: string; icone: string }> = {};
@@ -1446,7 +1449,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       };
     });
 
-    return { receitas, despesas, saldo, graficoPizza, areaData, doMes, doMesAteHoje, registrosMes };
+    return { receitas, despesas, saldo, graficoPizza, areaData, doMes, doMesAteHoje, registrosMes, despesasLancadas };
   }, [transacoes, categorias, cartoes, mes, ano]);
 
   // Despesas que ainda não ocorreram neste mês = "A pagar"
@@ -1658,7 +1661,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
   const detalheResumo = useMemo(() => {
     const ref = startOfTodayLocal();
-    const despesasMes = dadosMes.doMes.filter(t => t.tipo === 'despesa');
+    const despesasMes = dadosMes.despesasLancadas;
     const receitasMes = dadosMes.doMes.filter(t => t.tipo === 'receita');
 
     const somarPorMetodo = (lista: typeof despesasMes) => {
@@ -1694,6 +1697,17 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
     const totalCartoesNoMes = porCartaoLancado.reduce((s, c) => s + c.valorNoMes, 0);
     const gastosSemCartao = despesasMes.filter(t => !t.cartao_id).reduce((s, t) => s + t.valor, 0);
+    const topCatsGastos = despesasMes.reduce<Array<{ nome: string; valor: number; cor: string; icone: string }>>((acc, t) => {
+      const cat = categorias.find(c => c.id === t.categoria_id);
+      const nome = cat?.nome || 'Outros';
+      const existente = acc.find((item) => item.nome === nome);
+      if (existente) {
+        existente.valor += t.valor;
+      } else {
+        acc.push({ nome, valor: t.valor, cor: cat?.cor || '#6B7280', icone: cat?.icone || '??' });
+      }
+      return acc;
+    }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
     // ── RECEBIMENTOS ──────────────────────────────────────────
     const metodosReceitas = somarPorMetodo(receitasMes);
@@ -1760,7 +1774,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
     return {
       LABEL_METODO,
-      gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalCartoesNoMes, semCartao: gastosSemCartao, topCats: dadosMes.graficoPizza.slice(0, 5) },
+      gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalCartoesNoMes, semCartao: gastosSemCartao, topCats: topCatsGastos },
       recebimentos: { metodos: metodosReceitas, porCategoria: receitasPorCategoria, total: dadosMes.receitas, qtd: receitasMes.length },
       pago: { metodos: metodosPagos, porCategoria: catsPagas, total: totalPagoCalc },
       apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasExtras, total: aPagarMesAtual },
