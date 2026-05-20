@@ -162,6 +162,20 @@ export interface Orcamento {
 }
 
 // ─── IA ───────────────────────────────────────────────
+export interface SimulacaoCompra {
+  id: string;
+  nome: string;
+  descricao?: string;
+  tipo: 'produto' | 'combo';
+  valor_total: number;
+  parcelas: number;
+  mes_inicio: number;
+  ano_inicio: number;
+  prioridade?: 'baixa' | 'media' | 'alta';
+  criado_em: string;
+  atualizado_em?: string;
+}
+
 export interface DicaIA {
   id: string;
   tipo: 'alerta' | 'dica' | 'conquista' | 'previsao';

@@ -2,7 +2,7 @@
  * STORAGE LOCAL — armazena dados no navegador quando offline
  */
 
-import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva } from '@/types';
+import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva, SimulacaoCompra } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
 import { isSameFinancialMonth } from './date';
 
@@ -16,6 +16,7 @@ const KEYS = {
   CARTOES:      'fin_cartoes',
   ORCAMENTOS:   'fin_orcamentos',
   RESERVAS:     'fin_reservas',
+  SIMULACOES:   'fin_simulacoes',
 };
 
 export const FINANCEIRO_STORAGE_EVENT = 'financeiroia:storage-changed';
@@ -33,6 +34,7 @@ export type BackupSnapshot = {
   metas: Meta[];
   orcamentos: Orcamento[];
   reservas: Reserva[];
+  simulacoes: SimulacaoCompra[];
   config: ConfiguracaoApp;
 };
 
@@ -256,6 +258,18 @@ export const storageReservas = {
   delete: (id: string): void => set(KEYS.RESERVAS, get<Reserva>(KEYS.RESERVAS).filter((item) => item.id !== id)),
 };
 
+export const storageSimulacoes = {
+  getAll: (): SimulacaoCompra[] => get<SimulacaoCompra>(KEYS.SIMULACOES),
+  replaceAll: (lista: SimulacaoCompra[]): void => set(KEYS.SIMULACOES, lista),
+  save: (simulacao: SimulacaoCompra): void => {
+    const lista = get<SimulacaoCompra>(KEYS.SIMULACOES);
+    const idx = lista.findIndex((item) => item.id === simulacao.id);
+    if (idx >= 0) lista[idx] = simulacao; else lista.unshift(simulacao);
+    set(KEYS.SIMULACOES, lista);
+  },
+  delete: (id: string): void => set(KEYS.SIMULACOES, get<SimulacaoCompra>(KEYS.SIMULACOES).filter((item) => item.id !== id)),
+};
+
 // ── CONFIGURAÇÕES ───────────────────────────────────────
 const CONFIG_DEFAULT: ConfiguracaoApp = {
   tema: 'escuro',
@@ -283,6 +297,7 @@ export function capturarBackupSnapshot(): BackupSnapshot {
     metas: storageMetas.getAll(),
     orcamentos: storageOrcamentos.getAll(),
     reservas: storageReservas.getAll(),
+    simulacoes: storageSimulacoes.getAll(),
     config: storageConfig.get(),
   };
 }
@@ -296,6 +311,7 @@ export function aplicarBackupSnapshot(snapshot: Partial<BackupSnapshot>) {
   storageMetas.replaceAll(snapshot.metas || []);
   storageOrcamentos.replaceAll(snapshot.orcamentos || []);
   storageReservas.replaceAll(snapshot.reservas || []);
+  storageSimulacoes.replaceAll(snapshot.simulacoes || []);
   storageConfig.replace(snapshot.config || CONFIG_DEFAULT);
 }
 
