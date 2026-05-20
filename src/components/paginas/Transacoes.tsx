@@ -100,6 +100,74 @@ function tgGlowPorTotal(total: number) {
   return `0 0 0 1px rgba(${cor}, 0.2), 0 16px 32px rgba(${cor}, 0.16)`;
 }
 
+function SectionHeader({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+        {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
+      </div>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SummaryTile({
+  title,
+  value,
+  subtitle,
+  tone,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  tone: 'expense' | 'income' | 'warning';
+}) {
+  const palette = {
+    expense: {
+      value: 'text-red-400',
+      border: 'border-red-500/10',
+      bg: 'bg-red-500/[0.06]',
+    },
+    income: {
+      value: 'text-emerald-400',
+      border: 'border-emerald-500/10',
+      bg: 'bg-emerald-500/[0.06]',
+    },
+    warning: {
+      value: 'text-amber-400',
+      border: 'border-amber-500/10',
+      bg: 'bg-amber-500/[0.06]',
+    },
+  }[tone];
+
+  return (
+    <div className={`rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
+      <div className="text-[11px] font-medium text-slate-500">{title}</div>
+      <div className={`mt-1 text-lg font-bold tabular-nums ${palette.value}`}>{value}</div>
+      <div className="mt-1 text-[11px] text-slate-500">{subtitle}</div>
+    </div>
+  );
+}
+
 function tgGradientePorTipo(tipo: DadosMesGastos['tipo'], total: number) {
   const cor = tgCorPorTotal(total).replace('rgb(', '').replace(')', '');
   if (tipo === 'atual') {
@@ -226,21 +294,16 @@ function TimelineGastos({
   const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
 
   return (
-    <div className="glass-card overflow-hidden p-5">
-      <div className="hidden">
-      <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos por Mês</h3>
-      <p className="text-[11px] text-slate-600 mb-4">Despesas realizadas e projeção de parcelas futuras</p>
-
-      </div>
+    <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+      <SectionHeader
+        title="Estimativa de gastos por mês"
+        subtitle="Visão analítica com despesas realizadas, cobranças ativas e projeção de parcelas futuras."
+      />
       <div className="mb-4 rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="hidden">
-            <h3 className="text-sm font-semibold text-white mb-1">Estimativa de Gastos por MÃªs</h3>
-            <p className="text-[11px] text-slate-400 mb-0">Despesas realizadas, cobranÃ§as ativas e projeÃ§Ã£o de parcelas futuras</p>
-          </div>
           <div>
-            <h3 className="text-sm font-semibold text-white mb-1">Estimativa de Gastos por Mes</h3>
-            <p className="text-[11px] text-slate-400 mb-0">Despesas realizadas, cobrancas ativas e projecao de parcelas futuras</p>
+            <h3 className="mb-1 text-sm font-semibold text-white">Leitura mensal de despesas</h3>
+            <p className="mb-0 text-[11px] text-slate-400">O gráfico mostra o mês atual em destaque e empurra os próximos meses para a direita.</p>
           </div>
           <div className="rounded-2xl border border-red-400/15 bg-red-500/10 px-3 py-2 text-right">
             <div className="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Pico</div>
@@ -511,9 +574,11 @@ function TimelineReceitas({
   const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
 
   return (
-    <div className="glass-card p-5">
-      <h3 className="text-sm font-semibold text-slate-300 mb-1">Histórico e Projeção de Receitas</h3>
-      <p className="text-[11px] text-slate-600 mb-4">Entradas realizadas e projeção de receitas fixas e parceladas</p>
+    <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+      <SectionHeader
+        title="Histórico e projeção de receitas"
+        subtitle="Entradas realizadas, agendadas e recorrentes com a mesma leitura da área de despesas."
+      />
 
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
         <div className="relative" style={{ width: totalW, height: TG_CARD_H }}>
@@ -949,24 +1014,32 @@ export default function Transacoes() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Transações</h2>
-        <button
-          onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
-          className="btn-primary flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-white"
-        >
-          <Plus size={16} /> Novo
-        </button>
-      </div>
+      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Transações 3.0</p>
+            <h2 className="mt-2 text-2xl font-bold text-white">Transações</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              Resumo principal, visão analítica e lista detalhada na mesma ordem da home para reduzir troca de contexto.
+            </p>
+          </div>
+          <button
+            onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/14 px-4 py-2 text-sm font-medium text-violet-100 transition-colors hover:bg-violet-500/22"
+          >
+            <Plus size={16} /> Novo lançamento
+          </button>
+        </div>
+      </section>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 bg-white/5 rounded-2xl p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1">
         <button
           onClick={() => { setVisuTab('despesas'); setCatSelecionada(null); }}
           className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-            visuTab === 'despesas' ? 'bg-red-500/20 text-red-300 shadow-sm' : 'text-slate-400 hover:text-white'
+            visuTab === 'despesas' ? 'bg-red-500/18 text-red-200 shadow-sm' : 'text-slate-400 hover:text-white'
           }`}
         >
           Despesas
@@ -974,7 +1047,7 @@ export default function Transacoes() {
         <button
           onClick={() => { setVisuTab('receitas'); setCatSelecionada(null); setFiltroLinha2('todas'); }}
           className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-            visuTab === 'receitas' ? 'bg-emerald-500/20 text-emerald-300 shadow-sm' : 'text-slate-400 hover:text-white'
+            visuTab === 'receitas' ? 'bg-emerald-500/18 text-emerald-200 shadow-sm' : 'text-slate-400 hover:text-white'
           }`}
         >
           Receitas
@@ -1091,37 +1164,42 @@ export default function Transacoes() {
       {visuTab === 'despesas' && (
         <>
           {/* Summary */}
-          <div className="space-y-2">
-            <div className="rounded-2xl border border-red-800/30 bg-red-950/20 p-4">
-              <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">{LABEL_FILTRO_DESPESA[filtroLinha2]}</div>
-              <div className="text-2xl font-bold tabular-nums text-white mb-3">
-                {formatarMoeda(resumoFiltroDespesas.total)}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white/5 p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Debitadas do saldo</div>
-                  <div className="text-base font-bold tabular-nums text-red-400">{formatarMoeda(resumoFiltroDespesas.debitadas)}</div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">Saídas que já saíram da conta</div>
-                </div>
-                <div className="rounded-xl bg-white/5 p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-amber-500 mb-1">A pagar</div>
-                  <div className="text-base font-bold tabular-nums text-amber-400">{formatarMoeda(resumoFiltroDespesas.aPagar)}</div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">Faturas + pendências do mês</div>
-                </div>
-              </div>
-              {resumoFiltroDespesas.total > 0 && resumoFiltroDespesas.aPagar > 0 && (
-                <div className="mt-3">
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-red-500/60 rounded-full"
-                      style={{ width: `${Math.min((resumoFiltroDespesas.debitadas / resumoFiltroDespesas.total) * 100, 100)}%` }} />
-                  </div>
-                  <div className="mt-1 flex justify-between text-[10px] text-slate-600">
-                    <span>debitado do saldo</span>
-                    <span>faturas e pendências</span>
-                  </div>
-                </div>
-              )}
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
+            <SectionHeader
+              title={LABEL_FILTRO_DESPESA[filtroLinha2]}
+              subtitle="Resumo principal das despesas no mesmo dicionário visual da página inicial."
+            />
+            <div className="text-3xl font-bold tabular-nums text-white">
+              {formatarMoeda(resumoFiltroDespesas.total)}
             </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SummaryTile
+                title="Debitado do saldo"
+                value={formatarMoeda(resumoFiltroDespesas.debitadas)}
+                subtitle="Saídas que já saíram da conta."
+                tone="expense"
+              />
+              <SummaryTile
+                title="A pagar"
+                value={formatarMoeda(resumoFiltroDespesas.aPagar)}
+                subtitle="Faturas + pendências do mês."
+                tone="warning"
+              />
+            </div>
+            {resumoFiltroDespesas.total > 0 && resumoFiltroDespesas.aPagar > 0 && (
+              <div className="mt-4">
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-red-500/60"
+                    style={{ width: `${Math.min((resumoFiltroDespesas.debitadas / resumoFiltroDespesas.total) * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                  <span>debitado do saldo</span>
+                  <span>faturas e pendências</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <TimelineGastos transacoes={transacoes} categorias={categorias} cartoes={cartoes} />
@@ -1181,24 +1259,27 @@ export default function Transacoes() {
       {visuTab === 'receitas' && (
         <>
           {/* Summary */}
-          <div className="rounded-2xl border border-emerald-800/30 bg-emerald-950/20 p-4">
-            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Total recebido no mês</div>
-            <div className="text-2xl font-bold tabular-nums text-emerald-400 mb-3">
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
+            <SectionHeader
+              title="Recebido"
+              subtitle="Receitas realizadas e agendadas organizadas na mesma lógica das despesas."
+            />
+            <div className="text-3xl font-bold tabular-nums text-emerald-400">
               +{formatarMoeda(totais.receitas)}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-emerald-500 mb-1">Realizadas</div>
-                <div className="text-base font-bold tabular-nums text-emerald-400">{formatarMoeda(totais.receitas)}</div>
-                <div className="text-[10px] text-slate-600 mt-0.5">já recebidas</div>
-              </div>
-              <div className="rounded-xl bg-white/5 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400 mb-1">Agendadas</div>
-                <div className="text-base font-bold tabular-nums text-slate-300">
-                  +{formatarMoeda(totais.receitasAgendadas)}
-                </div>
-                <div className="text-[10px] text-slate-600 mt-0.5">receitas fixas futuras</div>
-              </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SummaryTile
+                title="Realizadas"
+                value={formatarMoeda(totais.receitas)}
+                subtitle="Já recebidas."
+                tone="income"
+              />
+              <SummaryTile
+                title="Agendadas"
+                value={`+${formatarMoeda(totais.receitasAgendadas)}`}
+                subtitle="Receitas futuras previstas."
+                tone="warning"
+              />
             </div>
           </div>
 

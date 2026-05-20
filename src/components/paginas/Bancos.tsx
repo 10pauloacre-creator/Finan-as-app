@@ -597,15 +597,15 @@ export default function Bancos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.34)]">
+      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.30)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-              Versão 2.0
+              Versão 3.0
             </div>
             <h2 className="text-2xl font-bold text-white">Central de contas e obrigações</h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Agora a leitura prioriza o que exige ação primeiro: cartões, contas fixas, boletos, reservas e tudo o que já saiu do saldo.
+              A leitura continua priorizando o que exige ação agora, mas com menos peso visual e mais coerência com a home e com Transações.
             </p>
           </div>
 

@@ -368,6 +368,110 @@ function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssis
 
 // UpcomingCard
 interface CartaoVenc { id: string; nome: string; dia_vencimento: number; fatura_atual: number; banco: string }
+type DashboardTone = 'expense' | 'income' | 'warning' | 'neutral';
+
+function SectionHeader({
+  title,
+  subtitle,
+  icon,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {icon && <span className="flex-shrink-0 text-slate-500">{icon}</span>}
+          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
+        </div>
+        {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
+      </div>
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+        >
+          {actionLabel}
+          <ArrowRight size={11} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DashboardMetricCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  tone,
+  onClick,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  tone: DashboardTone;
+  onClick: () => void;
+}) {
+  const toneMap: Record<DashboardTone, { value: string; icon: string; border: string; glow: string }> = {
+    expense: {
+      value: 'text-red-400',
+      icon: 'bg-red-500/12 text-red-400',
+      border: 'rgba(239,68,68,0.16)',
+      glow: 'from-red-500/12 via-transparent to-transparent',
+    },
+    income: {
+      value: 'text-emerald-400',
+      icon: 'bg-emerald-500/12 text-emerald-400',
+      border: 'rgba(16,185,129,0.16)',
+      glow: 'from-emerald-500/12 via-transparent to-transparent',
+    },
+    warning: {
+      value: 'text-amber-400',
+      icon: 'bg-amber-500/12 text-amber-400',
+      border: 'rgba(245,158,11,0.18)',
+      glow: 'from-amber-500/12 via-transparent to-transparent',
+    },
+    neutral: {
+      value: 'text-slate-100',
+      icon: 'bg-sky-500/12 text-sky-300',
+      border: 'rgba(148,163,184,0.14)',
+      glow: 'from-sky-500/10 via-transparent to-transparent',
+    },
+  };
+
+  const palette = toneMap[tone];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] active:scale-[0.985]"
+      style={{ borderColor: palette.border }}
+    >
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.glow}`} />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium tracking-wide text-slate-400">{title}</p>
+          <div className={`mt-3 text-2xl font-bold tabular-nums ${palette.value}`}>{value}</div>
+          <p className="mt-2 text-xs text-slate-500">{subtitle}</p>
+        </div>
+        <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/6 ${palette.icon}`}>
+          {icon}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar: () => void }) {
   const hoje = new Date().getDate();
   const proximos = useMemo(() => {
@@ -387,14 +491,12 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          Próximas faturas
-        </span>
-        <button onClick={onNavegar} className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-          Ver cartões <ArrowRight size={12} />
-        </button>
-      </div>
+      <SectionHeader
+        title="Próximas faturas"
+        subtitle="Top 5 cobranças mais próximas para você agir sem perder contexto."
+        actionLabel="Ver cartões"
+        onAction={onNavegar}
+      />
       <div className="space-y-2">
         {proximos.map(c => {
           const urgente = c.diasRestantes < 5;
@@ -403,16 +505,18 @@ function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar
               key={c.id}
               type="button"
               onClick={onNavegar}
-              className="glass-card flex items-center gap-3 p-3 w-full text-left"
+              className="w-full rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.05]"
             >
-              <BankLogo banco={c.banco as BancoSlug} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white truncate">{c.nome}</div>
-                <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
-                  {urgente ? 'Urgente • ' : ''}{c.diasRestantes === 0 ? 'Vence hoje' : `Vence em ${c.diasRestantes} dia${c.diasRestantes > 1 ? 's' : ''}`}
+              <div className="flex items-center gap-3">
+                <BankLogo banco={c.banco as BancoSlug} size={32} className="h-8 w-8 object-contain flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">{c.nome}</div>
+                  <div className={`text-xs ${urgente ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
+                    {urgente ? 'Urgente · ' : ''}{c.diasRestantes === 0 ? 'Vence hoje' : `Vence em ${c.diasRestantes} dia${c.diasRestantes > 1 ? 's' : ''}`}
+                  </div>
                 </div>
+                <div className="text-sm font-bold text-red-400 tabular-nums">{formatarMoeda(c.fatura_atual)}</div>
               </div>
-              <div className="text-sm font-bold text-red-400 tabular-nums">{formatarMoeda(c.fatura_atual)}</div>
             </button>
           );
         })}
@@ -578,8 +682,8 @@ function ModalResumoCard({
   }, [onFechar]);
 
   const TITULO: Record<TipoModalResumo, string> = {
-    gastos: 'Total de Gastos',
-    recebimentos: 'Total de Recebimentos',
+    gastos: 'Gastos do mês',
+    recebimentos: 'Recebido',
     pago: 'Debitado do Saldo',
     apagar: 'Falta Pagar',
   };
@@ -1789,6 +1893,24 @@ export default function Dashboard({ onNovoPagina }: Props) {
     saldoProjetado > 0 ? '#10B981' :
     saldoProjetado < 0 ? '#EF4444' :
     '#F1F5F9';
+  const totalFaturaAtual = useMemo(
+    () => cartoes.reduce((soma, cartao) => soma + cartao.fatura_atual, 0),
+    [cartoes],
+  );
+  const proximoVencimento = useMemo(() => {
+    const hoje = new Date().getDate();
+    const proximo = cartoes
+      .filter((cartao) => cartao.fatura_atual > 0)
+      .map((cartao) => {
+        const diasRestantes = cartao.dia_vencimento >= hoje
+          ? cartao.dia_vencimento - hoje
+          : 30 - hoje + cartao.dia_vencimento;
+        return { ...cartao, diasRestantes };
+      })
+      .sort((a, b) => a.diasRestantes - b.diasRestantes)[0];
+
+    return proximo || null;
+  }, [cartoes]);
 
   const ocultar = (v: string) => saldoOculto ? '??????' : v;
 
@@ -1935,7 +2057,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-5 animate-fade-up">
+    <div className="flex flex-col gap-6 animate-fade-up">
       <input
         ref={arquivoCartaoRef}
         type="file"
@@ -1945,99 +2067,94 @@ export default function Dashboard({ onNovoPagina }: Props) {
       />
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-slate-400 text-sm font-medium mb-0.5">Olá, Paulo!</p>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-1">Saldo disponível</p>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tabular-nums" style={{
-              color: corSaldoMes,
-            }}>
-              {saldoOculto ? 'R$ ??????' : formatarMoeda(saldoMesAnimado)}
-            </h1>
-            <button
-              onClick={() => setSaldoOculto(v => !v)}
-              className="text-slate-500 hover:text-slate-300 transition-colors p-1"
-              aria-label={saldoOculto ? 'Mostrar saldo' : 'Ocultar saldo'}
-            >
-              {saldoOculto ? <Eye size={16} /> : <EyeOff size={16} />}
-            </button>
+      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="mb-1 text-sm font-medium text-slate-400">Olá, Paulo!</p>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Resumo principal</p>
+            <div className="mt-3 flex items-center gap-3">
+              <h1 className="text-3xl font-bold tabular-nums sm:text-4xl" style={{ color: corSaldoMes }}>
+                {saldoOculto ? 'R$ ??????' : formatarMoeda(saldoMesAnimado)}
+              </h1>
+              <button
+                onClick={() => setSaldoOculto(v => !v)}
+                className="rounded-full border border-white/10 p-2 text-slate-500 transition-colors hover:text-slate-300"
+                aria-label={saldoOculto ? 'Mostrar saldo' : 'Ocultar saldo'}
+              >
+                {saldoOculto ? <Eye size={16} /> : <EyeOff size={16} />}
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              Saldo em conta menos o que ainda precisa ser pago em {MESES_ABREV[mes - 1]} {ano}
+            </p>
           </div>
-          <p className="text-slate-500 text-sm mt-1">
-            {MESES_ABREV[mes - 1]} {ano} • em conta menos a pagar
-          </p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums text-slate-400">
-            {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} • ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
+
+          <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
+            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+              <p className="text-[11px] font-medium text-slate-500">Estrutura</p>
+              <p className="mt-1 text-sm font-semibold text-slate-200">
+                {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+              <p className="text-[11px] font-medium text-slate-500">Fatura atual</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
+                {ocultar(formatarMoeda(totalFaturaAtual))}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+              <p className="text-[11px] font-medium text-slate-500">Próximo vencimento</p>
+              <p className="mt-1 text-sm font-semibold text-slate-200">
+                {proximoVencimento
+                  ? `${proximoVencimento.nome} · ${proximoVencimento.diasRestantes === 0 ? 'hoje' : `${proximoVencimento.diasRestantes}d`}`
+                  : 'Sem pendência'}
+              </p>
+            </div>
           </div>
-          <div className="text-slate-600 text-xs">visão geral</div>
         </div>
-      </div>
+      </section>
 
       {/* Resumo financeiro - 4 cards clicáveis */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => setModalResumo('gastos')}
-          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
-          style={{ borderColor: 'rgba(239,68,68,0.2)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Gastos</span>
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
-              <TrendingDown size={13} className="text-red-400" />
-            </div>
-          </div>
-          <div className="text-xl font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(despesasAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Fixos + variáveis + cartão</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setModalResumo('recebimentos')}
-          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
-          style={{ borderColor: 'rgba(16,185,129,0.2)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Total de Recebimentos</span>
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
-              <TrendingUp size={13} className="text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-xl font-bold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(receitasAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Entradas no período</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setModalResumo('pago')}
-          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
-          style={{ borderColor: 'rgba(16,185,129,0.15)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Debitado do Saldo</span>
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)' }}>
-              <CheckCircle2 size={13} className="text-emerald-500" />
-            </div>
-          </div>
-          <div className="text-xl font-bold text-emerald-500 tabular-nums">{ocultar(formatarMoeda(totalPagoAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Saídas que já saíram da conta</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setModalResumo('apagar')}
-          className="glass-card p-4 text-left transition-all hover:bg-white/[0.06] active:scale-[0.98]"
-          style={{ borderColor: 'rgba(245,158,11,0.2)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wide">Falta Pagar</span>
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)' }}>
-              <Clock size={13} className="text-amber-400" />
-            </div>
-          </div>
-          <div className="text-xl font-bold text-amber-400 tabular-nums">{ocultar(formatarMoeda(aPagarAnimado))}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Faturas + pendências do mês</div>
-        </button>
-      </div>
+      <section>
+        <SectionHeader
+          title="Visão do mês"
+          subtitle="Quatro indicadores centrais. O detalhe completo aparece só ao abrir cada card."
+        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <DashboardMetricCard
+            title="Gastos do mês"
+            value={ocultar(formatarMoeda(despesasAnimado))}
+            subtitle="Todos os gastos lançados no mês."
+            icon={<TrendingDown size={16} />}
+            tone="expense"
+            onClick={() => setModalResumo('gastos')}
+          />
+          <DashboardMetricCard
+            title="Recebido"
+            value={ocultar(formatarMoeda(receitasAnimado))}
+            subtitle="Entradas registradas no período."
+            icon={<TrendingUp size={16} />}
+            tone="income"
+            onClick={() => setModalResumo('recebimentos')}
+          />
+          <DashboardMetricCard
+            title="Debitado do saldo"
+            value={ocultar(formatarMoeda(totalPagoAnimado))}
+            subtitle="Saídas que já saíram da conta."
+            icon={<CheckCircle2 size={16} />}
+            tone="income"
+            onClick={() => setModalResumo('pago')}
+          />
+          <DashboardMetricCard
+            title="Falta pagar"
+            value={ocultar(formatarMoeda(aPagarAnimado))}
+            subtitle="Faturas e pendências ainda abertas."
+            icon={<Clock size={16} />}
+            tone="warning"
+            onClick={() => setModalResumo('apagar')}
+          />
+        </div>
+      </section>
 
       {/* Modal detalhe dos cards resumo */}
       {modalResumo && (
@@ -2055,16 +2172,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
       {/* Contas bancárias com sparkline */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Building2 size={15} className="text-slate-500" />
-            <span className="text-sm font-semibold text-slate-300">Contas Bancárias</span>
-          </div>
-          <button onClick={() => onNovoPagina('bancos')}
-            className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-            Ver tudo <ArrowRight size={12} />
-          </button>
-        </div>
+        <SectionHeader
+          title="Contas bancárias"
+          subtitle="Saldos agrupados em uma faixa mais leve, sem disputar com os KPIs."
+          icon={<Building2 size={15} />}
+          actionLabel="Ver tudo"
+          onAction={() => onNovoPagina('bancos')}
+        />
         {contas.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
@@ -2076,13 +2190,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       key={conta.id}
                       type="button"
                       onClick={() => setContaModalId(conta.id)}
-                      className="min-w-[120px] rounded-xl border border-white/10 bg-white/[0.03] text-white px-2.5 py-2 text-left transition-all hover:bg-white/[0.06] hover:border-purple-500/35"
+                      className="min-w-[140px] rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                     >
                       <div className="flex items-center gap-2">
                         <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{info.nome}</div>
-                          <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(conta.saldo))}</div>
+                          <div className="truncate text-[10px] font-medium tracking-wide text-slate-500">{info.nome}</div>
+                          <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(conta.saldo))}</div>
                         </div>
                         <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
                       </div>
@@ -2103,16 +2217,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
       {/* Cartões de crédito */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <CreditCard size={15} className="text-slate-500" />
-            <span className="text-sm font-semibold text-slate-300">Cartões de Crédito</span>
-          </div>
-          <button onClick={() => onNovoPagina('cartoes')}
-            className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-            Ver tudo <ArrowRight size={12} />
-          </button>
-        </div>
+        <SectionHeader
+          title="Cartões de crédito"
+          subtitle="Faturas atuais visíveis, com o detalhe completo só quando você abrir o cartão."
+          icon={<CreditCard size={15} />}
+          actionLabel="Ver tudo"
+          onAction={() => onNovoPagina('cartoes')}
+        />
         {cartoes.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
@@ -2122,7 +2233,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     key={cartao.id}
                     type="button"
                     onClick={() => setCartaoModalId(cartao.id)}
-                    className="min-w-[128px] rounded-xl border border-white/10 bg-white/[0.03] text-white px-2.5 py-2 text-left transition-all hover:bg-white/[0.06] hover:border-purple-500/35"
+                    className="min-w-[148px] rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                   >
                     <div className="flex items-center gap-2">
                       <div className="relative flex-shrink-0">
@@ -2130,8 +2241,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 truncate">{BANCO_INFO[cartao.banco].nome}</div>
-                        <div className="text-sm font-semibold leading-none tabular-nums mt-0.5">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
+                        <div className="truncate text-[10px] font-medium tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
+                        <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
                       </div>
                       <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
                     </div>
@@ -2193,15 +2304,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </section>
 
       {/* Gastos por Categoria */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">
-          Gastos por Categoria
-          {catFiltro && (
-            <button onClick={() => setCatFiltro(null)} className="ml-2 text-xs text-purple-400 hover:text-purple-300">
-              × {catFiltro}
-            </button>
-          )}
-        </h3>
+      <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+        <SectionHeader
+          title="Gastos por categoria"
+          subtitle="Visão analítica com foco nas maiores categorias do mês."
+        />
+        {catFiltro && (
+          <button onClick={() => setCatFiltro(null)} className="-mt-1 mb-3 text-xs text-slate-400 transition-colors hover:text-white">
+            Limpar filtro: {catFiltro}
+          </button>
+        )}
         {dadosMes.graficoPizza.length > 0 ? (
           <CategoryDonut
             items={dadosMes.graficoPizza}
@@ -2219,24 +2331,23 @@ export default function Dashboard({ onNovoPagina }: Props) {
       {/* Análise IA com typewriter */}
       {dicasIA.length > 0 && (
         <section>
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles size={15} className="text-purple-400" />
-              <span className="text-sm font-semibold text-slate-300">Análise da IA</span>
+          <SectionHeader
+            title="Análise da IA"
+            subtitle="Insights e alertas em segundo plano, sem poluir a leitura principal."
+            icon={<Sparkles size={15} className="text-sky-400" />}
+          />
+          {carregandoAutomacoes && (
+            <div className="mb-3 flex items-center gap-1.5 text-[11px] text-slate-500">
+              <Loader2 size={11} className="animate-spin" />
+              Atualizando automações
             </div>
-            {carregandoAutomacoes && (
-              <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <Loader2 size={11} className="animate-spin" />
-                Atualizando automações
-              </span>
-            )}
-          </div>
+          )}
           <div className="mb-3 flex justify-end">
             <button
               type="button"
               onClick={() => void atualizarAnaliseIA()}
               disabled={carregandoAutomacoes}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-1.5 text-[11px] font-medium text-purple-300 transition-colors hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregandoAutomacoes ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
               {carregandoAutomacoes ? 'Atualizando análise' : 'Atualizar análise'}
@@ -2252,13 +2363,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
       {/* Gastos Fixos e Recorrentes */}
       {(gastosFixos.fixos.length > 0 || gastosFixos.parcelados.length > 0) && (
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-slate-300">Fixos e Recorrentes</span>
-            <button onClick={() => onNovoPagina('transacoes')}
-              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-              Ver tudo <ArrowRight size={12} />
-            </button>
-          </div>
+          <SectionHeader
+            title="Fixos e recorrentes"
+            subtitle="Detalhe rápido das obrigações que mais se repetem no fluxo."
+            actionLabel="Ver tudo"
+            onAction={() => onNovoPagina('transacoes')}
+          />
 
           {gastosFixos.fixos.length > 0 && (
             <>
@@ -2372,15 +2482,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
         return (
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-300">Alertas de Orçamento</span>
-              </div>
-              <button onClick={() => onNovoPagina('orcamentos')}
-                className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                Ver orçamentos <ArrowRight size={12} />
-              </button>
-            </div>
+            <SectionHeader
+              title="Alertas de orçamento"
+              subtitle="Categorias que estão pressionando o limite do mês."
+              actionLabel="Ver orçamentos"
+              onAction={() => onNovoPagina('orcamentos')}
+            />
             <div className="space-y-2">
               {alertas.map(({ o, gasto, pct }) => {
                 const cat = categorias.find(c => c.id === o.categoria_id);
@@ -2427,15 +2534,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
       {/* Próximos gastos (7 dias) */}
       {proximosGastos.length > 0 && (
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-slate-300">
-              Gastos previstos - 7 dias
-            </span>
-            <button onClick={() => onNovoPagina('agentes')}
-              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-              Ver todos <ArrowRight size={12} />
-            </button>
-          </div>
+          <SectionHeader
+            title="Gastos previstos - 7 dias"
+            subtitle="Pendências de curto prazo para priorizar agora."
+            actionLabel="Ver todos"
+            onAction={() => onNovoPagina('agentes')}
+          />
           <div className="space-y-2">
             {proximosGastos.slice(0, 3).map((g, i) => {
               const urgente = g.diasRestantes <= 3;
