@@ -36,6 +36,7 @@ interface Props { onNovoPagina: (p: Pagina) => void; }
 
 const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'emprestimo', 'financiamento']);
 
 // Donut SVG interativo
 interface DonutItem { nome: string; valor: number; cor: string; icone?: string }
@@ -1721,18 +1722,16 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }, []).sort((a, b) => b.valor - a.valor);
 
     // ── PAGO ─────────────────────────────────────────────────
-    const despesasPagas = despesasMes.filter(t => {
-      if (t.cartao_id) {
-        const cartao = cartoes.find(c => c.id === t.cartao_id);
-        if (!cartao) return false;
-        return parseFinancialDate(getDataCobrancaCartao(t, cartao)) <= ref;
-      }
+    const despesasDebitadasSaldo = despesasMes.filter(t => {
+      if (t.cartao_id) return false;
       const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
-      return ocorrencia !== null && ocorrencia <= ref;
+      return ocorrencia !== null
+        && ocorrencia <= ref
+        && (!t.metodo_pagamento || METODOS_DEBITO.has(t.metodo_pagamento));
     });
-    const metodosPagos = somarPorMetodo(despesasPagas);
-    const totalPagoCalc = despesasPagas.reduce((s, t) => s + t.valor, 0);
-    const catsPagas = despesasPagas.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
+    const metodosPagos = somarPorMetodo(despesasDebitadasSaldo);
+    const totalPagoCalc = despesasDebitadasSaldo.reduce((s, t) => s + t.valor, 0);
+    const catsPagas = despesasDebitadasSaldo.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
       const cat = categorias.find(c => c.id === t.categoria_id);
       const nome = cat?.nome || 'Outros';
       const ex = acc.find(a => a.nome === nome);

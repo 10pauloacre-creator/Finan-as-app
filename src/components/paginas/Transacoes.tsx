@@ -825,6 +825,15 @@ export default function Transacoes() {
     )
   ), [transacoesRealizadasFiltradas]);
 
+  const filtrosNoMesAtual = useMemo(() => {
+    const agora = new Date();
+    return filtroAnos !== 'todos'
+      && filtroAnos.length === 1
+      && filtroMeses.length === 1
+      && filtroAnos[0] === agora.getFullYear()
+      && filtroMeses[0] === agora.getMonth() + 1;
+  }, [filtroAnos, filtroMeses]);
+
   const totais = useMemo(() => {
     const despesasPrevistas = transacoesFiltradas
       .filter(({ transacao, dataExibicao }) => (
@@ -842,6 +851,10 @@ export default function Transacoes() {
       ))
       .reduce((soma, { transacao }) => soma + transacao.valor, 0);
 
+    const totalFaturasPendentes = filtrosNoMesAtual
+      ? cartoes.reduce((soma, cartao) => soma + cartao.fatura_atual, 0)
+      : despesasCartaoPendentes;
+
     const receitasAgendadas = transacoesFiltradas
       .filter(({ transacao, dataExibicao }) => (
         transacao.tipo === 'receita'
@@ -858,9 +871,9 @@ export default function Transacoes() {
         .filter(({ transacao }) => transacao.tipo === 'despesa')
         .reduce((soma, { transacao }) => soma + transacao.valor, 0),
       despesasPrevistas,
-      despesasCartaoPendentes,
+      despesasCartaoPendentes: totalFaturasPendentes,
     };
-  }, [realizadasIds, transacoesRealizadasFiltradas, transacoesFiltradas]);
+  }, [cartoes, filtrosNoMesAtual, realizadasIds, transacoesRealizadasFiltradas, transacoesFiltradas]);
 
   const saldo = totais.receitas - totais.despesas;
 
