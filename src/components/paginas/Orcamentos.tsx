@@ -406,7 +406,7 @@ function Orcamentos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 sm:p-6">
+      <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-500/25 bg-purple-600/18">
@@ -614,7 +614,7 @@ function Orcamentos() {
 
       {abaAtiva === 'simulacao' && (
         <>
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(10,14,26,0.92))] p-5">
+          <div className="fin-panel fin-soft-rise-delay overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(10,14,26,0.92))] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200">
@@ -627,7 +627,7 @@ function Orcamentos() {
               </div>
               <button
                 onClick={() => abrirNovaSimulacao()}
-                className="flex items-center gap-2 rounded-2xl border border-sky-400/25 bg-sky-500/15 px-4 py-2.5 text-sm font-semibold text-sky-200 transition-all hover:bg-sky-500/25"
+                className="fin-button-press flex items-center gap-2 rounded-2xl border border-sky-400/25 bg-sky-500/15 px-4 py-2.5 text-sm font-semibold text-sky-200 transition-all hover:bg-sky-500/25"
               >
                 <Plus size={16} />
                 Nova simulação
@@ -635,22 +635,22 @@ function Orcamentos() {
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mês analisado</div>
                 <div className="mt-2 text-base font-bold text-white">{MESES[mes - 1]}/{ano}</div>
                 <div className="mt-1 text-[11px] text-slate-500">Base para a projeção abaixo</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Base real prevista</div>
                 <div className="mt-2 text-base font-bold text-amber-200">{formatarMoeda(resumoSimulacaoAtual?.real || 0)}</div>
                 <div className="mt-1 text-[11px] text-slate-500">Recorrências, parcelas e lançamentos futuros já reais</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Impacto simulado</div>
                 <div className="mt-2 text-base font-bold text-sky-200">{formatarMoeda(resumoSimulacaoAtual?.simulado || 0)}</div>
                 <div className="mt-1 text-[11px] text-slate-500">Parcelas que você está pensando em assumir</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
+              <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Total projetado</div>
                 <div className={`mt-2 text-base font-bold ${obterClasseSaldo(resumoSimulacaoAtual?.folga || 0)}`}>
                   {formatarMoeda(resumoSimulacaoAtual?.total || 0)}
@@ -662,7 +662,7 @@ function Orcamentos() {
                 </div>
               </div>
             </div>
-            <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-[11px] text-slate-500">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-[11px] text-slate-500">
               <div><span className="text-slate-300">Base real prevista:</span> recorrências, parcelas e lançamentos já existentes que caem no mês.</div>
               <div className="mt-1"><span className="text-slate-300">Impacto simulado:</span> parcelas das compras desejadas adicionadas artificialmente à projeção.</div>
               <div className="mt-1"><span className="text-slate-300">Total projetado:</span> base real prevista + novas simulações do mês.</div>
@@ -670,7 +670,7 @@ function Orcamentos() {
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[1.05fr_1.35fr]">
-            <section className="rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
+            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -704,7 +704,7 @@ function Orcamentos() {
                 {simulacoesOrdenadas.map((simulacao) => {
                   const primeiraParcela = obterParcelaFormatada(simulacao.valor_total, simulacao.parcelas, 0);
                   return (
-                    <div key={simulacao.id} className="rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+                    <div key={simulacao.id} className="fin-panel fin-panel-interactive rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -768,7 +768,7 @@ function Orcamentos() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
+            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -790,7 +790,7 @@ function Orcamentos() {
                 {projecoes.map((projecao) => {
                   const percentual = projecao.orcado > 0 ? (projecao.total / projecao.orcado) * 100 : 0;
                   return (
-                    <div key={`${projecao.mes}-${projecao.ano}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <div key={`${projecao.mes}-${projecao.ano}`} className="fin-panel rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
                           <h3 className="text-sm font-semibold text-white">{projecao.label}</h3>

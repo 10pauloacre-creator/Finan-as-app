@@ -51,7 +51,7 @@ export default function PainelPrioridadesFinanceiras({
   if (itensVisiveis.length === 0) return null;
 
   return (
-    <section className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4 sm:p-5">
+    <section className="fin-panel fin-soft-rise rounded-[24px] border border-white/8 bg-white/[0.025] p-4 sm:p-5">
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-slate-100">{titulo}</h3>
         {subtitulo && <p className="mt-1 text-xs text-slate-500">{subtitulo}</p>}
@@ -61,7 +61,7 @@ export default function PainelPrioridadesFinanceiras({
         {itensVisiveis.map((item) => {
           const palette = TONE_CLASS[item.tone];
           return (
-            <div key={item.id} className={`rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
+            <div key={item.id} className={`fin-panel rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold ${palette.title}`}>{item.titulo}</div>

@@ -177,6 +177,61 @@
   100% { background-position: 200% center; }
 }
 .animate-fade-up { animation: fadeSlideUp 300ms var(--fin-transition) both; }
+.fin-soft-rise { animation: fadeSlideUp 420ms var(--fin-transition) both; }
+.fin-soft-rise-delay { animation: fadeSlideUp 520ms var(--fin-transition) both; }
+
+.fin-panel {
+  position: relative;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.16);
+  transition:
+    transform 180ms var(--fin-transition),
+    border-color 180ms var(--fin-transition),
+    background-color 180ms var(--fin-transition),
+    box-shadow 220ms var(--fin-transition);
+}
+
+.fin-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent 36%);
+  opacity: 0;
+  transition: opacity 180ms var(--fin-transition);
+}
+
+.fin-panel-interactive {
+  cursor: pointer;
+}
+
+.fin-panel-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 48px rgba(2, 6, 23, 0.22);
+}
+
+.fin-panel-interactive:hover::after,
+.fin-panel:focus-within::after {
+  opacity: 1;
+}
+
+.fin-button-press {
+  transition:
+    transform 150ms var(--fin-transition),
+    background-color 150ms var(--fin-transition),
+    border-color 150ms var(--fin-transition),
+    box-shadow 180ms var(--fin-transition),
+    color 150ms var(--fin-transition);
+}
+
+.fin-button-press:active {
+  transform: scale(0.985);
+}
+
+.fin-scroll-snap {
+  scroll-padding-inline: 1rem;
+  overscroll-behavior-inline: contain;
+}
 
 /* ── Tabular numbers for financial data ─────────────────── */
 .tabular-nums { font-variant-numeric: tabular-nums; }
@@ -191,6 +246,11 @@ button { user-select: none; cursor: pointer; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .fin-panel-interactive:hover,
+  .fin-button-press:active {
+    transform: none !important;
   }
 }
 

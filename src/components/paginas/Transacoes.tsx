@@ -161,7 +161,7 @@ function SummaryTile({
   }[tone];
 
   return (
-    <div className={`rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
+    <div className={`fin-panel rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
       <div className="text-[11px] font-medium text-slate-500">{title}</div>
       <div className={`mt-1 text-lg font-bold tabular-nums ${palette.value}`}>{value}</div>
       <div className="mt-1 text-[11px] text-slate-500">{subtitle}</div>
@@ -295,12 +295,12 @@ function TimelineGastos({
   const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+    <div className="fin-panel fin-soft-rise-delay overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
       <SectionHeader
         title="Estimativa de gastos por mês"
         subtitle="Visão analítica com despesas realizadas, cobranças ativas e projeção de parcelas futuras."
       />
-      <div className="mb-4 rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+      <div className="fin-panel rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="mb-1 text-sm font-semibold text-white">Leitura mensal de despesas</h3>
@@ -370,7 +370,7 @@ function TimelineGastos({
                 key={d.mes}
                 type="button"
                 onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
-                className="absolute flex flex-col items-center justify-end pb-4 rounded-[26px] transition-all duration-200 hover:-translate-y-1"
+                className="fin-button-press absolute flex flex-col items-center justify-end rounded-[26px] pb-4 transition-all duration-200 hover:-translate-y-1"
                 style={{ left: i * TG_CARD_STEP, top: 0, width: TG_CARD_W, height: TG_CARD_H, zIndex: 1 }}
               >
                 <div
@@ -412,7 +412,7 @@ function TimelineGastos({
       </div>
 
       {mesSel && (mesSel.por_categoria.length > 0 || mesSel.transacoes_previstas.length > 0) && (
-        <div className="mt-5 rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+        <div className="fin-panel rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <span className="text-xs text-slate-400">
               {mesSel.label} {mesSel.ano}
@@ -575,7 +575,7 @@ function TimelineReceitas({
   const mesSel = mesSelecionado ? dados.find((d) => d.mes === mesSelecionado) : null;
 
   return (
-    <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+    <div className="fin-panel fin-soft-rise-delay rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
       <SectionHeader
         title="Histórico e projeção de receitas"
         subtitle="Entradas realizadas, agendadas e recorrentes com a mesma leitura da área de despesas."
@@ -622,7 +622,7 @@ function TimelineReceitas({
             return (
               <button key={d.mes} type="button"
                 onClick={() => setMesSelecionado((prev) => (prev === d.mes ? null : d.mes))}
-                className={`absolute flex flex-col items-center justify-end pb-4 rounded-2xl transition-all ${
+                className={`fin-button-press absolute flex flex-col items-center justify-end rounded-2xl pb-4 transition-all ${
                   isAtual ? 'border-2 border-emerald-500/50 bg-emerald-500/5'
                     : isSel ? 'border border-purple-500/40 bg-white/4'
                     : 'border border-white/5 bg-white/2 hover:bg-white/5'
@@ -1062,7 +1062,7 @@ export default function Transacoes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
+      <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Transações 3.0</p>
@@ -1073,7 +1073,7 @@ export default function Transacoes() {
           </div>
           <button
             onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/14 px-4 py-2 text-sm font-medium text-violet-100 transition-colors hover:bg-violet-500/22 sm:w-auto"
+            className="fin-button-press inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/14 px-4 py-2 text-sm font-medium text-violet-100 transition-colors hover:bg-violet-500/22 sm:w-auto"
           >
             <Plus size={16} /> Novo lançamento
           </button>
@@ -1081,7 +1081,7 @@ export default function Transacoes() {
       </section>
 
       {/* Tab switcher */}
-      <div className="flex w-full gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1 sm:w-fit">
+      <div className="fin-panel flex w-full gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1 sm:w-fit">
         <button
           onClick={() => { setVisuTab('despesas'); setCatSelecionada(null); }}
           className={`flex-1 px-5 py-2 rounded-xl text-sm font-semibold transition-all sm:flex-none ${
@@ -1215,7 +1215,7 @@ export default function Transacoes() {
       {visuTab === 'despesas' && (
         <>
           {/* Summary */}
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
+          <div className="fin-panel fin-soft-rise rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
             <SectionHeader
               title={LABEL_FILTRO_DESPESA[filtroLinha2]}
               subtitle="Resumo principal das despesas no mesmo dicionário visual da página inicial."
@@ -1262,7 +1262,7 @@ export default function Transacoes() {
 
           {/* Category chips */}
           {chipsCategoria.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
+            <div className="fin-scroll-snap flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
               <button onClick={() => setCatSelecionada(null)}
                 className={`shrink-0 snap-start rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                   catSelecionada === null ? 'bg-purple-600 text-white' : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
@@ -1290,7 +1290,7 @@ export default function Transacoes() {
                 value={busca} onChange={(e) => setBusca(e.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-purple-500" />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
+            <div className="fin-scroll-snap flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
               {FILTROS_LINHA2.map((f) => (
                 <button key={f.valor} onClick={() => setFiltroLinha2(f.valor)}
                   className={`shrink-0 snap-start rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
@@ -1315,7 +1315,7 @@ export default function Transacoes() {
       {visuTab === 'receitas' && (
         <>
           {/* Summary */}
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
+          <div className="fin-panel fin-soft-rise rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
             <SectionHeader
               title="Recebido"
               subtitle="Receitas realizadas e agendadas organizadas na mesma lógica das despesas."
@@ -1391,7 +1391,7 @@ export default function Transacoes() {
                         key={`${t.id}-${dataExibicao}`}
                         type="button"
                         onClick={() => setTransacaoDetalhe(t)}
-                        className="group flex w-full items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left sm:items-center"
+                        className="fin-panel fin-panel-interactive fin-button-press group flex w-full items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left sm:items-center"
                       >
                         <div
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"

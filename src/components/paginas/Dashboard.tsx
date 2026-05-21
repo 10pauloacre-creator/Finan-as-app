@@ -455,7 +455,7 @@ function DashboardMetricCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] active:scale-[0.985] sm:p-5"
+      className="fin-panel fin-panel-interactive fin-button-press group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] sm:p-5"
       style={{ borderColor: palette.border }}
     >
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.glow}`} />
@@ -2101,7 +2101,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       />
 
       {/* Header */}
-      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
+      <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <p className="mb-1 text-sm font-medium text-slate-400">Olá, Paulo!</p>
@@ -2124,19 +2124,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
 
           <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
-            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Estrutura</p>
               <p className="mt-1 text-xs font-semibold text-slate-200 sm:text-sm">
                 {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
               </p>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Fatura atual</p>
               <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
                 {ocultar(formatarMoeda(totalFaturaAtual))}
               </p>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Próximo vencimento</p>
               <p className="mt-1 text-sm font-semibold text-slate-200">
                 {proximoVencimento
@@ -2188,7 +2188,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             onClick={() => setModalResumo('apagar')}
           />
         </div>
-        <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+        <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
           <div><span className="text-slate-300">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
           <div className="mt-1"><span className="text-slate-300">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
           <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
@@ -2227,7 +2227,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {contas.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-4">
+              <div className="fin-scroll-snap flex min-w-max snap-x snap-mandatory gap-2 pr-4">
                 {contas.map((conta) => {
                   const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
                   return (
@@ -2235,7 +2235,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       key={conta.id}
                       type="button"
                       onClick={() => setContaModalId(conta.id)}
-                      className="min-w-[140px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
+                      className="fin-panel fin-panel-interactive fin-button-press min-w-[140px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                     >
                       <div className="flex items-center gap-2">
                         <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
@@ -2272,13 +2272,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {cartoes.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-4">
+              <div className="fin-scroll-snap flex min-w-max snap-x snap-mandatory gap-2 pr-4">
                 {cartoes.map((cartao) => (
                   <button
                     key={cartao.id}
                     type="button"
                     onClick={() => setCartaoModalId(cartao.id)}
-                    className="min-w-[148px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
+                    className="fin-panel fin-panel-interactive fin-button-press min-w-[148px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                   >
                     <div className="flex items-center gap-2">
                       <div className="relative flex-shrink-0">
@@ -2349,7 +2349,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       </section>
 
       {/* Gastos por Categoria */}
-      <div className="rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
+      <div className="fin-panel fin-soft-rise-delay rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
         <SectionHeader
           title="Gastos por categoria"
           subtitle="Visão analítica com foco nas maiores categorias do mês."

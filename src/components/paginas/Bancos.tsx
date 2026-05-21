@@ -125,7 +125,7 @@ function SectionPanel({
   emptyText: string;
 }) {
   return (
-    <section className="glass-card overflow-hidden border border-white/10">
+    <section className="glass-card fin-panel fin-soft-rise overflow-hidden border border-white/10">
       <div className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-100">
@@ -146,7 +146,7 @@ function SectionPanel({
         )}
 
         {items.map((item) => (
-          <div key={item.id} className={`rounded-2xl border p-3 sm:p-4 ${obterClasseItem(item.status)}`}>
+          <div key={item.id} className={`fin-panel rounded-2xl border p-3 sm:p-4 ${obterClasseItem(item.status)}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -637,7 +637,7 @@ export default function Bancos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.30)] sm:p-5">
+      <section className="fin-panel fin-soft-rise overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.30)] sm:p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
@@ -650,21 +650,21 @@ export default function Bancos() {
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Saldo em conta</div>
               <div className="mt-2 text-lg font-bold text-emerald-300 tabular-nums">{formatarMoeda(painelFinanceiro.totalContas)}</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Total a pagar</div>
               <div className="mt-2 text-lg font-bold text-amber-200 tabular-nums">{formatarMoeda(painelFinanceiro.totalAPagar)}</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Sobra projetada</div>
               <div className={`mt-2 text-lg font-bold tabular-nums ${painelFinanceiro.sobraProjetada >= 0 ? 'text-sky-200' : 'text-red-300'}`}>
                 {formatarMoeda(painelFinanceiro.sobraProjetada)}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Próximo vencimento</div>
               <div className="mt-2 text-sm font-bold text-white">
                 {painelFinanceiro.proximoVencimento?.dataISO
@@ -679,7 +679,7 @@ export default function Bancos() {
         </div>
       </section>
 
-      <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3 text-[11px] text-slate-500">
+      <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.025] p-3 text-[11px] text-slate-500">
         <div><span className="text-slate-300">Saldo em conta:</span> soma dos saldos atuais de todas as contas cadastradas.</div>
         <div className="mt-1"><span className="text-slate-300">Total a pagar:</span> faturas dos cartões + contas fixas + dívidas + aportes planejados ainda abertos.</div>
         <div className="mt-1"><span className="text-slate-300">Sobra projetada:</span> saldo em conta menos tudo o que ainda falta cumprir.</div>
@@ -786,7 +786,7 @@ export default function Bancos() {
         emptyText="Ainda não houve debitações registradas neste mês."
       />
 
-      <section className="glass-card overflow-hidden border border-white/10">
+      <section className="glass-card fin-panel fin-soft-rise-delay overflow-hidden border border-white/10">
         <div className="flex flex-col gap-4 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
             <h3 className="text-base font-semibold text-white">Saldos das contas e conexões</h3>
@@ -795,7 +795,7 @@ export default function Bancos() {
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               onClick={() => setModalPluggy(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/20 sm:w-auto"
+              className="fin-button-press flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/20 sm:w-auto"
             >
               <Wifi size={14} />
               <span className="hidden sm:inline">Conectar</span>
