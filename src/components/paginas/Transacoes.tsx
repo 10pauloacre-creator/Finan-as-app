@@ -472,7 +472,7 @@ function TimelineGastos({
                       <div className="h-full rounded-full"
                         style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: `linear-gradient(90deg, ${c.cor}, rgba(255,255,255,0.92))`, opacity: 0.95 }} />
                     </div>
-                    <div className="mt-1 text-[10px] text-slate-500">{((c.valor / mesSel.total) * 100).toFixed(0)}% do mÃªs</div>
+                    <div className="mt-1 text-[10px] text-slate-500">{((c.valor / mesSel.total) * 100).toFixed(0)}% do mês</div>
                   </div>
                   </div>
                 </div>

@@ -53,6 +53,18 @@ interface ImagemPendente {
   previewUrl: string;
 }
 
+async function fileToDataUrl(file: File) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Falha ao gerar preview da imagem.'));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Falha ao ler imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 
 const CATEGORIA_MAP: Record<string, string> = {
@@ -847,18 +859,21 @@ export default function Assistente() {
     if (!imagensPendentes.length || enviando) return;
 
     const imagensDoEnvio = [...imagensPendentes];
-    const previews = imagensDoEnvio.map((imagem) => imagem.previewUrl);
     setImagensPendentes([]);
     setEnviando(true);
-
-    addMsg({
-      papel: 'user',
-      texto: legenda,
-      imagensPreview: previews,
-    });
-    const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
+    let aiId = '';
 
     try {
+      const previews = await Promise.all(imagensDoEnvio.map((imagem) => fileToDataUrl(imagem.file)));
+      imagensDoEnvio.forEach((imagem) => URL.revokeObjectURL(imagem.previewUrl));
+
+      addMsg({
+        papel: 'user',
+        texto: legenda,
+        imagensPreview: previews,
+      });
+      aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
+
       const fd = new FormData();
       fd.append('task', 'analisar_imagem_financeira');
       imagensDoEnvio.forEach((imagem) => fd.append('imagem', imagem.file));
@@ -871,7 +886,9 @@ export default function Assistente() {
       const res = await fetch('/api/ai', { method: 'POST', body: fd });
       await processarResposta(aiId, res);
     } catch {
-      updateMsg(aiId, { carregando: false, texto: 'Erro ao analisar imagem.' });
+      if (aiId) updateMsg(aiId, { carregando: false, texto: 'Erro ao analisar imagem.' });
+      else addMsg({ papel: 'assistente', texto: 'Erro ao analisar imagem.' });
+      imagensDoEnvio.forEach((imagem) => URL.revokeObjectURL(imagem.previewUrl));
     } finally {
       setEnviando(false);
     }
