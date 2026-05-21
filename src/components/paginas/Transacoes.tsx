@@ -7,6 +7,7 @@ import { formatarMoeda } from '@/lib/storage';
 import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
+import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import {
   aplicarDataCompetenciaNaTransacao,
@@ -956,6 +957,51 @@ export default function Transacoes() {
 
   // Tudo que ainda precisa ser pago (cartão + contas futuras)
   const aPagar = totais.despesasCartaoPendentes + totais.despesasPrevistas;
+  const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
+    const despesasPendentes = transacoesFiltradas.filter(({ transacao, dataExibicao }) => (
+      transacao.tipo === 'despesa' && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+    ));
+    const receitasPendentes = transacoesFiltradas.filter(({ transacao, dataExibicao }) => (
+      transacao.tipo === 'receita' && !realizadasIds.has(`${transacao.id}|${dataExibicao}`)
+    ));
+    const urgentes = despesasPendentes.filter(({ dataExibicao }) => {
+      const data = parseFinancialDate(dataExibicao);
+      const diff = Math.ceil((data.getTime() - hoje.getTime()) / 86400000);
+      return diff <= 3;
+    });
+
+    return [
+      {
+        id: 'transacoes-urgentes',
+        titulo: 'Vence em até 3 dias',
+        detalhe: 'Despesas previstas ou faturas com vencimento muito próximo.',
+        quantidade: urgentes.length,
+        tone: 'danger',
+      },
+      {
+        id: 'transacoes-apagar',
+        titulo: 'A pagar',
+        detalhe: 'Faturas + despesas que ainda não saíram da conta.',
+        valor: formatarMoeda(aPagar),
+        tone: 'warning',
+      },
+      {
+        id: 'transacoes-debitado',
+        titulo: 'Debitado do saldo',
+        detalhe: 'Saídas já liquidadas no período filtrado.',
+        valor: formatarMoeda(debitadasSaldo),
+        tone: 'info',
+      },
+      {
+        id: 'transacoes-receitas',
+        titulo: 'Receitas agendadas',
+        detalhe: 'Entradas futuras ainda não realizadas.',
+        quantidade: receitasPendentes.length,
+        valor: formatarMoeda(totais.receitasAgendadas),
+        tone: totais.receitasAgendadas > 0 ? 'success' : 'info',
+      },
+    ];
+  }, [aPagar, debitadasSaldo, hoje, realizadasIds, totais.receitasAgendadas, transacoesFiltradas]);
 
   const transacoesBaseExibidas = useMemo(() => {
     if (filtroLinha2 !== 'ja_debitadas' && filtroLinha2 !== 'previstas') {
@@ -1161,6 +1207,11 @@ export default function Transacoes() {
       </div>
 
       {/* ── DESPESAS TAB ─────────────────────────────────── */}
+      <PainelPrioridadesFinanceiras
+        itens={prioridadesFinanceiras}
+        subtitulo="Mesmo filtro da tela atual, destacando o que está urgente, o que já saiu e o que ainda está projetado."
+      />
+
       {visuTab === 'despesas' && (
         <>
           {/* Summary */}
@@ -1171,6 +1222,11 @@ export default function Transacoes() {
             />
             <div className="text-3xl font-bold tabular-nums text-white">
               {formatarMoeda(resumoFiltroDespesas.total)}
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+              <div><span className="text-slate-300">Total do filtro:</span> soma de todas as despesas que passaram pelos filtros ativos.</div>
+              <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente despesas realizadas fora do cartão.</div>
+              <div className="mt-1"><span className="text-slate-300">A pagar:</span> diferença entre o total filtrado e o que já foi debitado, incluindo faturas quando aplicável.</div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <SummaryTile
@@ -1266,6 +1322,10 @@ export default function Transacoes() {
             />
             <div className="text-3xl font-bold tabular-nums text-emerald-400">
               +{formatarMoeda(totais.receitas)}
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+              <div><span className="text-slate-300">Recebido:</span> receitas já realizadas dentro do período filtrado.</div>
+              <div className="mt-1"><span className="text-slate-300">Agendadas:</span> entradas futuras ainda não realizadas que já existem nos lançamentos.</div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <SummaryTile

@@ -33,6 +33,7 @@ import { BANCO_INFO, BancoSlug, TipoConta, ContaBancaria, CartaoCredito, Reserva
 import ModalPluggyConnect from '@/components/modais/ModalPluggyConnect';
 import BankLogo from '@/components/ui/BankLogo';
 import BankSelector from '@/components/ui/BankSelector';
+import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 import type { SyncResult } from '@/app/api/pluggy/sync/route';
 import { formatFinancialDate, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { aplicarDataCompetenciaNaTransacao, getDataOcorrenciaNoMes, transacaoContaNoMesAteData } from '@/lib/transacoes';
@@ -393,6 +394,45 @@ export default function Bancos() {
       pagosRecentemente,
     };
   }, [cartoes, categorias, contas, metas, mes, ano, hoje, reservas, transacoes]);
+  const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
+    const itensAbertos = [
+      ...painelFinanceiro.cartoesPendentes,
+      ...painelFinanceiro.contasFixas,
+      ...painelFinanceiro.dividasBoletos,
+      ...painelFinanceiro.reservasMetas,
+    ];
+    return [
+      {
+        id: 'bancos-urgente',
+        titulo: 'Vence em breve',
+        detalhe: 'Itens classificados como urgentes nos próximos dias.',
+        quantidade: itensAbertos.filter((item) => item.status === 'vence_em_breve').length,
+        tone: 'danger',
+      },
+      {
+        id: 'bancos-pendente',
+        titulo: 'Pendente no mês',
+        detalhe: 'Compromissos ainda abertos dentro do mês atual.',
+        quantidade: itensAbertos.filter((item) => item.status === 'pendente_mes').length,
+        tone: 'warning',
+      },
+      {
+        id: 'bancos-pagos',
+        titulo: 'Pagos recentemente',
+        detalhe: 'Saídas já debitadas e resolvidas neste mês.',
+        quantidade: painelFinanceiro.pagosRecentemente.length,
+        valor: formatarMoeda(painelFinanceiro.pagosRecentemente.reduce((acc, item) => acc + item.valor, 0)),
+        tone: 'info',
+      },
+      {
+        id: 'bancos-sobra',
+        titulo: 'Sobra projetada',
+        detalhe: 'Saldo em conta menos o total das obrigações abertas.',
+        valor: formatarMoeda(painelFinanceiro.sobraProjetada),
+        tone: painelFinanceiro.sobraProjetada >= 0 ? 'success' : 'danger',
+      },
+    ];
+  }, [painelFinanceiro]);
 
   function handleSalvarSaldo(id: string) {
     const val = parseFloat(novoSaldo.replace(',', '.'));
@@ -638,6 +678,17 @@ export default function Bancos() {
           </div>
         </div>
       </section>
+
+      <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3 text-[11px] text-slate-500">
+        <div><span className="text-slate-300">Saldo em conta:</span> soma dos saldos atuais de todas as contas cadastradas.</div>
+        <div className="mt-1"><span className="text-slate-300">Total a pagar:</span> faturas dos cartões + contas fixas + dívidas + aportes planejados ainda abertos.</div>
+        <div className="mt-1"><span className="text-slate-300">Sobra projetada:</span> saldo em conta menos tudo o que ainda falta cumprir.</div>
+      </div>
+
+      <PainelPrioridadesFinanceiras
+        itens={prioridadesFinanceiras}
+        subtitulo="A mesma lógica de prioridade usada na home, aplicada ao painel operacional de contas."
+      />
 
       {itemsPendentes.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">

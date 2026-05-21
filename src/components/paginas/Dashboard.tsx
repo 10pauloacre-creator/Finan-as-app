@@ -25,6 +25,7 @@ import {
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
+import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 import type { AIModelId } from '@/lib/ai/aiModels';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
@@ -1911,8 +1912,41 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
     return proximo || null;
   }, [cartoes]);
-
   const ocultar = (v: string) => saldoOculto ? '??????' : v;
+  const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
+    const vencimentosUrgentes = detalheResumo.apagar.cartoes.filter((cartao) => cartao.diasParaVencer <= 3);
+    const previsoesUrgentes = proximosGastos.filter((gasto) => gasto.diasRestantes <= 3);
+    return [
+      {
+        id: 'dashboard-urgente',
+        titulo: 'Vence em até 3 dias',
+        detalhe: 'Cartões e cobranças de curtíssimo prazo.',
+        quantidade: vencimentosUrgentes.length + previsoesUrgentes.length,
+        tone: 'danger',
+      },
+      {
+        id: 'dashboard-apagar',
+        titulo: 'Falta pagar',
+        detalhe: 'Faturas abertas + pendências do mês.',
+        valor: ocultar(formatarMoeda(aPagarMesAtual)),
+        tone: 'warning',
+      },
+      {
+        id: 'dashboard-debitado',
+        titulo: 'Debitado do saldo',
+        detalhe: 'O que já saiu da conta até hoje.',
+        valor: ocultar(formatarMoeda(detalheResumo.pago.total)),
+        tone: 'info',
+      },
+      {
+        id: 'dashboard-respiro',
+        titulo: 'Saldo projetado',
+        detalhe: 'Saldo em conta menos o que ainda falta pagar.',
+        valor: ocultar(formatarMoeda(saldoProjetado)),
+        tone: saldoProjetado >= 0 ? 'success' : 'danger',
+      },
+    ];
+  }, [aPagarMesAtual, detalheResumo.apagar.cartoes, detalheResumo.pago.total, ocultar, proximosGastos, saldoProjetado]);
 
   const transacoesPorConta = useMemo(() => {
     const mapa: Record<string, Transacao[]> = {};
@@ -2154,7 +2188,18 @@ export default function Dashboard({ onNovoPagina }: Props) {
             onClick={() => setModalResumo('apagar')}
           />
         </div>
+        <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+          <div><span className="text-slate-300">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
+          <div className="mt-1"><span className="text-slate-300">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
+          <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
+          <div className="mt-1"><span className="text-slate-300">Falta pagar:</span> faturas atuais dos cartões + pendências extras ainda abertas.</div>
+        </div>
       </section>
+
+      <PainelPrioridadesFinanceiras
+        itens={prioridadesFinanceiras}
+        subtitulo="Leitura rápida do que pede ação agora antes de entrar nos blocos analíticos."
+      />
 
       {/* Modal detalhe dos cards resumo */}
       {modalResumo && (

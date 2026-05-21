@@ -21,6 +21,7 @@ import { FINANCEIRO_STORAGE_EVENT, formatarMoeda, gerarId, storageSimulacoes } f
 import { startOfTodayLocal } from '@/lib/date';
 import { aplicarDataCompetenciaNaTransacao, getDataOcorrenciaNoMes, transacaoContaNoMesAteData } from '@/lib/transacoes';
 import type { SimulacaoCompra, Transacao } from '@/types';
+import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 
 const CORES_PRESET = [
   '#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
@@ -236,6 +237,42 @@ function Orcamentos() {
   const resumoSimulacaoAtual = projecoes[0];
   const totalCarteiraSimulada = simulacoes.reduce((soma, simulacao) => soma + simulacao.valor_total, 0);
   const totalParcelasAbertas = simulacoes.reduce((soma, simulacao) => soma + simulacao.parcelas, 0);
+  const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
+    const mesesNoLimite = projecoes.filter((projecao) => projecao.folga < 0);
+    const mesesApertados = projecoes.filter((projecao) => projecao.folga >= 0 && projecao.folga < 500);
+    const prioridadesAltas = simulacoes.filter((simulacao) => simulacao.prioridade === 'alta');
+    return [
+      {
+        id: 'orcamentos-limite',
+        titulo: 'Meses no vermelho',
+        detalhe: 'Projeções em que o total previsto passa do orçamento consolidado.',
+        quantidade: mesesNoLimite.length,
+        tone: 'danger',
+      },
+      {
+        id: 'orcamentos-apertados',
+        titulo: 'Folga apertada',
+        detalhe: 'Meses com menos de R$ 500 de respiro frente ao orçamento.',
+        quantidade: mesesApertados.length,
+        tone: 'warning',
+      },
+      {
+        id: 'orcamentos-altas',
+        titulo: 'Simulações prioritárias',
+        detalhe: 'Compras marcadas como prioridade alta.',
+        quantidade: prioridadesAltas.length,
+        valor: formatarMoeda(prioridadesAltas.reduce((soma, simulacao) => soma + simulacao.valor_total, 0)),
+        tone: 'info',
+      },
+      {
+        id: 'orcamentos-impacto',
+        titulo: 'Impacto simulado',
+        detalhe: 'Parcela simulada que já entra no mês-base da análise.',
+        valor: formatarMoeda(resumoSimulacaoAtual?.simulado || 0),
+        tone: (resumoSimulacaoAtual?.simulado || 0) > 0 ? 'success' : 'info',
+      },
+    ];
+  }, [projecoes, resumoSimulacaoAtual, simulacoes]);
 
   function abrirModal(catId: string) {
     const orcamento = orcamentosMes.find((item) => item.categoria_id === catId);
@@ -409,6 +446,11 @@ function Orcamentos() {
 
       <div className="text-xs text-slate-500">Resumo principal, visão analítica e detalhe por categoria ou simulação.</div>
 
+      <PainelPrioridadesFinanceiras
+        itens={prioridadesFinanceiras}
+        subtitulo="Prioridades da visão real e da simulação para ajudar a decidir o que cabe agora e o que pressiona os próximos meses."
+      />
+
       <div className="flex gap-2">
         <select
           value={mes}
@@ -468,6 +510,11 @@ function Orcamentos() {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white/5">
                 <div className={`h-full rounded-full transition-all duration-700 ${obterClasseBarra(resumo.pct)}`} style={{ width: `${Math.min(resumo.pct, 100)}%` }} />
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+                <div><span className="text-slate-300">Orçado:</span> soma dos limites definidos para as categorias do mês.</div>
+                <div className="mt-1"><span className="text-slate-300">Gasto:</span> despesas já realizadas nas categorias que têm orçamento.</div>
+                <div className="mt-1"><span className="text-slate-300">Utilizado:</span> percentual entre o gasto atual e o limite total configurado.</div>
               </div>
             </div>
           )}
@@ -614,6 +661,11 @@ function Orcamentos() {
                     : 'Sem orçamento consolidado para este mês'}
                 </div>
               </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-[11px] text-slate-500">
+              <div><span className="text-slate-300">Base real prevista:</span> recorrências, parcelas e lançamentos já existentes que caem no mês.</div>
+              <div className="mt-1"><span className="text-slate-300">Impacto simulado:</span> parcelas das compras desejadas adicionadas artificialmente à projeção.</div>
+              <div className="mt-1"><span className="text-slate-300">Total projetado:</span> base real prevista + novas simulações do mês.</div>
             </div>
           </div>
 
