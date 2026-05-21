@@ -406,7 +406,7 @@ function Orcamentos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-5 sm:p-6">
+      <section className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-500/25 bg-purple-600/18">
@@ -419,7 +419,7 @@ function Orcamentos() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setAbaAtiva('orcamento')}
               className={`rounded-full px-4 py-2 text-xs font-medium transition-all ${
@@ -451,7 +451,7 @@ function Orcamentos() {
         subtitulo="Prioridades da visão real e da simulação para ajudar a decidir o que cabe agora e o que pressiona os próximos meses."
       />
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <select
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
@@ -464,7 +464,7 @@ function Orcamentos() {
         <select
           value={ano}
           onChange={(e) => setAno(Number(e.target.value))}
-          className="w-28 rounded-xl border border-white/10 bg-[#0F1629] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
+          className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 sm:w-28"
         >
           {anosOpcoes.map((itemAno) => (
             <option key={itemAno} value={itemAno}>{itemAno}</option>
@@ -490,7 +490,7 @@ function Orcamentos() {
                 <TrendingUp size={14} className="text-purple-400" />
                 <span className="text-sm font-semibold text-slate-300">Resumo do mês</span>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                 <div>
                   <p className="mb-0.5 text-[11px] text-slate-500">Orçado</p>
                   <p className="text-sm font-bold tabular-nums text-white">{formatarMoeda(resumo.totalOrcado)}</p>
@@ -634,7 +634,7 @@ function Orcamentos() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mês analisado</div>
                 <div className="mt-2 text-base font-bold text-white">{MESES[mes - 1]}/{ano}</div>
@@ -681,7 +681,7 @@ function Orcamentos() {
                 </div>
               </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
                   <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Carteira simulada</div>
                   <div className="mt-2 text-base font-bold text-white">{formatarMoeda(totalCarteiraSimulada)}</div>

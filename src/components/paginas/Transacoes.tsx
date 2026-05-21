@@ -113,7 +113,7 @@ function SectionHeader({
   onAction?: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
         {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
@@ -122,7 +122,7 @@ function SectionHeader({
         <button
           type="button"
           onClick={onAction}
-          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+          className="w-full rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
         >
           {actionLabel}
         </button>
@@ -1062,7 +1062,7 @@ export default function Transacoes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-5 sm:p-6">
+      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Transações 3.0</p>
@@ -1073,7 +1073,7 @@ export default function Transacoes() {
           </div>
           <button
             onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/14 px-4 py-2 text-sm font-medium text-violet-100 transition-colors hover:bg-violet-500/22"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/14 px-4 py-2 text-sm font-medium text-violet-100 transition-colors hover:bg-violet-500/22 sm:w-auto"
           >
             <Plus size={16} /> Novo lançamento
           </button>
@@ -1081,10 +1081,10 @@ export default function Transacoes() {
       </section>
 
       {/* Tab switcher */}
-      <div className="flex w-fit gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1">
+      <div className="flex w-full gap-1 rounded-2xl border border-white/8 bg-white/[0.03] p-1 sm:w-fit">
         <button
           onClick={() => { setVisuTab('despesas'); setCatSelecionada(null); }}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 px-5 py-2 rounded-xl text-sm font-semibold transition-all sm:flex-none ${
             visuTab === 'despesas' ? 'bg-red-500/18 text-red-200 shadow-sm' : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -1092,7 +1092,7 @@ export default function Transacoes() {
         </button>
         <button
           onClick={() => { setVisuTab('receitas'); setCatSelecionada(null); setFiltroLinha2('todas'); }}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 px-5 py-2 rounded-xl text-sm font-semibold transition-all sm:flex-none ${
             visuTab === 'receitas' ? 'bg-emerald-500/18 text-emerald-200 shadow-sm' : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -1101,7 +1101,7 @@ export default function Transacoes() {
       </div>
 
       {/* Filtro por período */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(painelAnos || painelMeses) && (
           <div
             className="fixed inset-0 z-40"
@@ -1262,16 +1262,16 @@ export default function Transacoes() {
 
           {/* Category chips */}
           {chipsCategoria.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
               <button onClick={() => setCatSelecionada(null)}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                className={`shrink-0 snap-start rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                   catSelecionada === null ? 'bg-purple-600 text-white' : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
                 }`}>
                 Todos
               </button>
               {chipsCategoria.map((cat) => (
                 <button key={cat.id} onClick={() => setCatSelecionada(catSelecionada === cat.id ? null : cat.id)}
-                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`shrink-0 snap-start flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
                     catSelecionada === cat.id ? 'text-white shadow-lg' : 'border border-white/10 bg-white/5 text-slate-400 hover:text-white'
                   }`}
                   style={catSelecionada === cat.id ? { background: cat.cor } : {}}>
@@ -1290,10 +1290,10 @@ export default function Transacoes() {
                 value={busca} onChange={(e) => setBusca(e.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-purple-500" />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
               {FILTROS_LINHA2.map((f) => (
                 <button key={f.valor} onClick={() => setFiltroLinha2(f.valor)}
-                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`shrink-0 snap-start rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                     filtroLinha2 === f.valor
                       ? f.valor === 'ja_debitadas' ? 'bg-emerald-700 text-white'
                         : f.valor === 'previstas' ? 'bg-amber-700 text-white'
@@ -1391,7 +1391,7 @@ export default function Transacoes() {
                         key={`${t.id}-${dataExibicao}`}
                         type="button"
                         onClick={() => setTransacaoDetalhe(t)}
-                        className="group flex w-full items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left"
+                        className="group flex w-full items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left sm:items-center"
                       >
                         <div
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
@@ -1431,11 +1431,11 @@ export default function Transacoes() {
                             </div>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
                           <span className={`text-sm font-semibold tabular-nums ${t.tipo === 'receita' ? 'text-emerald-400' : 'text-red-400'}`}>
                             {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
                           </span>
-                          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                             <button
                               type="button"
                               onClick={(event) => {

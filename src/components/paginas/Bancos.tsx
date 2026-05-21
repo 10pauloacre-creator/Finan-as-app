@@ -138,7 +138,7 @@ function SectionPanel({
         </div>
       </div>
 
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-3 sm:p-4">
         {items.length === 0 && (
           <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-6 text-center text-sm text-slate-500">
             {emptyText}
@@ -146,7 +146,7 @@ function SectionPanel({
         )}
 
         {items.map((item) => (
-          <div key={item.id} className={`rounded-2xl border p-4 ${obterClasseItem(item.status)}`}>
+          <div key={item.id} className={`rounded-2xl border p-3 sm:p-4 ${obterClasseItem(item.status)}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -637,7 +637,7 @@ export default function Bancos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.30)]">
+      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.30)] sm:p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
@@ -649,7 +649,7 @@ export default function Bancos() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Saldo em conta</div>
               <div className="mt-2 text-lg font-bold text-emerald-300 tabular-nums">{formatarMoeda(painelFinanceiro.totalContas)}</div>
@@ -744,7 +744,7 @@ export default function Bancos() {
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <SectionPanel
           title="Faturas dos cartões"
           subtitle="Status de faturas inteiras para vencer, sem misturar com outras despesas do mês."
@@ -787,22 +787,22 @@ export default function Bancos() {
       />
 
       <section className="glass-card overflow-hidden border border-white/10">
-        <div className="flex flex-col gap-4 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
             <h3 className="text-base font-semibold text-white">Saldos das contas e conexões</h3>
             <p className="text-xs text-slate-400">A área operacional continua aqui para ajuste de saldo, conexão bancária e cadastro manual.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
               onClick={() => setModalPluggy(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/20"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition-all hover:bg-emerald-500/20 sm:w-auto"
             >
               <Wifi size={14} />
               <span className="hidden sm:inline">Conectar</span>
             </button>
             <button
               onClick={() => setMostrarForm((valorAtual) => !valorAtual)}
-              className="btn-primary flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white"
+              className="btn-primary flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white sm:w-auto"
             >
               <Plus size={16} /> Nova Conta
             </button>

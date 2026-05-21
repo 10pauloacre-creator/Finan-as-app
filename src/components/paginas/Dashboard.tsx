@@ -385,7 +385,7 @@ function SectionHeader({
   onAction?: () => void;
 }) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           {icon && <span className="flex-shrink-0 text-slate-500">{icon}</span>}
@@ -397,7 +397,7 @@ function SectionHeader({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+          className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
         >
           {actionLabel}
           <ArrowRight size={11} />
@@ -455,14 +455,14 @@ function DashboardMetricCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] active:scale-[0.985]"
+      className="group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] active:scale-[0.985] sm:p-5"
       style={{ borderColor: palette.border }}
     >
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.glow}`} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-medium tracking-wide text-slate-400">{title}</p>
-          <div className={`mt-3 text-2xl font-bold tabular-nums ${palette.value}`}>{value}</div>
+          <div className={`mt-3 text-xl font-bold tabular-nums sm:text-2xl ${palette.value}`}>{value}</div>
           <p className="mt-2 text-xs text-slate-500">{subtitle}</p>
         </div>
         <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/6 ${palette.icon}`}>
@@ -2101,7 +2101,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       />
 
       {/* Header */}
-      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-5 sm:p-6">
+      <section className="rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <p className="mb-1 text-sm font-medium text-slate-400">Olá, Paulo!</p>
@@ -2126,7 +2126,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
             <div className="rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Estrutura</p>
-              <p className="mt-1 text-sm font-semibold text-slate-200">
+              <p className="mt-1 text-xs font-semibold text-slate-200 sm:text-sm">
                 {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
               </p>
             </div>
@@ -2227,7 +2227,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {contas.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex gap-2 min-w-max">
+              <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-4">
                 {contas.map((conta) => {
                   const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
                   return (
@@ -2235,7 +2235,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       key={conta.id}
                       type="button"
                       onClick={() => setContaModalId(conta.id)}
-                      className="min-w-[140px] rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
+                      className="min-w-[140px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                     >
                       <div className="flex items-center gap-2">
                         <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
@@ -2272,13 +2272,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
         {cartoes.length > 0 ? (
           <>
             <div className="overflow-x-auto pb-1">
-              <div className="flex gap-2 min-w-max">
+              <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-4">
                 {cartoes.map((cartao) => (
                   <button
                     key={cartao.id}
                     type="button"
                     onClick={() => setCartaoModalId(cartao.id)}
-                    className="min-w-[148px] rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
+                    className="min-w-[148px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
                   >
                     <div className="flex items-center gap-2">
                       <div className="relative flex-shrink-0">

@@ -51,13 +51,13 @@ export default function PainelPrioridadesFinanceiras({
   if (itensVisiveis.length === 0) return null;
 
   return (
-    <section className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4">
+    <section className="rounded-[24px] border border-white/8 bg-white/[0.025] p-4 sm:p-5">
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-slate-100">{titulo}</h3>
         {subtitulo && <p className="mt-1 text-xs text-slate-500">{subtitulo}</p>}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {itensVisiveis.map((item) => {
           const palette = TONE_CLASS[item.tone];
           return (
