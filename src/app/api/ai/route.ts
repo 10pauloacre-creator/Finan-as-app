@@ -134,6 +134,43 @@ ${safeInput}`,
     };
   }
 
+  if (task === 'revisar_lancamento_contextual') {
+    return {
+      customPrompt: `Voce e um revisor contextual de lancamentos financeiros dentro de um app pessoal.
+Analise o lancamento extraido usando apenas o contexto enviado.
+Seu papel e impedir confirmacoes precipitadas, detectar incoerencias e orientar o usuario antes de salvar.
+
+Responda SOMENTE com JSON valido neste formato:
+{
+  "status": "aprovado" | "revisar" | "bloquear",
+  "confianca": 0,
+  "resumo": "frase curta e objetiva",
+  "alertas": ["..."],
+  "perguntas": ["..."],
+  "exige_confirmacao_explicita": true,
+  "sugestoes": {
+    "categoria": "opcional",
+    "metodo_pagamento": "opcional",
+    "descricao": "opcional",
+    "data": "YYYY-MM-DD opcional",
+    "cartao_id_sugerido": "opcional",
+    "conta_id_sugerida": "opcional"
+  }
+}
+
+Regras:
+- use "aprovado" quando o lancamento estiver coerente com contexto, metodo, descricao e historico.
+- use "revisar" quando houver ambiguidade, valor fora do padrao, metodo indefinido, categoria fraca ou necessidade de confirmar origem.
+- use "bloquear" somente quando houver forte risco de erro, duplicidade provavel, conflito serio com cartao/conta/metodo ou dados insuficientes demais.
+- em "alertas", cite riscos concretos.
+- em "perguntas", cite o que voce perguntaria ao usuario antes de salvar.
+- nunca invente contas, cartoes, datas ou valores fora do contexto.
+
+Dados:
+${safeInput}`,
+    };
+  }
+
   if (task === 'plano_economia') {
     return {
       customPrompt: `Monte um plano de economia prático, conservador e viável com base apenas nestes dados:
@@ -453,6 +490,21 @@ async function handleJsonRequest(body: {
       fallbackUsed: result.fallbackUsed,
       failedProvider: result.failedProvider,
       dicas: Array.isArray(parsed) ? parsed : [],
+      answer: result.answer,
+    });
+  }
+
+  if (legacyTask === 'revisar_lancamento_contextual') {
+    return Response.json({
+      success: true,
+      providerUsed: result.providerUsed,
+      modelUsed: result.modelUsed,
+      fallbackUsed: result.fallbackUsed,
+      failedProvider: result.failedProvider,
+      revisao: typeof parsed === 'object' && parsed ? parsed as Record<string, unknown> : null,
+      resposta: typeof (parsed as { resumo?: unknown } | null)?.resumo === 'string'
+        ? String((parsed as { resumo?: string }).resumo)
+        : result.answer,
       answer: result.answer,
     });
   }

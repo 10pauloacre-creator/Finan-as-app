@@ -30,6 +30,7 @@ export type AITask =
   | 'analisar_pdf_financeiro'
   | 'agente_financeiro'
   | 'estruturar_lista_compra_cartao'
+  | 'revisar_lancamento_contextual'
   | 'automacao_financeira_interna';
 
 export interface AIModelDefinition {

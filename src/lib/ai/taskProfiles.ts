@@ -98,6 +98,11 @@ export const TASK_PROFILES: Record<AITask, TaskProfile> = {
     description: 'Transformar lista textual de compras em lancamento de cartao com itens detalhados.',
     output: 'json',
   },
+  revisar_lancamento_contextual: {
+    preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
+    description: 'Revisar um lancamento com base no contexto financeiro antes da confirmacao.',
+    output: 'json',
+  },
   automacao_financeira_interna: {
     preferredProviders: ['openrouterReasoning', 'openrouterFast', 'openrouterPremium', 'gemini', 'anthropic'],
     description: 'Cruzar dados do projeto para sugerir automacoes e acoes internas com seguranca.',

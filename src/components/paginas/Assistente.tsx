@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto, construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
-import type { TransacaoExtraida } from '@/lib/assistente-types';
+import type { RevisaoContextualLancamento, TransacaoExtraida } from '@/lib/assistente-types';
 import type { RespostaPDF } from '@/app/api/assistente/pdf/route';
 import type { MetodoPagamento, OrigemTransacao, ContaBancaria, CartaoCredito, Transacao } from '@/types';
 import { BANCO_INFO } from '@/types';
@@ -33,6 +33,9 @@ interface Mensagem {
   transcricao?: string;
   transacao?: TransacaoExtraida;
   transacoes?: TransacaoExtraida[];
+  revisao?: RevisaoContextualLancamento | null;
+  revisoes?: Array<RevisaoContextualLancamento | null>;
+  revisando?: boolean;
   confirmadas?: Set<number>;
   status?: 'confirmada' | 'cancelada';
   carregando?: boolean;
@@ -164,19 +167,30 @@ const ACOES_RAPIDAS: Array<{ id: AcaoAssistente; label: string; prompt: string }
 interface CardProps {
   tx: TransacaoExtraida;
   status?: 'confirmada' | 'cancelada';
+  revisao?: RevisaoContextualLancamento | null;
+  revisando?: boolean;
   contas: ContaBancaria[];
   cartoes: CartaoCredito[];
   onConfirmar: (contaId?: string, cartaoId?: string) => void;
   onCancelar: () => void;
 }
 
-function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }: CardProps) {
+function TransacaoCard({ tx, status, revisao, revisando, contas, cartoes, onConfirmar, onCancelar }: CardProps) {
   const isDespesa = tx.tipo === 'despesa';
   const confirmed = status === 'confirmada';
   const cancelled = status === 'cancelada';
 
   const [contaId, setContaId] = useState('');
   const [cartaoId, setCartaoId] = useState(tx.cartao_id_sugerido || '');
+  const exigeConfirmacaoExplicita = Boolean(
+    revisao && (
+      revisao.exige_confirmacao_explicita ||
+      revisao.status !== 'aprovado' ||
+      revisao.alertas.length > 0 ||
+      revisao.perguntas.length > 0
+    ),
+  );
+  const [confirmacaoContexto, setConfirmacaoContexto] = useState(!exigeConfirmacaoExplicita);
 
   const mostrarContas = !confirmed && !cancelled &&
     (tx.metodo_pagamento === 'pix' || tx.metodo_pagamento === 'debito' ||
@@ -184,7 +198,22 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
   const mostrarCartoes = !confirmed && !cancelled && tx.metodo_pagamento === 'credito';
   const contaObrigatoria = mostrarContas && contas.length > 0 && isDespesa;
   const cartaoObrigatorio = mostrarCartoes && cartoes.length > 0 && isDespesa;
-  const podeConfirmar = (!contaObrigatoria || Boolean(contaId)) && (!cartaoObrigatorio || Boolean(cartaoId));
+  const bloqueadoPorRevisao = revisao?.status === 'bloquear';
+  const podeConfirmar = (!contaObrigatoria || Boolean(contaId))
+    && (!cartaoObrigatorio || Boolean(cartaoId))
+    && !revisando
+    && !bloqueadoPorRevisao
+    && (!exigeConfirmacaoExplicita || confirmacaoContexto);
+
+  useEffect(() => {
+    setConfirmacaoContexto(!exigeConfirmacaoExplicita);
+  }, [exigeConfirmacaoExplicita, revisao?.status, revisao?.resumo]);
+
+  const badgeRevisao = revisao?.status === 'aprovado'
+    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+    : revisao?.status === 'bloquear'
+      ? 'border-red-500/25 bg-red-500/10 text-red-300'
+      : 'border-amber-500/25 bg-amber-500/10 text-amber-200';
 
   return (
     <div className={`mt-3 rounded-xl border overflow-hidden transition-all
@@ -230,6 +259,66 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
           {tx.banco && <span>🏦 {tx.banco}</span>}
         </div>
       </div>
+
+      {revisando && !confirmed && !cancelled && (
+        <div className="mx-4 mb-3 rounded-xl border border-sky-500/20 bg-sky-500/8 px-3 py-2 text-[11px] text-sky-100">
+          <div className="flex items-center gap-2 font-medium">
+            <Loader2 size={12} className="animate-spin" />
+            IA revisando o contexto antes de liberar este lancamento
+          </div>
+          <p className="mt-1 text-sky-100/70">
+            Estou cruzando historico, contas, cartoes e sinais de possivel incoerencia.
+          </p>
+        </div>
+      )}
+
+      {revisao && !confirmed && !cancelled && (
+        <div className="mx-4 mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${badgeRevisao}`}>
+              {revisao.status === 'aprovado' ? 'Aprovado no contexto' : revisao.status === 'bloquear' ? 'Bloqueado pela revisao' : 'Revisar antes de salvar'}
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
+              Confianca {Math.max(0, Math.min(100, Math.round(revisao.confianca || 0)))}%
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-300">{revisao.resumo}</p>
+
+          {revisao.alertas.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-amber-200">Alertas encontrados</p>
+              <div className="mt-1 space-y-1">
+                {revisao.alertas.map((alerta, index) => (
+                  <p key={index} className="text-[11px] text-slate-400">• {alerta}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {revisao.perguntas.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-sky-200">Pontos para conversar antes de salvar</p>
+              <div className="mt-1 space-y-1">
+                {revisao.perguntas.map((pergunta, index) => (
+                  <p key={index} className="text-[11px] text-slate-400">• {pergunta}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {revisao.sugestoes && Object.values(revisao.sugestoes).some(Boolean) && (
+            <div className="mt-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+              <p className="text-[11px] font-semibold text-slate-300">Sugestoes da IA</p>
+              <div className="mt-1 space-y-1 text-[11px] text-slate-400">
+                {revisao.sugestoes.categoria && <p>• Categoria sugerida: {revisao.sugestoes.categoria}</p>}
+                {revisao.sugestoes.metodo_pagamento && <p>• Metodo sugerido: {revisao.sugestoes.metodo_pagamento}</p>}
+                {revisao.sugestoes.data && <p>• Data sugerida: {revisao.sugestoes.data}</p>}
+                {revisao.sugestoes.descricao && <p>• Descricao sugerida: {revisao.sugestoes.descricao}</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Seletor de conta bancária */}
       {mostrarContas && contas.length > 0 && (
@@ -312,8 +401,29 @@ function TransacaoCard({ tx, status, contas, cartoes, onConfirmar, onCancelar }:
       {!confirmed && !cancelled && !podeConfirmar && (
         <div className="px-4 pb-3">
           <p className="text-[11px] text-amber-300/90">
-            Selecione {cartaoObrigatorio ? 'um cartão de crédito' : 'uma conta bancária'} antes de confirmar esta transação.
+            {bloqueadoPorRevisao
+              ? 'A revisão contextual bloqueou esta confirmação. Ajuste a conversa ou cancele este lançamento.'
+              : revisando
+                ? 'Aguarde a IA terminar a revisão contextual antes de confirmar.'
+                : exigeConfirmacaoExplicita && !confirmacaoContexto
+                  ? 'Leia a revisão contextual e sinalize que entendeu antes de salvar.'
+                  : `Selecione ${cartaoObrigatorio ? 'um cartão de crédito' : 'uma conta bancária'} antes de confirmar esta transação.`}
           </p>
+        </div>
+      )}
+      {!confirmed && !cancelled && exigeConfirmacaoExplicita && !bloqueadoPorRevisao && !revisando && (
+        <div className="px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => setConfirmacaoContexto((valorAtual) => !valorAtual)}
+            className={`w-full rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors ${
+              confirmacaoContexto
+                ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                : 'border-amber-500/25 bg-amber-500/10 text-amber-200 hover:bg-amber-500/14'
+            }`}
+          >
+            {confirmacaoContexto ? 'Revisão contextual lida. Confirmação liberada.' : 'Li os alertas e quero seguir mesmo assim'}
+          </button>
         </div>
       )}
     </div>
@@ -430,6 +540,8 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
           <TransacaoCard
             tx={msg.transacao}
             status={msg.status}
+            revisao={msg.revisao}
+            revisando={msg.revisando}
             contas={contas}
             cartoes={cartoes}
             onConfirmar={(cId, caId) => onConfirmar(msg.id, cId, caId)}
@@ -445,7 +557,8 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
               const confirmed = msg.confirmadas?.size ?? 0;
               const allDone   = confirmed === total;
               const pendingTransactions = msg.transacoes!.filter((_, index) => !msg.confirmadas?.has(index));
-              const canBulkConfirm = pendingTransactions.every((tx) => tx.metodo_pagamento !== 'credito' && tx.metodo_pagamento !== 'pix' && tx.metodo_pagamento !== 'debito');
+              const revisoesProntas = (msg.revisoes?.length || 0) === total && (msg.revisoes || []).every(Boolean);
+              const canBulkConfirm = revisoesProntas && pendingTransactions.every((tx) => tx.metodo_pagamento !== 'credito' && tx.metodo_pagamento !== 'pix' && tx.metodo_pagamento !== 'debito');
               return (
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className="text-[11px] text-slate-500">
@@ -466,7 +579,7 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
                   )}
                   {!allDone && !canBulkConfirm && (
                     <span className="text-[11px] text-amber-300/90">
-                      Revise conta ou cartao em cada lancamento antes de salvar.
+                      {msg.revisando ? 'IA revisando o contexto do lote...' : 'Revise conta, cartão e alertas contextuais em cada lançamento antes de salvar.'}
                     </span>
                   )}
                   {allDone && (
@@ -486,6 +599,8 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
                     key={i}
                     tx={tx}
                     status={isConfirmed ? 'confirmada' : undefined}
+                    revisao={msg.revisoes?.[i] ?? null}
+                    revisando={msg.revisando && !(msg.revisoes?.[i])}
                     contas={contas}
                     cartoes={cartoes}
                     onConfirmar={(cId, caId) => onConfirmarLote(msg.id, i, cId, caId)}
@@ -570,6 +685,91 @@ export default function Assistente() {
 
   function updateMsg(id: string, updates: Partial<Mensagem>) {
     setMsgs(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+  }
+
+  function construirPacoteContexto() {
+    const financialContext = construirContexto({ transacoes, categorias, contas, cartoes });
+    const projectSnapshot = construirSnapshotFinanceiro({
+      transacoes,
+      categorias,
+      contas,
+      cartoes,
+      investimentos,
+      metas,
+      orcamentos,
+    });
+    return { financialContext, projectSnapshot };
+  }
+
+  async function revisarLancamentoContextual(
+    tx: TransacaoExtraida,
+    origemAnalise: 'texto' | 'imagem' | 'audio' | 'pdf' | 'csv',
+  ): Promise<RevisaoContextualLancamento> {
+    try {
+      const { financialContext, projectSnapshot } = construirPacoteContexto();
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task: 'revisar_lancamento_contextual',
+          mode: (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto',
+          provider: config.ai_modelo_padrao || 'automatico',
+          input: {
+            origemAnalise,
+            financialContext,
+            projectSnapshot,
+            lancamentoExtraido: tx,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Falha na revisão contextual.');
+      }
+
+      const payload = await res.json() as { revisao?: RevisaoContextualLancamento | null };
+      if (!payload.revisao) {
+        throw new Error('Revisão contextual vazia.');
+      }
+
+      return {
+        status: payload.revisao.status || 'revisar',
+        confianca: Number(payload.revisao.confianca || 0),
+        resumo: payload.revisao.resumo || 'Revise este lançamento com atenção antes de salvar.',
+        alertas: Array.isArray(payload.revisao.alertas) ? payload.revisao.alertas : [],
+        perguntas: Array.isArray(payload.revisao.perguntas) ? payload.revisao.perguntas : [],
+        exige_confirmacao_explicita: payload.revisao.exige_confirmacao_explicita ?? true,
+        sugestoes: payload.revisao.sugestoes,
+      };
+    } catch {
+      return {
+        status: 'revisar',
+        confianca: 0,
+        resumo: 'Nao consegui concluir a revisao contextual automatica. Revise manualmente antes de salvar.',
+        alertas: ['A validacao contextual da IA falhou nesta tentativa.'],
+        perguntas: ['Este valor, metodo e origem parecem corretos para voce?'],
+        exige_confirmacao_explicita: true,
+      };
+    }
+  }
+
+  async function aplicarRevisaoContextual(
+    id: string,
+    payload: { transacao?: TransacaoExtraida; transacoes?: TransacaoExtraida[] },
+    origemAnalise: 'texto' | 'imagem' | 'audio' | 'pdf' | 'csv',
+  ) {
+    if (payload.transacao) {
+      updateMsg(id, { revisando: true, revisao: null });
+      const revisao = await revisarLancamentoContextual(payload.transacao, origemAnalise);
+      updateMsg(id, { revisando: false, revisao });
+      return;
+    }
+
+    if (payload.transacoes?.length) {
+      updateMsg(id, { revisando: true, revisoes: Array(payload.transacoes.length).fill(null) });
+      const revisoes = await Promise.all(payload.transacoes.map((tx) => revisarLancamentoContextual(tx, origemAnalise)));
+      updateMsg(id, { revisando: false, revisoes });
+    }
   }
 
   // ── Confirmar transação ─────────────────────────────────────────────────────
@@ -667,6 +867,7 @@ export default function Assistente() {
     res: Response,
     eAudio = false,
     transcricao?: string,
+    origemAnalise: 'texto' | 'imagem' | 'audio' | 'pdf' | 'csv' = 'texto',
   ) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({})) as { error?: string };
@@ -690,10 +891,18 @@ export default function Assistente() {
       texto:       data.resposta,
       transacao:   data.transacao,
       transacoes:  data.transacoes,
+      revisao:     undefined,
+      revisoes:    undefined,
+      revisando:   Boolean(data.transacao || data.transacoes?.length),
       eAudio,
       transcricao: transcricao ?? data.transcricao,
       confirmadas: data.transacoes ? new Set() : undefined,
     });
+
+    await aplicarRevisaoContextual(aiMsgId, {
+      transacao: data.transacao,
+      transacoes: data.transacoes,
+    }, origemAnalise);
   }
 
   // ── Enviar texto ────────────────────────────────────────────────────────────
@@ -710,16 +919,7 @@ export default function Assistente() {
     const aiId = addMsg({ papel: 'assistente', texto: '', carregando: true });
 
     try {
-      const financialContext = construirContexto({ transacoes, categorias, contas, cartoes });
-      const projectSnapshot = construirSnapshotFinanceiro({
-        transacoes,
-        categorias,
-        contas,
-        cartoes,
-        investimentos,
-        metas,
-        orcamentos,
-      });
+      const { financialContext, projectSnapshot } = construirPacoteContexto();
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -748,7 +948,7 @@ export default function Assistente() {
           },
         }),
       });
-      await processarResposta(aiId, res);
+      await processarResposta(aiId, res, false, undefined, 'texto');
     } catch {
       updateMsg(aiId, { carregando: false, texto: 'Falha de conexao. Tente novamente.' });
     } finally {
@@ -781,7 +981,7 @@ export default function Assistente() {
       fd.append('provider', config.ai_modelo_padrao || 'automatico');
       fd.append('mode', (config.ai_modelo_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
       const res = await fetch('/api/ai', { method: 'POST', body: fd });
-      await processarResposta(aiId, res, true);
+      await processarResposta(aiId, res, true, undefined, 'audio');
     } catch {
       updateMsg(aiId, { carregando: false, texto: '❌ Erro ao enviar áudio.' });
     } finally {
@@ -884,7 +1084,7 @@ export default function Assistente() {
       fd.append('mode', (config.ai_modelo_ocr_padrao || 'automatico') !== 'automatico' ? 'manual' : 'auto');
       fd.append('financialProvider', config.ai_modelo_padrao || 'automatico');
       const res = await fetch('/api/ai', { method: 'POST', body: fd });
-      await processarResposta(aiId, res);
+      await processarResposta(aiId, res, false, undefined, 'imagem');
     } catch {
       if (aiId) updateMsg(aiId, { carregando: false, texto: 'Erro ao analisar imagem.' });
       else addMsg({ papel: 'assistente', texto: 'Erro ao analisar imagem.' });
@@ -942,8 +1142,12 @@ export default function Assistente() {
         pdfNome:     undefined,
         texto:       data.resposta,
         transacoes:  data.transacoes,
+        revisao:     undefined,
+        revisoes:    undefined,
+        revisando:   Boolean(data.transacoes?.length),
         confirmadas: data.transacoes ? new Set() : undefined,
       });
+      await aplicarRevisaoContextual(aiId, { transacoes: data.transacoes }, 'pdf');
     } catch {
       updateMsg(aiId, {
         carregando: false,
@@ -999,8 +1203,12 @@ export default function Assistente() {
         pdfNome: undefined,
         texto: data.resposta,
         transacoes: data.transacoes,
+        revisao: undefined,
+        revisoes: undefined,
+        revisando: Boolean(data.transacoes?.length),
         confirmadas: data.transacoes ? new Set() : undefined,
       });
+      await aplicarRevisaoContextual(aiId, { transacoes: data.transacoes }, 'csv');
     } catch {
       updateMsg(aiId, {
         carregando: false,

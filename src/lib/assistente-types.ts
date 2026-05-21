@@ -17,6 +17,23 @@ export interface TransacaoExtraida {
   cartao_nome_sugerido?: string | null;
 }
 
+export interface RevisaoContextualLancamento {
+  status: 'aprovado' | 'revisar' | 'bloquear';
+  confianca: number;
+  resumo: string;
+  alertas: string[];
+  perguntas: string[];
+  exige_confirmacao_explicita?: boolean;
+  sugestoes?: {
+    categoria?: string;
+    metodo_pagamento?: string;
+    descricao?: string;
+    data?: string;
+    cartao_id_sugerido?: string | null;
+    conta_id_sugerida?: string | null;
+  };
+}
+
 export interface RespostaAssistente {
   tipo: 'transacao' | 'conversa';
   transacao?: TransacaoExtraida;
