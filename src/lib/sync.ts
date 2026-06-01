@@ -241,6 +241,7 @@ function mapTransacao(t: Transacao) {
     tags: t.tags,
     observacoes: t.observacoes,
     itens_compra: t.itens_compra,
+    datas_pagamento: t.datas_pagamento,
     criado_em: t.criado_em,
     atualizado_em: t.atualizado_em,
   };
@@ -289,6 +290,8 @@ function mapCartao(c: CartaoCredito) {
     pluggy_item_id: c.pluggy_item_id,
     pluggy_account_id: c.pluggy_account_id,
     pluggy_sync_em: c.pluggy_sync_em,
+    ultima_fatura_paga_em: c.ultima_fatura_paga_em,
+    ultima_fatura_paga_referencia: c.ultima_fatura_paga_referencia,
     criado_em: c.criado_em,
     atualizado_em: c.atualizado_em,
   };

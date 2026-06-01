@@ -68,6 +68,7 @@ create table if not exists transacoes (
   tags               jsonb,
   observacoes        text,
   itens_compra       jsonb,
+  datas_pagamento    jsonb,
   pluggy_id          text,
   pluggy_account_id  text,
   criado_em          timestamptz default now(),
@@ -184,10 +185,13 @@ alter table cartoes       add column if not exists pluggy_item_id      text;
 alter table cartoes       add column if not exists pluggy_account_id   text;
 alter table cartoes       add column if not exists pluggy_sync_em      timestamptz;
 alter table cartoes       add column if not exists fatura_ajuste_manual numeric default 0;
+alter table cartoes       add column if not exists ultima_fatura_paga_em timestamptz;
+alter table cartoes       add column if not exists ultima_fatura_paga_referencia text;
 alter table transacoes    add column if not exists pluggy_id           text;
 alter table transacoes    add column if not exists pluggy_account_id   text;
 alter table transacoes    add column if not exists horario             text;
 alter table transacoes    add column if not exists cartao_id           text;
+alter table transacoes    add column if not exists datas_pagamento     jsonb;
 alter table transacoes    add column if not exists classificacao       text default 'padrao';
 alter table transacoes    add column if not exists parcela_atual       int;
 alter table transacoes    add column if not exists data_cobranca       text;

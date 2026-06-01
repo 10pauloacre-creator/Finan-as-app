@@ -8,9 +8,12 @@ import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, BandeirCartao, CartaoCredito, Categoria, Transacao } from '@/types';
 import type { TransacaoExtraida } from '@/lib/assistente-types';
-import { parseFinancialDate } from '@/lib/date';
-import { formatFinancialDate } from '@/lib/date';
-import { getDataCobrancaCartaoParaData, getDataOcorrenciaNoMes } from '@/lib/transacoes';
+import { parseFinancialDate, formatFinancialDate, startOfTodayLocal } from '@/lib/date';
+import {
+  getDataCobrancaCartaoParaData,
+  getDataOcorrenciaNoMes,
+  getStatusPagamentoOcorrencia,
+} from '@/lib/transacoes';
 import {
   existeValorNaFaturaDoMes,
   getDataCobrancaPorReferencia,
@@ -297,12 +300,12 @@ type StatusImportacao = {
   mensagem: string;
 };
 
-type FiltroLancamentoCartao = 'todos' | 'ativas' | 'debitadas';
+type FiltroLancamentoCartao = 'todos' | 'pendentes' | 'pagas' | 'atrasadas';
 
 type LancamentoCartaoExibicao = {
   transacao: Transacao;
   dataExibicao: string;
-  status: 'ativa' | 'debitada';
+  status: 'ativa' | 'atrasada' | 'paga';
 };
 
 type RespostaImportacao = {
@@ -407,6 +410,12 @@ function getPeriodoFatura(diaFechamento: number, diaVencimento: number): { inici
   };
 }
 
+function getProximoPeriodoFatura(fimPeriodoAtual: Date, diaFechamento: number) {
+  const inicio = new Date(fimPeriodoAtual.getFullYear(), fimPeriodoAtual.getMonth(), fimPeriodoAtual.getDate() + 1);
+  const fim = new Date(inicio.getFullYear(), inicio.getMonth() + 1, diaFechamento);
+  return { inicio, fim };
+}
+
 function construirLancamentosDaFatura(
   cartao: CartaoCredito,
   cartaoId: string,
@@ -436,12 +445,16 @@ function construirLancamentosDaFatura(
       const dataCobranca = transacao.data_cobranca
         ? formatFinancialDate(ocorrencia)
         : getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
-      const dataCobrancaDate = parseFinancialDate(dataCobranca);
+      const statusPagamento = getStatusPagamentoOcorrencia(transacao, dataCobranca, referencia);
 
       lista.push({
         transacao,
         dataExibicao: dataCobranca,
-        status: dataCobrancaDate > referencia ? 'ativa' : 'debitada',
+        status: statusPagamento === 'paga'
+          ? 'paga'
+          : statusPagamento === 'atrasada'
+          ? 'atrasada'
+          : 'ativa',
       });
     });
   });
@@ -466,6 +479,7 @@ export default function Cartoes() {
     excluirTransacao,
     atualizarFaturaCartao,
     adicionarTransacao,
+    marcarFaturaCartaoComoPaga,
   } = useFinanceiroStore();
   const [mostrarForm, setMostrarForm] = useState(false);
   const [cartaoEmEdicao, setCartaoEmEdicao] = useState<CartaoCredito | null>(null);
@@ -574,6 +588,27 @@ export default function Cartoes() {
   function removerLancamento(transacao: Transacao) {
     if (!confirm('Excluir este lançamento do cartão?')) return;
     excluirTransacao(transacao.id);
+  }
+
+  function quitarFaturaCartao(cartao: CartaoCredito, listaAtual: LancamentoCartaoExibicao[]) {
+    const pendencias = listaAtual
+      .filter((item) => item.status !== 'paga')
+      .map((item) => ({
+        transacaoId: item.transacao.id,
+        dataOcorrencia: item.dataExibicao,
+      }));
+
+    if (pendencias.length === 0) return;
+
+    const confirmar = confirm(`Marcar a fatura de ${cartao.nome} como paga? ${pendencias.length} lançamento(s) serão quitados.`);
+    if (!confirmar) return;
+
+    marcarFaturaCartaoComoPaga(cartao.id, pendencias);
+    setStatusImportacao({
+      cartaoId: cartao.id,
+      tipo: 'sucesso',
+      mensagem: `Fatura marcada como paga. Os lançamentos quitados saíram desta fatura atual.`,
+    });
   }
 
   async function handleImportarArquivoCartao(event: ChangeEvent<HTMLInputElement>) {
@@ -705,7 +740,6 @@ export default function Cartoes() {
   const totalFaturas = cartoes.reduce((soma, cartao) => soma + cartao.fatura_atual, 0);
   const totalLimite = cartoes.reduce((soma, cartao) => soma + cartao.limite, 0);
   const totalDisponivel = totalLimite - totalFaturas;
-  const hoje = new Date().getDate();
 
   return (
     <div className="space-y-5 animate-fade-up">
@@ -888,44 +922,87 @@ export default function Cartoes() {
       <div className="space-y-4">
         {cartoes.map((cartao) => {
           const info = BANCO_INFO[cartao.banco];
-          const percentual = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;
-          const disponivel = cartao.limite - cartao.fatura_atual;
-          const diasVencimento =
-            cartao.dia_vencimento >= hoje ? cartao.dia_vencimento - hoje : 30 - hoje + cartao.dia_vencimento;
           const emEdicao = editandoId === cartao.id;
-          const urgente = diasVencimento <= 5 && cartao.fatura_atual > 0;
           const expandido = cartaoExpandidoId === cartao.id;
           const statusAtual = statusImportacao?.cartaoId === cartao.id ? statusImportacao : null;
-          const { inicio: inicioFatura, fim: fimFatura } = getPeriodoFatura(cartao.dia_fechamento, cartao.dia_vencimento);
-          const listaCompleta = construirLancamentosDaFatura(cartao, cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura);
+          const periodoAtual = getPeriodoFatura(cartao.dia_fechamento, cartao.dia_vencimento);
+          const listaPeriodoAtual = construirLancamentosDaFatura(
+            cartao,
+            cartao.id,
+            transacoesPorCartao[cartao.id] || [],
+            periodoAtual.inicio,
+            periodoAtual.fim,
+          );
+          const faturaAtualPendente = listaPeriodoAtual.filter((item) => item.transacao.tipo === 'despesa' && item.status !== 'paga');
+          const periodoSeguinte = getProximoPeriodoFatura(periodoAtual.fim, cartao.dia_fechamento);
+          const mostrarProximaFatura = faturaAtualPendente.length === 0 && listaPeriodoAtual.some((item) => item.transacao.tipo === 'despesa');
+          const inicioFatura = mostrarProximaFatura ? periodoSeguinte.inicio : periodoAtual.inicio;
+          const fimFatura = mostrarProximaFatura ? periodoSeguinte.fim : periodoAtual.fim;
+          const listaCompleta = mostrarProximaFatura
+            ? construirLancamentosDaFatura(cartao, cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura)
+            : listaPeriodoAtual;
           const lista = listaCompleta.filter((item) => (
             filtroLancamentos === 'todos'
               ? true
-              : filtroLancamentos === 'ativas'
-              ? item.status === 'ativa'
-              : item.status === 'debitada'
+              : filtroLancamentos === 'pendentes'
+              ? item.status === 'ativa' || item.status === 'atrasada'
+              : filtroLancamentos === 'pagas'
+              ? item.status === 'paga'
+              : item.status === 'atrasada'
           ));
           const compras = listaCompleta.filter((item) => item.transacao.tipo === 'despesa');
           const estornos = listaCompleta.filter((item) => item.transacao.tipo === 'receita');
-          const baseLancamentos = compras.reduce((soma, item) => soma + item.transacao.valor, 0)
-            - estornos.reduce((soma, item) => soma + item.transacao.valor, 0);
+          const comprasPendentes = compras.filter((item) => item.status !== 'paga');
+          const estornosPendentes = estornos.filter((item) => item.status !== 'paga');
+          const baseLancamentos = comprasPendentes.reduce((soma, item) => soma + item.transacao.valor, 0)
+            - estornosPendentes.reduce((soma, item) => soma + item.transacao.valor, 0);
+          const faturaEmAberto = Math.max(baseLancamentos, 0);
+          const percentual = cartao.limite > 0 ? (faturaEmAberto / cartao.limite) * 100 : 0;
+          const disponivel = cartao.limite - faturaEmAberto;
           const totalPrevistas = listaCompleta
-            .filter((item) => item.status === 'ativa' && item.transacao.tipo === 'despesa')
+            .filter((item) => (item.status === 'ativa' || item.status === 'atrasada') && item.transacao.tipo === 'despesa')
             .reduce((soma, item) => soma + item.transacao.valor, 0);
           const totalDebitado = listaCompleta
-            .filter((item) => item.status === 'debitada' && item.transacao.tipo === 'despesa')
+            .filter((item) => item.status === 'paga' && item.transacao.tipo === 'despesa')
             .reduce((soma, item) => soma + item.transacao.valor, 0);
+          const totalAtrasado = listaCompleta
+            .filter((item) => item.status === 'atrasada' && item.transacao.tipo === 'despesa')
+            .reduce((soma, item) => soma + item.transacao.valor, 0);
+          const datasPendentesFaturaAtual = faturaAtualPendente.map((item) => parseFinancialDate(item.dataExibicao));
+          const dataVencimentoAtual = datasPendentesFaturaAtual.length
+            ? new Date(Math.max(...datasPendentesFaturaAtual.map((data) => data.getTime())))
+            : null;
+          const atrasoDias = dataVencimentoAtual
+            ? Math.floor((startOfTodayLocal().getTime() - dataVencimentoAtual.getTime()) / 86400000)
+            : -1;
+          const faturaAtrasada = Boolean(dataVencimentoAtual && atrasoDias > 0);
+          const diasVencimento = dataVencimentoAtual
+            ? Math.ceil((dataVencimentoAtual.getTime() - startOfTodayLocal().getTime()) / 86400000)
+            : 0;
+          const urgente = !faturaAtrasada && diasVencimento <= 5 && diasVencimento >= 0 && faturaAtualPendente.length > 0;
+          const podeQuitarFatura = faturaAtualPendente.length > 0 && Boolean(dataVencimentoAtual && dataVencimentoAtual <= startOfTodayLocal());
 
           return (
-            <div key={cartao.id} className={`glass-card overflow-hidden ${urgente ? 'border-red-500/30' : ''}`}>
+            <div key={cartao.id} className={`glass-card overflow-hidden ${urgente || faturaAtrasada ? 'border-red-500/30' : ''}`}>
               <div
                 className="p-5 relative"
                 style={{ background: `linear-gradient(135deg, ${info.cor}15 0%, transparent 60%)` }}
               >
-                {urgente && (
+                {faturaAtrasada && (
+                  <div className="flex items-center gap-2 text-red-400 text-xs mb-3 font-medium">
+                    <AlertCircle size={13} />
+                    Fatura vencida há {atrasoDias} dia{atrasoDias !== 1 ? 's' : ''}. Marque como paga para limpar esta cobrança.
+                  </div>
+                )}
+                {!faturaAtrasada && urgente && (
                   <div className="flex items-center gap-2 text-red-400 text-xs mb-3 font-medium">
                     <AlertCircle size={13} />
                     Vencimento em {diasVencimento} dia{diasVencimento !== 1 ? 's' : ''}!
+                  </div>
+                )}
+                {mostrarProximaFatura && (
+                  <div className="mb-3 inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
+                    Fatura anterior quitada • exibindo próxima
                   </div>
                 )}
 
@@ -1009,7 +1086,7 @@ export default function Cartoes() {
                         </div>
                         {!emEdicao && (
                           <div className="mb-1 text-[11px] text-slate-500">
-                            Soma dos lancamentos: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
+                            Em aberto nesta fatura: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
                             {cartao.fatura_ajuste_manual
                               ? <> {' '}• Ajuste manual: <span className="text-purple-300 tabular-nums">{formatarMoeda(cartao.fatura_ajuste_manual)}</span></>
                               : null}
@@ -1057,7 +1134,7 @@ export default function Cartoes() {
                               percentual > 80 ? 'text-red-400' : percentual > 50 ? 'text-yellow-400' : 'text-white'
                             }`}
                           >
-                            {formatarMoeda(cartao.fatura_atual)}
+                            {formatarMoeda(baseLancamentos)}
                           </div>
                         )}
                       </div>
@@ -1130,17 +1207,28 @@ export default function Cartoes() {
                           Os lançamentos importados pela I.A. ficam vinculados a este cartão com data, detalhe da compra, parcela e valor.
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCartaoImportandoId(cartao.id);
-                          arquivoCartaoRef.current?.click();
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
-                      >
-                        <Brain size={14} />
-                        Atualizar com I.A.
-                      </button>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {podeQuitarFatura && (
+                          <button
+                            type="button"
+                            onClick={() => quitarFaturaCartao(cartao, listaPeriodoAtual)}
+                            className="px-3 py-2 rounded-xl text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 transition-all"
+                          >
+                            Marcar fatura como paga
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCartaoImportandoId(cartao.id);
+                            arquivoCartaoRef.current?.click();
+                          }}
+                          className="px-3 py-2 rounded-xl text-xs font-medium bg-white/[0.04] border border-white/10 text-slate-300 hover:bg-white/[0.08] transition-all flex items-center gap-1.5"
+                        >
+                          <Brain size={14} />
+                          Atualizar com I.A.
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
@@ -1170,20 +1258,27 @@ export default function Cartoes() {
                         <div className="text-sm font-semibold text-white mt-1 tabular-nums">{formatarMoeda(baseLancamentos)}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Já debitadas</div>
+                        <div className="text-[11px] text-slate-500">Já pagas</div>
                         <div className="text-sm font-semibold text-emerald-300 mt-1 tabular-nums">{formatarMoeda(totalDebitado)}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Ativas</div>
+                        <div className="text-[11px] text-slate-500">Pendentes</div>
                         <div className="text-sm font-semibold text-amber-300 mt-1 tabular-nums">{formatarMoeda(totalPrevistas)}</div>
                       </div>
                     </div>
 
+                    {totalAtrasado > 0 && (
+                      <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                        Há {formatarMoeda(totalAtrasado)} em atraso nesta fatura.
+                      </div>
+                    )}
+
                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                       {([
                         { valor: 'todos', label: 'Todos' },
-                        { valor: 'ativas', label: 'Ativas' },
-                        { valor: 'debitadas', label: 'Já debitadas' },
+                        { valor: 'pendentes', label: 'Pendentes' },
+                        { valor: 'pagas', label: 'Pagas' },
+                        { valor: 'atrasadas', label: 'Atrasadas' },
                       ] as const).map((filtro) => (
                         <button
                           key={filtro.valor}
@@ -1203,8 +1298,18 @@ export default function Cartoes() {
                     <div className="space-y-2">
                       {lista.slice(0, 12).map(({ transacao, dataExibicao, status }) => {
                         const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                        const emAtraso = status === 'atrasada';
                         return (
-                          <div key={`${transacao.id}-${dataExibicao}`} className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2 flex items-center gap-3">
+                          <div
+                            key={`${transacao.id}-${dataExibicao}`}
+                            className={`rounded-2xl border px-3 py-2 flex items-center gap-3 ${
+                              emAtraso
+                                ? 'border-red-500/25 bg-red-500/10'
+                                : status === 'paga'
+                                ? 'border-emerald-500/15 bg-emerald-500/5'
+                                : 'border-white/8 bg-white/[0.02]'
+                            }`}
+                          >
                             <button
                               type="button"
                               onClick={() => setTransacaoDetalhe(transacao)}
@@ -1218,11 +1323,11 @@ export default function Cartoes() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm text-white truncate">{transacao.descricao}</div>
-                                <div className="text-[11px] text-slate-500">
+                                <div className={`text-[11px] ${emAtraso ? 'text-red-200/80' : 'text-slate-500'}`}>
                                   cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                   {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
                                   {categoria?.nome ? ` • ${categoria.nome}` : ''}
-                                  {` • ${status === 'ativa' ? 'ativa' : 'já debitada'}`}
+                                  {` • ${status === 'ativa' ? 'pendente' : status === 'paga' ? 'paga' : 'em atraso'}`}
                                 </div>
                               </div>
                             </button>

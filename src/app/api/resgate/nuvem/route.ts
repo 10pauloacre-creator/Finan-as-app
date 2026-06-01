@@ -71,6 +71,8 @@ function mapCartao(registro: Record<string, unknown>) {
     pluggy_item_id: r.pluggy_item_id,
     pluggy_account_id: r.pluggy_account_id,
     pluggy_sync_em: r.pluggy_sync_em,
+    ultima_fatura_paga_em: r.ultima_fatura_paga_em,
+    ultima_fatura_paga_referencia: r.ultima_fatura_paga_referencia,
     criado_em: r.criado_em,
     atualizado_em: r.atualizado_em,
   };
@@ -165,6 +167,7 @@ function mapTransacao(registro: Record<string, unknown>) {
     tags: r.tags,
     observacoes: r.observacoes,
     itens_compra: r.itens_compra,
+    datas_pagamento: r.datas_pagamento,
     criado_em: r.criado_em,
     atualizado_em: r.atualizado_em,
   };

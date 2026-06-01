@@ -22,7 +22,11 @@ import {
 } from '@/lib/sync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { startOfTodayLocal } from '@/lib/date';
-import { contarOcorrenciasAteData } from '@/lib/transacoes';
+import {
+  contarOcorrenciasAteData,
+  registrarPagamentoOcorrencia,
+  removerPagamentoOcorrencia,
+} from '@/lib/transacoes';
 
 interface FinanceiroState {
   transacoes: Transacao[];
@@ -46,6 +50,9 @@ interface FinanceiroState {
   adicionarTransacao: (t: Omit<Transacao, 'id' | 'criado_em'>) => Transacao;
   editarTransacao: (id: string, dados: Partial<Transacao>) => void;
   excluirTransacao: (id: string) => void;
+  marcarTransacaoComoPaga: (id: string, dataOcorrencia: string) => void;
+  desmarcarTransacaoComoPaga: (id: string, dataOcorrencia: string) => void;
+  marcarFaturaCartaoComoPaga: (cartaoId: string, pagamentos: Array<{ transacaoId: string; dataOcorrencia: string }>) => void;
 
   adicionarCategoria: (c: Omit<Categoria, 'id' | 'criado_em'>) => void;
 
@@ -750,6 +757,96 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
             contas: contasNormalizadas,
             cartoes: cartoesNormalizados,
           };
+        });
+      });
+    },
+
+    marcarTransacaoComoPaga: (id, dataOcorrencia) => {
+      executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
+        const lista = get().transacoes.map((transacao) => {
+          if (transacao.id !== id) return transacao;
+          const atualizada = {
+            ...transacao,
+            datas_pagamento: registrarPagamentoOcorrencia(transacao, dataOcorrencia),
+            atualizado_em: agora,
+          };
+          storageTransacoes.save(atualizada);
+          void syncSalvarTransacao(atualizada);
+          return atualizada;
+        });
+        set({ transacoes: lista });
+      });
+    },
+
+    desmarcarTransacaoComoPaga: (id, dataOcorrencia) => {
+      executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
+        const lista = get().transacoes.map((transacao) => {
+          if (transacao.id !== id) return transacao;
+          const atualizada = {
+            ...transacao,
+            datas_pagamento: removerPagamentoOcorrencia(transacao, dataOcorrencia),
+            atualizado_em: agora,
+          };
+          storageTransacoes.save(atualizada);
+          void syncSalvarTransacao(atualizada);
+          return atualizada;
+        });
+        set({ transacoes: lista });
+      });
+    },
+
+    marcarFaturaCartaoComoPaga: (cartaoId, pagamentos) => {
+      executarSemRecargaLocal(() => {
+        if (pagamentos.length === 0) return;
+
+        const agora = new Date().toISOString();
+        const pagamentosPorTransacao = new Map<string, string[]>();
+        pagamentos.forEach(({ transacaoId, dataOcorrencia }) => {
+          const datas = pagamentosPorTransacao.get(transacaoId) || [];
+          datas.push(dataOcorrencia);
+          pagamentosPorTransacao.set(transacaoId, datas);
+        });
+
+        const transacoesAtualizadas = get().transacoes.map((transacao) => {
+          const datas = pagamentosPorTransacao.get(transacao.id);
+          if (!datas?.length) return transacao;
+
+          const atualizada = {
+            ...transacao,
+            datas_pagamento: datas.reduce(
+              (acumulado, dataOcorrencia) => registrarPagamentoOcorrencia({ datas_pagamento: acumulado }, dataOcorrencia),
+              transacao.datas_pagamento || [],
+            ),
+            atualizado_em: agora,
+          };
+          storageTransacoes.save(atualizada);
+          void syncSalvarTransacao(atualizada);
+          return atualizada;
+        });
+
+        const referenciaPagamento = pagamentos
+          .map((item) => item.dataOcorrencia)
+          .sort()
+          .at(-1);
+
+        const cartoesAtualizados = get().cartoes.map((cartao) => {
+          if (cartao.id !== cartaoId) return cartao;
+          const atualizado = {
+            ...cartao,
+            ultima_fatura_paga_em: agora,
+            ultima_fatura_paga_referencia: referenciaPagamento,
+            atualizado_em: agora,
+          };
+          storageCartoes.save(atualizado);
+          void syncSalvarCartao(atualizado);
+          return atualizado;
+        });
+
+        set({
+          transacoes: transacoesAtualizadas,
+          cartoes: cartoesAtualizados,
         });
       });
     },

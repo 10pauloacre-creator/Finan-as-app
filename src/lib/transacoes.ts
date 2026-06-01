@@ -24,6 +24,44 @@ function getTotalParcelas(transacao: Pick<Transacao, 'parcelas'>) {
   return Math.max(transacao.parcelas || 1, 1);
 }
 
+function normalizarDatasPagamento(datas: string[] | undefined) {
+  if (!Array.isArray(datas) || datas.length === 0) return [];
+  return [...new Set(datas.filter((data) => /^\d{4}-\d{2}-\d{2}$/.test(data)))].sort();
+}
+
+export function registrarPagamentoOcorrencia(
+  transacao: Pick<Transacao, 'datas_pagamento'>,
+  dataOcorrencia: string,
+) {
+  return normalizarDatasPagamento([...(transacao.datas_pagamento || []), dataOcorrencia]);
+}
+
+export function removerPagamentoOcorrencia(
+  transacao: Pick<Transacao, 'datas_pagamento'>,
+  dataOcorrencia: string,
+) {
+  return normalizarDatasPagamento((transacao.datas_pagamento || []).filter((data) => data !== dataOcorrencia));
+}
+
+export function ocorrenciaEstaPaga(
+  transacao: Pick<Transacao, 'datas_pagamento'>,
+  dataOcorrencia: string,
+) {
+  return normalizarDatasPagamento(transacao.datas_pagamento).includes(dataOcorrencia);
+}
+
+export function getStatusPagamentoOcorrencia(
+  transacao: Pick<Transacao, 'datas_pagamento'>,
+  dataOcorrencia: string,
+  referencia = startOfTodayLocal(),
+) {
+  if (ocorrenciaEstaPaga(transacao, dataOcorrencia)) return 'paga' as const;
+
+  const dataBase = parseFinancialDate(dataOcorrencia);
+  const dataReferencia = inicioDoDia(referencia);
+  return dataBase < dataReferencia ? 'atrasada' as const : 'pendente' as const;
+}
+
 export function getDataOrdenacaoTransacao(transacao: Pick<Transacao, 'data' | 'horario' | 'criado_em'>) {
   const dataBase = parseFinancialDate(transacao.data);
   const [hora, minuto] = (transacao.horario || '00:00').split(':').map((parte) => parseInt(parte, 10) || 0);

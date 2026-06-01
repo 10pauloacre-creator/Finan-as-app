@@ -44,6 +44,8 @@ export interface CartaoCredito {
   pluggy_item_id?: string;
   pluggy_account_id?: string;
   pluggy_sync_em?: string;
+  ultima_fatura_paga_em?: string;
+  ultima_fatura_paga_referencia?: string;
   criado_em: string;
   atualizado_em?: string;
 }
@@ -92,6 +94,7 @@ export interface Transacao {
   tags?: string[];
   itens_compra?: ItemCompra[];
   observacoes?: string;
+  datas_pagamento?: string[];
   criado_em: string;
   atualizado_em?: string;
 }

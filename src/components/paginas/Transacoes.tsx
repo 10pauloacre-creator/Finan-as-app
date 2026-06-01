@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
@@ -17,6 +17,8 @@ import {
   getDataCompetenciaDespesa,
   getDataCobrancaCartao,
   getDataOcorrenciaNoMes,
+  getStatusPagamentoOcorrencia,
+  ocorrenciaEstaPaga,
   transacaoContaNoMesAteData,
   transacaoJaOcorreuAteData,
 } from '@/lib/transacoes';
@@ -774,7 +776,15 @@ function formatarDataHeader(dataStr: string): string {
 
 
 export default function Transacoes() {
-  const { transacoes, categorias, contas, cartoes, excluirTransacao } = useFinanceiroStore();
+  const {
+    transacoes,
+    categorias,
+    contas,
+    cartoes,
+    excluirTransacao,
+    marcarTransacaoComoPaga,
+    desmarcarTransacaoComoPaga,
+  } = useFinanceiroStore();
 
   const [visuTab, setVisuTab] = useState<VisuTab>('despesas');
   const [busca, setBusca] = useState('');
@@ -1385,13 +1395,27 @@ export default function Transacoes() {
                     const badgeClassificacao = getBadgeClassificacao(t, hoje, dataExibicao);
                     const eFutura = parseFinancialDate(dataExibicao) > hoje;
                     const parcelamento = calcularParcelamentoInfo(t, parseFinancialDate(dataExibicao));
+                    const permiteControleManual = t.tipo === 'despesa' && !t.cartao_id && (
+                      t.classificacao === 'fixa'
+                      || t.classificacao === 'futura'
+                      || (t.parcelas || 1) > 1
+                    );
+                    const statusPagamento = getStatusPagamentoOcorrencia(t, dataExibicao, hoje);
+                    const contaPaga = ocorrenciaEstaPaga(t, dataExibicao);
+                    const contaAtrasada = permiteControleManual && statusPagamento === 'atrasada';
 
                     return (
                       <button
                         key={`${t.id}-${dataExibicao}`}
                         type="button"
                         onClick={() => setTransacaoDetalhe(t)}
-                        className="fin-panel fin-panel-interactive fin-button-press group flex w-full items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-800/40 p-3 text-left sm:items-center"
+                        className={`fin-panel fin-panel-interactive fin-button-press group flex w-full items-start gap-3 rounded-xl border p-3 text-left sm:items-center ${
+                          contaAtrasada
+                            ? 'border-red-500/35 bg-red-500/10'
+                            : contaPaga && permiteControleManual
+                            ? 'border-emerald-500/20 bg-emerald-500/5'
+                            : 'border-slate-700/50 bg-slate-800/40'
+                        }`}
                       >
                         <div
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
@@ -1420,6 +1444,16 @@ export default function Transacoes() {
                               {t.cartao_id ? 'Cobranca em ' : 'Prevista para '}{parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </div>
                           )}
+                          {contaAtrasada && (
+                            <div className="mt-1 text-[11px] text-red-300">
+                              Conta vencida e ainda não marcada como paga.
+                            </div>
+                          )}
+                          {contaPaga && permiteControleManual && (
+                            <div className="mt-1 text-[11px] text-emerald-300">
+                              Conta marcada como paga.
+                            </div>
+                          )}
                           {t.itens_compra && t.itens_compra.length > 0 && (
                             <div className="mt-1">
                               <div className="text-[11px] font-medium text-emerald-400">
@@ -1436,6 +1470,27 @@ export default function Transacoes() {
                             {t.tipo === 'receita' ? '+' : '-'}{formatarMoeda(t.valor)}
                           </span>
                           <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                            {permiteControleManual && !eFutura && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  if (contaPaga) {
+                                    desmarcarTransacaoComoPaga(t.id, dataExibicao);
+                                  } else {
+                                    marcarTransacaoComoPaga(t.id, dataExibicao);
+                                  }
+                                }}
+                                className={`rounded-lg p-1.5 ${
+                                  contaPaga
+                                    ? 'text-emerald-300 hover:bg-emerald-900/30'
+                                    : 'text-amber-300 hover:bg-amber-900/30'
+                                }`}
+                                title={contaPaga ? 'Desmarcar como paga' : 'Marcar como paga'}
+                              >
+                                <Check size={14} />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={(event) => {
