@@ -935,11 +935,18 @@ export default function Cartoes() {
           );
           const faturaAtualPendente = listaPeriodoAtual.filter((item) => item.transacao.tipo === 'despesa' && item.status !== 'paga');
           const periodoSeguinte = getProximoPeriodoFatura(periodoAtual.fim, cartao.dia_fechamento);
+          const listaProximaFatura = construirLancamentosDaFatura(
+            cartao,
+            cartao.id,
+            transacoesPorCartao[cartao.id] || [],
+            periodoSeguinte.inicio,
+            periodoSeguinte.fim,
+          );
           const mostrarProximaFatura = faturaAtualPendente.length === 0 && listaPeriodoAtual.some((item) => item.transacao.tipo === 'despesa');
           const inicioFatura = mostrarProximaFatura ? periodoSeguinte.inicio : periodoAtual.inicio;
           const fimFatura = mostrarProximaFatura ? periodoSeguinte.fim : periodoAtual.fim;
           const listaCompleta = mostrarProximaFatura
-            ? construirLancamentosDaFatura(cartao, cartao.id, transacoesPorCartao[cartao.id] || [], inicioFatura, fimFatura)
+            ? listaProximaFatura
             : listaPeriodoAtual;
           const lista = listaCompleta.filter((item) => (
             filtroLancamentos === 'todos'
@@ -968,6 +975,10 @@ export default function Cartoes() {
           const totalAtrasado = listaCompleta
             .filter((item) => item.status === 'atrasada' && item.transacao.tipo === 'despesa')
             .reduce((soma, item) => soma + item.transacao.valor, 0);
+          const comprasProximaFatura = listaProximaFatura.filter((item) => item.transacao.tipo === 'despesa');
+          const estornosProximaFatura = listaProximaFatura.filter((item) => item.transacao.tipo === 'receita');
+          const totalProximaFatura = comprasProximaFatura.reduce((soma, item) => soma + item.transacao.valor, 0)
+            - estornosProximaFatura.reduce((soma, item) => soma + item.transacao.valor, 0);
           const datasPendentesFaturaAtual = faturaAtualPendente.map((item) => parseFinancialDate(item.dataExibicao));
           const dataVencimentoAtual = datasPendentesFaturaAtual.length
             ? new Date(Math.max(...datasPendentesFaturaAtual.map((data) => data.getTime())))
@@ -1087,6 +1098,7 @@ export default function Cartoes() {
                         {!emEdicao && (
                           <div className="mb-1 text-[11px] text-slate-500">
                             Em aberto nesta fatura: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
+                            {totalProximaFatura > 0 ? <> {' '}• Próxima: <span className="text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</span></> : null}
                             {cartao.fatura_ajuste_manual
                               ? <> {' '}• Ajuste manual: <span className="text-purple-300 tabular-nums">{formatarMoeda(cartao.fatura_ajuste_manual)}</span></>
                               : null}
@@ -1166,7 +1178,7 @@ export default function Cartoes() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-emerald-400 text-sm font-bold tabular-nums">{formatarMoeda(disponivel)}</div>
                       <div className="text-slate-600 text-[11px] mt-0.5">Disponível</div>
@@ -1183,7 +1195,13 @@ export default function Cartoes() {
                         {expandido ? 'lançamentos visíveis' : 'clique para ver gastos'}
                       </div>
                     </div>
-                  </div>
+                    </div>
+
+                    {totalProximaFatura > 0 && (
+                      <div className="mt-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">
+                        Próxima fatura: {comprasProximaFatura.length} lançamento(s) • {formatarMoeda(totalProximaFatura)}
+                      </div>
+                    )}
                 </button>
 
                 {statusAtual && (
@@ -1266,6 +1284,46 @@ export default function Cartoes() {
                         <div className="text-sm font-semibold text-amber-300 mt-1 tabular-nums">{formatarMoeda(totalPrevistas)}</div>
                       </div>
                     </div>
+
+                    {totalProximaFatura > 0 && (
+                      <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-blue-200">Próxima fatura</h4>
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              {periodoSeguinte.inicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                              {' – '}
+                              {periodoSeguinte.fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[11px] text-slate-500">Total previsto</div>
+                            <div className="mt-1 text-sm font-semibold text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          {listaProximaFatura.slice(0, 6).map(({ transacao, dataExibicao, status }) => {
+                            const categoria = categorias.find((item) => item.id === transacao.categoria_id);
+                            return (
+                              <div key={`proxima-${transacao.id}-${dataExibicao}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm text-white">{transacao.descricao}</div>
+                                  <div className="text-[11px] text-slate-500">
+                                    cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    {categoria?.nome ? ` • ${categoria.nome}` : ''}
+                                    {` • ${status === 'paga' ? 'paga' : status === 'atrasada' ? 'em atraso' : 'pendente'}`}
+                                  </div>
+                                </div>
+                                <div className={`text-sm font-semibold tabular-nums ${transacao.tipo === 'receita' ? 'text-emerald-400' : 'text-blue-300'}`}>
+                                  {transacao.tipo === 'receita' ? '+' : '-'}{formatarMoeda(transacao.valor)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {totalAtrasado > 0 && (
                       <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
