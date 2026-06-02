@@ -2,7 +2,7 @@
  * STORAGE LOCAL — armazena dados no navegador quando offline
  */
 
-import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva, SimulacaoCompra } from '@/types';
+import { Transacao, Categoria, Investimento, Meta, ConfiguracaoApp, ContaBancaria, CartaoCredito, Orcamento, Reserva, SimulacaoCompra, PerfilSalarial } from '@/types';
 import { CATEGORIAS_PADRAO } from './categorias-padrao';
 import { isSameFinancialMonth } from './date';
 
@@ -17,6 +17,7 @@ const KEYS = {
   ORCAMENTOS:   'fin_orcamentos',
   RESERVAS:     'fin_reservas',
   SIMULACOES:   'fin_simulacoes',
+  SALARIOS:     'fin_salarios',
 };
 
 export const FINANCEIRO_STORAGE_EVENT = 'financeiroia:storage-changed';
@@ -35,6 +36,7 @@ export type BackupSnapshot = {
   orcamentos: Orcamento[];
   reservas: Reserva[];
   simulacoes: SimulacaoCompra[];
+  salarios: PerfilSalarial[];
   config: ConfiguracaoApp;
 };
 
@@ -270,6 +272,18 @@ export const storageSimulacoes = {
   delete: (id: string): void => set(KEYS.SIMULACOES, get<SimulacaoCompra>(KEYS.SIMULACOES).filter((item) => item.id !== id)),
 };
 
+export const storageSalarios = {
+  getAll: (): PerfilSalarial[] => get<PerfilSalarial>(KEYS.SALARIOS),
+  replaceAll: (lista: PerfilSalarial[]): void => set(KEYS.SALARIOS, lista),
+  save: (perfil: PerfilSalarial): void => {
+    const lista = get<PerfilSalarial>(KEYS.SALARIOS);
+    const idx = lista.findIndex((item) => item.id === perfil.id);
+    if (idx >= 0) lista[idx] = perfil; else lista.unshift(perfil);
+    set(KEYS.SALARIOS, lista);
+  },
+  delete: (id: string): void => set(KEYS.SALARIOS, get<PerfilSalarial>(KEYS.SALARIOS).filter((item) => item.id !== id)),
+};
+
 // ── CONFIGURAÇÕES ───────────────────────────────────────
 const CONFIG_DEFAULT: ConfiguracaoApp = {
   tema: 'escuro',
@@ -298,6 +312,7 @@ export function capturarBackupSnapshot(): BackupSnapshot {
     orcamentos: storageOrcamentos.getAll(),
     reservas: storageReservas.getAll(),
     simulacoes: storageSimulacoes.getAll(),
+    salarios: storageSalarios.getAll(),
     config: storageConfig.get(),
   };
 }
@@ -312,6 +327,7 @@ export function aplicarBackupSnapshot(snapshot: Partial<BackupSnapshot>) {
   storageOrcamentos.replaceAll(snapshot.orcamentos || []);
   storageReservas.replaceAll(snapshot.reservas || []);
   storageSimulacoes.replaceAll(snapshot.simulacoes || []);
+  storageSalarios.replaceAll(snapshot.salarios || []);
   storageConfig.replace(snapshot.config || CONFIG_DEFAULT);
 }
 

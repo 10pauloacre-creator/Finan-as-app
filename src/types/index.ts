@@ -191,6 +191,66 @@ export interface DicaIA {
   criado_em: string;
 }
 
+export type TipoRubricaContracheque = 'provento' | 'desconto' | 'total' | 'outro';
+
+export interface RubricaContracheque {
+  descricao: string;
+  valor: number;
+  tipo: TipoRubricaContracheque;
+}
+
+export interface ContrachequeRegistro {
+  id: string;
+  arquivo_nome?: string;
+  referencia: string;
+  orgao?: string;
+  lotacao?: string;
+  cargo?: string;
+  tipo_contrato?: string;
+  situacao_funcional?: string;
+  cpf?: string;
+  matricula?: string;
+  contrato?: string;
+  tipo_folha?: string;
+  classe?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  total_bruto?: number;
+  total_descontos?: number;
+  total_liquido?: number;
+  rubricas: RubricaContracheque[];
+  texto_extraido?: string;
+  observacoes?: string;
+  criado_em: string;
+  atualizado_em?: string;
+}
+
+export interface PerfilSalarial {
+  id: string;
+  nome_perfil: string;
+  cpf?: string;
+  matricula?: string;
+  orgao?: string;
+  lotacao?: string;
+  cargo?: string;
+  tipo_contrato?: string;
+  situacao_funcional?: string;
+  contrato?: string;
+  tipo_folha?: string;
+  classe?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  salario_base?: number;
+  salario_bruto?: number;
+  salario_liquido?: number;
+  observacoes?: string;
+  historico: ContrachequeRegistro[];
+  criado_em: string;
+  atualizado_em?: string;
+}
+
 // ─── Configurações ────────────────────────────────────
 export interface ConfiguracaoApp {
   pin?: string;

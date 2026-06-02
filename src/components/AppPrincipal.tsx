@@ -5,7 +5,7 @@ import iconV2 from '@/app/icons/Iconv2.png';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
   Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
-  Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search, HardDrive,
+  Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search, HardDrive, WalletCards,
 } from 'lucide-react';
 import { formatarMoeda } from '@/lib/storage';
 import { capturarBackupSnapshot } from '@/lib/storage';
@@ -15,6 +15,7 @@ import Relatorios     from '@/components/paginas/Relatorios';
 import Investimentos  from '@/components/paginas/Investimentos';
 import Bancos         from '@/components/paginas/Bancos';
 import Cartoes        from '@/components/paginas/Cartoes';
+import Salarios       from '@/components/paginas/Salarios';
 import Assistente     from '@/components/paginas/Assistente';
 import Patrimonio     from '@/components/paginas/Patrimonio';
 import Orcamentos     from '@/components/paginas/Orcamentos';
@@ -28,7 +29,7 @@ import { TipoTransacao } from '@/types';
 
 import { Transacao, Categoria } from '@/types';
 
-type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
+type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'salarios' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
 
 // ─── Busca Global ─────────────────────────────────────────────────────────────
 const MESES_BUSCA: string[][] = [
@@ -213,6 +214,7 @@ const navDesktop = [
   { id: 'patrimonio',   label: 'Patrimônio',    icone: TrendingUp      },
   { id: 'bancos',       label: 'Bancos',        icone: Building2       },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
+  { id: 'salarios',     label: 'Salário',       icone: WalletCards     },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
   { id: 'calendario',   label: 'Calendário',    icone: CalendarDays    },
@@ -230,6 +232,7 @@ const navMobile = [
 /** Extra pages shown in the "Mais" bottom sheet */
 const navMais = [
   { id: 'cartoes',      label: 'Cartões',    icone: CreditCard      },
+  { id: 'salarios',     label: 'Salário',    icone: WalletCards     },
   { id: 'patrimonio',   label: 'Patrimônio', icone: TrendingUp      },
   { id: 'relatorios',   label: 'Relatórios', icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos', icone: Target          },
@@ -270,7 +273,7 @@ export default function AppPrincipal() {
       const page = params.get('page');
       const paginasValidas: Pagina[] = [
         'dashboard', 'transacoes', 'relatorios', 'investimentos', 'bancos', 'cartoes',
-        'assistente', 'patrimonio', 'orcamentos', 'configuracoes', 'agentes', 'calendario',
+        'salarios', 'assistente', 'patrimonio', 'orcamentos', 'configuracoes', 'agentes', 'calendario',
       ];
 
       if (page && paginasValidas.includes(page as Pagina)) {
@@ -345,6 +348,7 @@ export default function AppPrincipal() {
       case 'assistente':    return <Assistente />;
       case 'bancos':        return <Bancos />;
       case 'cartoes':       return <Cartoes />;
+      case 'salarios':      return <Salarios />;
       case 'relatorios':    return <Relatorios />;
       case 'investimentos': return <Investimentos />;
       case 'patrimonio':    return <Patrimonio />;
