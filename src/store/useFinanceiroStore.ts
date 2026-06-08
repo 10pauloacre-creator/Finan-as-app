@@ -21,9 +21,12 @@ import {
   baixarTudoDoSupabase, enviarTudoParaSupabase, processarFilaDeSincronizacao, totalPendenciasDeSync, SYNC_TABLES,
 } from '@/lib/sync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { startOfTodayLocal } from '@/lib/date';
+import { formatFinancialDate, startOfTodayLocal } from '@/lib/date';
 import {
   contarOcorrenciasAteData,
+  getDataCobrancaCartaoParaData,
+  getDataOcorrenciaNoMes,
+  ocorrenciaEstaPaga,
   registrarPagamentoOcorrencia,
   removerPagamentoOcorrencia,
 } from '@/lib/transacoes';
@@ -356,13 +359,37 @@ function persistirContasNormalizadas(contas: ContaBancaria[], sync = false) {
   });
 }
 
-function calcularBaseFaturaCartao(cartaoId: string, transacoes: Transacao[], referencia = startOfTodayLocal()) {
+function calcularBaseFaturaCartao(
+  cartao: Pick<CartaoCredito, 'id' | 'dia_fechamento' | 'dia_vencimento'>,
+  transacoes: Transacao[],
+  referencia = startOfTodayLocal(),
+) {
+  const ultimoMesConsiderado = new Date(referencia.getFullYear(), referencia.getMonth(), 1);
+
   return arredondarMoeda(transacoes.reduce((soma, transacao) => {
-    if (transacao.cartao_id !== cartaoId) return soma;
-    const ocorrencias = contarOcorrenciasAteData(transacao, referencia);
-    if (ocorrencias <= 0) return soma;
-    const valorAplicado = transacao.valor * ocorrencias;
-    return soma + (transacao.tipo === 'despesa' ? valorAplicado : -valorAplicado);
+    if (transacao.cartao_id !== cartao.id) return soma;
+
+    const primeiroMesDaTransacao = new Date(`${transacao.data}T00:00:00`);
+    const cursor = new Date(primeiroMesDaTransacao.getFullYear(), primeiroMesDaTransacao.getMonth(), 1);
+    let subtotal = 0;
+
+    while (cursor <= ultimoMesConsiderado) {
+      const ocorrencia = getDataOcorrenciaNoMes(transacao, cursor.getMonth() + 1, cursor.getFullYear());
+      if (ocorrencia && ocorrencia <= referencia) {
+        const dataOcorrencia = formatFinancialDate(ocorrencia);
+        const dataCobranca = transacao.data_cobranca && dataOcorrencia === transacao.data
+          ? transacao.data_cobranca
+          : getDataCobrancaCartaoParaData(dataOcorrencia, cartao);
+
+        if (!ocorrenciaEstaPaga(transacao, dataCobranca)) {
+          subtotal += transacao.tipo === 'despesa' ? transacao.valor : -transacao.valor;
+        }
+      }
+
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    return soma + subtotal;
   }, 0));
 }
 
@@ -370,7 +397,7 @@ function normalizarCartoesComTransacoes(cartoes: CartaoCredito[], transacoes: Tr
   const hoje = startOfTodayLocal();
 
   return cartoes.map((cartao) => {
-    const baseFatura = calcularBaseFaturaCartao(cartao.id, transacoes, hoje);
+    const baseFatura = calcularBaseFaturaCartao(cartao, transacoes, hoje);
     const ajusteManual = cartao.fatura_ajuste_manual ?? arredondarMoeda(cartao.fatura_atual - baseFatura);
     return {
       ...cartao,
@@ -844,9 +871,12 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
           return atualizado;
         });
 
+        const cartoesNormalizados = normalizarCartoesComTransacoes(cartoesAtualizados, transacoesAtualizadas);
+        persistirCartoesNormalizados(cartoesNormalizados, true);
+
         set({
           transacoes: transacoesAtualizadas,
-          cartoes: cartoesAtualizados,
+          cartoes: cartoesNormalizados,
         });
       });
     },
@@ -908,7 +938,8 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
 
     atualizarFaturaCartao: (id, fatura) => {
       executarSemRecargaLocal(() => {
-        const baseFatura = calcularBaseFaturaCartao(id, get().transacoes);
+        const cartaoAtual = get().cartoes.find((item) => item.id === id);
+        const baseFatura = cartaoAtual ? calcularBaseFaturaCartao(cartaoAtual, get().transacoes) : 0;
         const agora = new Date().toISOString();
         const lista = get().cartoes.map((c) => (
           c.id === id
@@ -950,7 +981,20 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         const agora = new Date().toISOString();
         const lista = get().cartoes.map((cartao) => {
           if (cartao.id !== id) return cartao;
-          return { ...cartao, ...dados, id: cartao.id, criado_em: cartao.criado_em, atualizado_em: agora };
+          const proximoCartao = {
+            ...cartao,
+            ...dados,
+            id: cartao.id,
+            criado_em: cartao.criado_em,
+            atualizado_em: agora,
+          };
+          const baseFatura = calcularBaseFaturaCartao(proximoCartao, get().transacoes);
+          const faturaDesejada = typeof dados.fatura_atual === 'number' ? dados.fatura_atual : cartao.fatura_atual;
+          return {
+            ...proximoCartao,
+            fatura_ajuste_manual: arredondarMoeda(faturaDesejada - baseFatura),
+            fatura_atual: arredondarMoeda(faturaDesejada),
+          };
         });
         const cartao = lista.find((item) => item.id === id);
         if (cartao) {

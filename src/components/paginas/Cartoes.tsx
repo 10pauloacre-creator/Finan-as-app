@@ -439,11 +439,10 @@ function construirLancamentosDaFatura(
     if (transacao.cartao_id !== cartaoId) return;
 
     mesesPeriodo.forEach(({ mes, ano }) => {
-      const transacaoNaCompetencia = transacao.data_cobranca ? { ...transacao, data: transacao.data_cobranca } : transacao;
-      const ocorrencia = getDataOcorrenciaNoMes(transacaoNaCompetencia, mes, ano);
+      const ocorrencia = getDataOcorrenciaNoMes(transacao, mes, ano);
       if (!ocorrencia || ocorrencia < inicio || ocorrencia > fim) return;
       const dataCobranca = transacao.data_cobranca
-        ? formatFinancialDate(ocorrencia)
+        ? transacao.data_cobranca
         : getDataCobrancaCartaoParaData(formatFinancialDate(ocorrencia), cartao);
       const statusPagamento = getStatusPagamentoOcorrencia(transacao, dataCobranca, referencia);
 

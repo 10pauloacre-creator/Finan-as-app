@@ -50,6 +50,18 @@ export function ocorrenciaEstaPaga(
   return normalizarDatasPagamento(transacao.datas_pagamento).includes(dataOcorrencia);
 }
 
+export function permiteControleManualPagamento(
+  transacao: Pick<Transacao, 'tipo' | 'cartao_id' | 'classificacao' | 'parcelas'>,
+) {
+  return transacao.tipo === 'despesa'
+    && !transacao.cartao_id
+    && (
+      transacao.classificacao === 'fixa'
+      || transacao.classificacao === 'futura'
+      || (transacao.parcelas || 1) > 1
+    );
+}
+
 export function getStatusPagamentoOcorrencia(
   transacao: Pick<Transacao, 'datas_pagamento'>,
   dataOcorrencia: string,

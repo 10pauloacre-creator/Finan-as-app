@@ -19,6 +19,7 @@ import {
   getDataOcorrenciaNoMes,
   getStatusPagamentoOcorrencia,
   ocorrenciaEstaPaga,
+  permiteControleManualPagamento,
   transacaoContaNoMesAteData,
   transacaoJaOcorreuAteData,
 } from '@/lib/transacoes';
@@ -1395,11 +1396,7 @@ export default function Transacoes() {
                     const badgeClassificacao = getBadgeClassificacao(t, hoje, dataExibicao);
                     const eFutura = parseFinancialDate(dataExibicao) > hoje;
                     const parcelamento = calcularParcelamentoInfo(t, parseFinancialDate(dataExibicao));
-                    const permiteControleManual = t.tipo === 'despesa' && !t.cartao_id && (
-                      t.classificacao === 'fixa'
-                      || t.classificacao === 'futura'
-                      || (t.parcelas || 1) > 1
-                    );
+                    const permiteControleManual = permiteControleManualPagamento(t);
                     const statusPagamento = getStatusPagamentoOcorrencia(t, dataExibicao, hoje);
                     const contaPaga = ocorrenciaEstaPaga(t, dataExibicao);
                     const contaAtrasada = permiteControleManual && statusPagamento === 'atrasada';

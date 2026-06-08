@@ -14,7 +14,15 @@ import { BANCO_INFO, BancoSlug, CartaoCredito, ContaBancaria, Categoria, Transac
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
 import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
-import { getDataCobrancaCartao, getDataCompetenciaDespesa, getDataOcorrenciaNoMes, ordenarTransacoesPorDataDesc, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import {
+  getDataCobrancaCartao,
+  getDataCompetenciaDespesa,
+  getDataOcorrenciaNoMes,
+  getStatusPagamentoOcorrencia,
+  ordenarTransacoesPorDataDesc,
+  permiteControleManualPagamento,
+  transacaoContaNoMesAteData,
+} from '@/lib/transacoes';
 import {
   existeValorNaFaturaDoMes,
   getDataCobrancaPorReferencia,
@@ -660,7 +668,7 @@ interface DetalheResumoData {
   };
   apagar: {
     cartoes: Array<{ id: string; nome: string; banco: string; valor_total_fatura: number; dia_vencimento: number; diasParaVencer: number }>;
-    despesasFuturas: Array<{ id: string; nome: string; icone: string; cor: string; valor: number }>;
+    despesasPendentes: Array<{ id: string; nome: string; icone: string; cor: string; valor: number; data: string; status: 'atrasada' | 'pendente' }>;
     total: number;
   };
 }
@@ -893,10 +901,10 @@ function ModalResumoCard({
                 </>
               )}
 
-              {dados.apagar.despesasFuturas.length > 0 && (
+              {dados.apagar.despesasPendentes.length > 0 && (
                 <>
-                  <SecaoTitulo>Despesas previstas no mês</SecaoTitulo>
-                  {dados.apagar.despesasFuturas.map(c => (
+                  <SecaoTitulo>Contas e previsões abertas no mês</SecaoTitulo>
+                  {dados.apagar.despesasPendentes.map(c => (
                     <div key={c.id} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0">
                       <span className="text-base">{c.icone}</span>
                       <div className="flex-1">
@@ -904,13 +912,17 @@ function ModalResumoCard({
                           <span className="text-sm text-slate-300">{c.nome}</span>
                           <span className="text-sm font-semibold tabular-nums text-amber-400">{ocultar(formatarMoeda(c.valor))}</span>
                         </div>
+                        <div className={`mt-1 text-[11px] ${c.status === 'atrasada' ? 'text-red-300' : 'text-slate-500'}`}>
+                          {c.status === 'atrasada' ? 'Venceu em ' : 'Vence em '}
+                          {parseFinancialDate(c.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </>
               )}
 
-              {dados.apagar.cartoes.length === 0 && dados.apagar.despesasFuturas.length === 0 && (
+              {dados.apagar.cartoes.length === 0 && dados.apagar.despesasPendentes.length === 0 && (
                 <p className="text-sm text-slate-600 py-4 text-center">Nenhum pagamento pendente identificado</p>
               )}
 
@@ -1504,14 +1516,20 @@ export default function Dashboard({ onNovoPagina }: Props) {
       if (!dataExibicao) return [];
 
       const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao);
-      const realizada = transacaoContaNoMesAteData(
-        transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
-        mes,
-        ano,
-        referenciaHoje,
-      );
+      const controleManual = permiteControleManualPagamento(transacao);
+      const statusPagamento = transacao.tipo === 'despesa'
+        ? getStatusPagamentoOcorrencia(transacao, dataExibicao, referenciaHoje)
+        : null;
+      const realizada = transacao.tipo === 'despesa' && controleManual
+        ? statusPagamento === 'paga'
+        : transacaoContaNoMesAteData(
+            transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+            mes,
+            ano,
+            referenciaHoje,
+          );
 
-      return [{ transacao, dataExibicao, realizada }];
+      return [{ transacao, dataExibicao, realizada, controleManual, statusPagamento }];
     });
 
     const doMes = ordenarTransacoesPorDataDesc(registrosMes.map(({ transacao, dataExibicao }) => (
@@ -1558,17 +1576,53 @@ export default function Dashboard({ onNovoPagina }: Props) {
     return { receitas, despesas, saldo, graficoPizza, areaData, doMes, doMesAteHoje, registrosMes, despesasLancadas };
   }, [transacoes, categorias, cartoes, mes, ano]);
 
-  // Despesas que ainda não ocorreram neste mês = "A pagar"
-  const aPagarMesAtual = useMemo(() => {
-    const totalFaturas = cartoes.reduce((total, cartao) => total + cartao.fatura_atual, 0);
-    const despesasExtrasPendentes = dadosMes.registrosMes.reduce((total, registro) => (
-      registro.transacao.tipo === 'despesa' && !registro.realizada && !registro.transacao.cartao_id
-        ? total + registro.transacao.valor
-        : total
-    ), 0);
+  const pendenciasMesAtual = useMemo(() => {
+    const categoriasPorId = new Map(categorias.map((categoria) => [categoria.id, categoria]));
 
-    return totalFaturas + despesasExtrasPendentes;
-  }, [cartoes, dadosMes]);
+    const despesasPendentes = dadosMes.registrosMes
+      .filter(({ transacao, realizada, controleManual }) => (
+        transacao.tipo === 'despesa'
+        && !transacao.cartao_id
+        && controleManual
+        && !realizada
+      ))
+      .map(({ transacao, dataExibicao, statusPagamento }) => {
+        const categoria = categoriasPorId.get(transacao.categoria_id);
+        return {
+          id: `${transacao.id}-${dataExibicao}`,
+          nome: transacao.descricao,
+          icone: categoria?.icone || '??',
+          cor: categoria?.cor || '#6B7280',
+          valor: transacao.valor,
+          data: dataExibicao,
+          status: statusPagamento === 'atrasada' ? 'atrasada' as const : 'pendente' as const,
+        };
+      })
+      .sort((a, b) => a.data.localeCompare(b.data) || b.valor - a.valor);
+
+    const cartoesPendentes = cartoes
+      .filter((cartao) => cartao.fatura_atual > 0)
+      .map((cartao) => {
+        const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), cartao.dia_vencimento);
+        if (vencimento < hoje) vencimento.setMonth(vencimento.getMonth() + 1);
+        return {
+          id: cartao.id,
+          nome: cartao.nome,
+          banco: cartao.banco,
+          dia_vencimento: cartao.dia_vencimento,
+          valor_total_fatura: cartao.fatura_atual,
+          diasParaVencer: Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000),
+        };
+      })
+      .sort((a, b) => a.diasParaVencer - b.diasParaVencer || b.valor_total_fatura - a.valor_total_fatura);
+
+    const total = cartoesPendentes.reduce((soma, cartao) => soma + cartao.valor_total_fatura, 0)
+      + despesasPendentes.reduce((soma, despesa) => soma + despesa.valor, 0);
+
+    return { cartoes: cartoesPendentes, despesasPendentes, total };
+  }, [cartoes, categorias, dadosMes.registrosMes, hoje]);
+
+  const aPagarMesAtual = pendenciasMesAtual.total;
 
   const snapshotProjeto = useMemo(() => construirSnapshotFinanceiro({
     transacoes,
@@ -1827,13 +1881,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }, []).sort((a, b) => b.valor - a.valor);
 
     // ── PAGO ─────────────────────────────────────────────────
-    const despesasDebitadasSaldo = despesasMes.filter(t => {
-      if (t.cartao_id) return false;
-      const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
-      return ocorrencia !== null
-        && ocorrencia <= ref
-        && (!t.metodo_pagamento || METODOS_DEBITO.has(t.metodo_pagamento));
-    });
+    const despesasDebitadasSaldo = dadosMes.registrosMes
+      .filter(({ transacao, dataExibicao, realizada, controleManual }) => {
+        if (transacao.tipo !== 'despesa' || transacao.cartao_id || !realizada) return false;
+        if (controleManual) return true;
+        return parseFinancialDate(dataExibicao) <= ref
+          && (!transacao.metodo_pagamento || METODOS_DEBITO.has(transacao.metodo_pagamento));
+      })
+      .map(({ transacao }) => transacao);
     const metodosPagos = somarPorMetodo(despesasDebitadasSaldo);
     const totalPagoCalc = despesasDebitadasSaldo.reduce((s, t) => s + t.valor, 0);
     const catsPagas = despesasDebitadasSaldo.reduce<Array<{ nome: string; icone: string; cor: string; valor: number }>>((acc, t) => {
@@ -1846,44 +1901,18 @@ export default function Dashboard({ onNovoPagina }: Props) {
     }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
     // ── A PAGAR ───────────────────────────────────────────────
-    const despesasFuturasExtras = despesasMes.filter(t => {
-      if (t.cartao_id) return false;
-      const ocorrencia = getDataOcorrenciaNoMes(t, mes, ano);
-      return ocorrencia !== null && ocorrencia > ref;
-    }).map((t) => {
-      const cat = categorias.find(c => c.id === t.categoria_id);
-      return {
-        id: t.id,
-        nome: t.descricao,
-        icone: cat?.icone || '??',
-        cor: cat?.cor || '#6B7280',
-        valor: t.valor,
-      };
-    }).sort((a, b) => b.valor - a.valor);
-
-    const cartoesPendentes = cartoes.map(c => {
-      const hoje = ref;
-      const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), c.dia_vencimento);
-      if (vencimento <= hoje) vencimento.setMonth(vencimento.getMonth() + 1);
-      const dias = Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000);
-      return {
-        id: c.id,
-        nome: c.nome,
-        banco: c.banco,
-        dia_vencimento: c.dia_vencimento,
-        diasParaVencer: dias,
-        valor_total_fatura: c.fatura_atual,
-      };
-    }).filter(c => c.valor_total_fatura > 0).sort((a, b) => a.diasParaVencer - b.diasParaVencer);
-
     return {
       LABEL_METODO,
       gastos: { metodos: metodosGastos, porCartao: porCartaoLancado, totalCartoesNoMes, semCartao: gastosSemCartao, topCats: topCatsGastos },
       recebimentos: { metodos: metodosReceitas, porCategoria: receitasPorCategoria, total: dadosMes.receitas, qtd: receitasMes.length },
       pago: { metodos: metodosPagos, porCategoria: catsPagas, total: totalPagoCalc },
-      apagar: { cartoes: cartoesPendentes, despesasFuturas: despesasFuturasExtras, total: aPagarMesAtual },
+      apagar: {
+        cartoes: pendenciasMesAtual.cartoes,
+        despesasPendentes: pendenciasMesAtual.despesasPendentes,
+        total: pendenciasMesAtual.total,
+      },
     };
-  }, [dadosMes, cartoes, categorias, aPagarMesAtual, mes, ano, transacoes]);
+  }, [dadosMes, categorias, mes, ano, pendenciasMesAtual]);
 
   const receitasAnimado = useCountUp(dadosMes.receitas);
   const despesasAnimado = useCountUp(dadosMes.despesas);
@@ -1915,7 +1944,9 @@ export default function Dashboard({ onNovoPagina }: Props) {
   const ocultar = (v: string) => saldoOculto ? '??????' : v;
   const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
     const vencimentosUrgentes = detalheResumo.apagar.cartoes.filter((cartao) => cartao.diasParaVencer <= 3);
-    const previsoesUrgentes = proximosGastos.filter((gasto) => gasto.diasRestantes <= 3);
+    const previsoesUrgentes = detalheResumo.apagar.despesasPendentes.filter((despesa) => (
+      Math.ceil((parseFinancialDate(despesa.data).getTime() - hoje.getTime()) / 86400000) <= 3
+    ));
     return [
       {
         id: 'dashboard-urgente',
@@ -1946,7 +1977,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         tone: saldoProjetado >= 0 ? 'success' : 'danger',
       },
     ];
-  }, [aPagarMesAtual, detalheResumo.apagar.cartoes, detalheResumo.pago.total, ocultar, proximosGastos, saldoProjetado]);
+  }, [aPagarMesAtual, detalheResumo.apagar.cartoes, detalheResumo.apagar.despesasPendentes, detalheResumo.pago.total, ocultar, saldoProjetado, hoje]);
 
   const transacoesPorConta = useMemo(() => {
     const mapa: Record<string, Transacao[]> = {};
