@@ -69,6 +69,7 @@ interface FinanceiroState {
   excluirCartao: (id: string) => void;
 
   adicionarInvestimento: (inv: Omit<Investimento, 'id' | 'criado_em'>) => void;
+  editarInvestimento: (id: string, dados: Partial<Investimento>) => void;
   excluirInvestimento: (id: string) => void;
 
   adicionarMeta: (m: Omit<Meta, 'id' | 'criado_em'>) => void;
@@ -1020,6 +1021,23 @@ export const useFinanceiroStore = create<FinanceiroState>((set, get) => {
         storageInvestimentos.save(novo);
         void syncSalvarInvestimento(novo);
         set((s) => ({ investimentos: [novo, ...s.investimentos] }));
+      });
+    },
+
+    editarInvestimento: (id, dados) => {
+      executarSemRecargaLocal(() => {
+        const agora = new Date().toISOString();
+        const lista = get().investimentos.map((investimento) => (
+          investimento.id === id
+            ? { ...investimento, ...dados, atualizado_em: agora }
+            : investimento
+        ));
+        const item = lista.find((investimento) => investimento.id === id);
+        if (item) {
+          storageInvestimentos.save(item);
+          void syncSalvarInvestimento(item);
+        }
+        set({ investimentos: lista });
       });
     },
 

@@ -637,7 +637,7 @@ export default function Bancos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="fin-panel fin-soft-rise overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.30)] sm:p-5">
+      <section className="hidden fin-panel fin-soft-rise overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 shadow-[0_24px_60px_rgba(2,6,23,0.30)] sm:p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
@@ -679,16 +679,18 @@ export default function Bancos() {
         </div>
       </section>
 
-      <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.025] p-3 text-[11px] text-slate-500">
+      <div className="hidden fin-panel rounded-2xl border border-white/8 bg-white/[0.025] p-3 text-[11px] text-slate-500">
         <div><span className="text-slate-300">Saldo em conta:</span> soma dos saldos atuais de todas as contas cadastradas.</div>
         <div className="mt-1"><span className="text-slate-300">Total a pagar:</span> faturas dos cartões + contas fixas + dívidas + aportes planejados ainda abertos.</div>
         <div className="mt-1"><span className="text-slate-300">Sobra projetada:</span> saldo em conta menos tudo o que ainda falta cumprir.</div>
       </div>
 
-      <PainelPrioridadesFinanceiras
-        itens={prioridadesFinanceiras}
+      <div className="hidden">
+        <PainelPrioridadesFinanceiras
+          itens={prioridadesFinanceiras}
         subtitulo="A mesma lógica de prioridade usada na home, aplicada ao painel operacional de contas."
-      />
+        />
+      </div>
 
       {itemsPendentes.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -744,7 +746,7 @@ export default function Bancos() {
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="hidden grid gap-4 xl:grid-cols-2">
         <SectionPanel
           title="Faturas dos cartões"
           subtitle="Status de faturas inteiras para vencer, sem misturar com outras despesas do mês."
@@ -778,6 +780,7 @@ export default function Bancos() {
         />
       </div>
 
+      <div className="hidden">
       <SectionPanel
         title="Pagos recentemente"
         subtitle="Saídas já debitadas do saldo neste mês para você acompanhar o que já foi resolvido."
@@ -785,6 +788,7 @@ export default function Bancos() {
         items={painelFinanceiro.pagosRecentemente}
         emptyText="Ainda não houve debitações registradas neste mês."
       />
+      </div>
 
       <section className="glass-card fin-panel fin-soft-rise-delay overflow-hidden border border-white/10">
         <div className="flex flex-col gap-4 border-b border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -965,7 +969,7 @@ export default function Bancos() {
                     )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="hidden mt-4 grid grid-cols-3 gap-3">
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold tabular-nums text-emerald-400">{formatarMoeda(recMes)}</div>
                       <div className="mt-0.5 text-[11px] text-slate-600">Entradas do mês</div>
@@ -980,7 +984,7 @@ export default function Bancos() {
                     </div>
                   </div>
 
-                  {txConta.length > 0 && (
+                  {false && txConta.length > 0 && (
                     <button
                       onClick={() => setContaSel(isOpen ? null : conta.id)}
                       className="mt-3 w-full py-1 text-center text-xs text-slate-500 transition-colors hover:text-sky-300"
@@ -990,7 +994,7 @@ export default function Bancos() {
                   )}
                 </div>
 
-                {isOpen && (
+                {false && isOpen && (
                   <div className="mt-2 space-y-2 border-t border-white/[0.05] px-5 pb-4">
                     {txConta.slice(0, 8).map((transacao) => {
                       const categoria = categorias.find((item) => item.id === transacao.categoria_id);

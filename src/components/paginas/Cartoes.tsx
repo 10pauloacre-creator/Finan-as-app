@@ -1096,11 +1096,8 @@ export default function Cartoes() {
                         </div>
                         {!emEdicao && (
                           <div className="mb-1 text-[11px] text-slate-500">
-                            Em aberto nesta fatura: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
+                            Lancamentos identificados: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
                             {totalProximaFatura > 0 ? <> {' '}• Próxima: <span className="text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</span></> : null}
-                            {cartao.fatura_ajuste_manual
-                              ? <> {' '}• Ajuste manual: <span className="text-purple-300 tabular-nums">{formatarMoeda(cartao.fatura_ajuste_manual)}</span></>
-                              : null}
                           </div>
                         )}
                         {emEdicao ? (
@@ -1145,7 +1142,7 @@ export default function Cartoes() {
                               percentual > 80 ? 'text-red-400' : percentual > 50 ? 'text-yellow-400' : 'text-white'
                             }`}
                           >
-                            {formatarMoeda(baseLancamentos)}
+                            {formatarMoeda(cartao.fatura_atual)}
                           </div>
                         )}
                       </div>

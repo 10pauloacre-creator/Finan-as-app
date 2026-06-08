@@ -526,7 +526,7 @@ function ModalMovimentoReserva({ reserva, tipoInicial, onSalvar, onFechar }: Mod
 }
 
 export default function Patrimonio() {
-  const { contas, investimentos, selicAtual } = useFinanceiroStore();
+  const { contas, investimentos, selicAtual, atualizarSaldoConta, editarInvestimento } = useFinanceiroStore();
   const [oculto, setOculto] = useState(false);
   const [itensManual, setItensManual] = useState<ItemManual[]>(() => normalizarItensPatrimoniais(lerListaPersistida<ItemManual>(STORAGE_ITENS_MANUAIS)));
   const [reservas, setReservas] = useState<Reserva[]>(() => storageReservas.getAll());
@@ -593,6 +593,22 @@ export default function Patrimonio() {
   const qtdAtivos = contas.length + investimentos.length + ativosManuais.length + reservas.length;
   const qtdPassivos = passivosManuais.length;
   const ocultarValor = (valor: string) => (oculto ? '••••••' : valor);
+
+  function handleEditarContaSaldo(id: string, saldoAtual: number) {
+    const resposta = window.prompt('Novo saldo atual da conta:', saldoAtual.toFixed(2));
+    if (resposta === null) return;
+    const saldo = Number.parseFloat(resposta.replace(',', '.'));
+    if (!Number.isFinite(saldo)) return;
+    atualizarSaldoConta(id, saldo);
+  }
+
+  function handleEditarValorInvestimento(id: string, valorAtual: number) {
+    const resposta = window.prompt('Novo valor atual do investimento:', valorAtual.toFixed(2));
+    if (resposta === null) return;
+    const valor = Number.parseFloat(resposta.replace(',', '.'));
+    if (!Number.isFinite(valor) || valor < 0) return;
+    editarInvestimento(id, { valor_atual: valor });
+  }
 
   function handleSalvarManual(dados: Omit<ItemManual, 'id'>) {
     if (itemEditar) {
@@ -768,7 +784,17 @@ export default function Patrimonio() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{conta.nome}</span>
-                        <span className="text-sm font-semibold text-white tabular-nums">{ocultarValor(formatarMoeda(conta.saldo))}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white tabular-nums">{ocultarValor(formatarMoeda(conta.saldo))}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleEditarContaSaldo(conta.id, conta.saldo)}
+                            className="rounded p-1 text-slate-500 transition-colors hover:text-emerald-300"
+                            aria-label="Editar saldo da conta"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500 capitalize">{info.nome} · {conta.tipo}</span>
@@ -812,7 +838,17 @@ export default function Patrimonio() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-white truncate">{investimento.nome}</span>
-                        <span className="text-sm font-semibold text-white tabular-nums">{ocultarValor(formatarMoeda(valorAtual))}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white tabular-nums">{ocultarValor(formatarMoeda(valorAtual))}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleEditarValorInvestimento(investimento.id, valorAtual)}
+                            className="rounded p-1 text-slate-500 transition-colors hover:text-emerald-300"
+                            aria-label="Editar valor do investimento"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500 capitalize">{investimento.tipo.replace(/_/g, ' ')}</span>

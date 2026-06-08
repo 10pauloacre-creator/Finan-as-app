@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import { formatarMoeda } from '@/lib/storage';
-import { ContaBancaria, CartaoCredito, Transacao } from '@/types';
+import { FINANCEIRO_STORAGE_EVENT, formatarMoeda, storageSalarios } from '@/lib/storage';
+import { ContaBancaria, CartaoCredito, PerfilSalarial, Transacao } from '@/types';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
 import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
@@ -303,7 +303,7 @@ function TimelineGastos({
         title="Estimativa de gastos por mês"
         subtitle="Visão analítica com despesas realizadas, cobranças ativas e projeção de parcelas futuras."
       />
-      <div className="fin-panel rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
+      <div className="hidden fin-panel rounded-3xl border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_36%),radial-gradient(circle_at_top_right,rgba(34,211,153,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="mb-1 text-sm font-semibold text-white">Leitura mensal de despesas</h3>
@@ -718,6 +718,8 @@ const LABEL_FILTRO_DESPESA: Record<FiltroLinha2, string> = {
 };
 
 const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'emprestimo', 'financiamento']);
+const METODOS_SAIDA_SALDO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'outro']);
+const CATEGORIAS_SALARIAIS = new Set(['salario', 'trabalho_receita']);
 
 function getClassificacaoTransacao(transacao: Transacao): 'padrao' | 'fixa' | 'futura' {
   return transacao.classificacao || 'padrao';
@@ -798,7 +800,17 @@ export default function Transacoes() {
   const [modalAberto, setModalAberto] = useState(false);
   const [transacaoEditar, setTransacaoEditar] = useState<Transacao | undefined>();
   const [transacaoDetalhe, setTransacaoDetalhe] = useState<Transacao | null>(null);
+  const [perfisSalariais, setPerfisSalariais] = useState<PerfilSalarial[]>(() => storageSalarios.getAll());
   const hoje = startOfTodayLocal();
+
+  useEffect(() => {
+    const atualizarPerfis = () => setPerfisSalariais(storageSalarios.getAll());
+    atualizarPerfis();
+    window.addEventListener(FINANCEIRO_STORAGE_EVENT, atualizarPerfis as EventListener);
+    return () => {
+      window.removeEventListener(FINANCEIRO_STORAGE_EVENT, atualizarPerfis as EventListener);
+    };
+  }, []);
 
   const anosDisponiveis = useMemo(() => {
     const anos = new Set<number>();
@@ -911,6 +923,109 @@ export default function Transacoes() {
       && filtroMeses[0] === agora.getMonth() + 1;
   }, [filtroAnos, filtroMeses]);
 
+  const transacoesMesAtual = useMemo<TransacaoExibicao[]>(() => {
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+
+    return transacoes.flatMap((transacao) => {
+      const cartao = transacao.cartao_id ? cartoes.find((item) => item.id === transacao.cartao_id) : undefined;
+      const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+      const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataCompetencia);
+
+      if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
+        const [anoCompetencia, mesCompetencia] = dataCompetencia.split('-').map(Number);
+        if (anoCompetencia !== anoAtual || mesCompetencia !== mesAtual) return [];
+        return [{ transacao, dataExibicao: dataCompetencia, dataOrdenacao: dataCompetencia }];
+      }
+
+      const ocorrencia = getDataOcorrenciaNoMes(
+        transacao.tipo === 'despesa' ? transacaoNaCompetencia : transacao,
+        mesAtual,
+        anoAtual,
+      );
+
+      if (!ocorrencia) return [];
+
+      const dataExibicao = formatFinancialDate(ocorrencia);
+      return [{ transacao, dataExibicao, dataOrdenacao: dataExibicao }];
+    });
+  }, [cartoes, hoje, transacoes]);
+
+  const realizadasMesAtualIds = useMemo(() => (
+    new Set(
+      transacoesMesAtual
+        .filter(({ transacao, dataExibicao }) => {
+          const transacaoNaCompetencia = aplicarDataDeExibicaoNaTransacao(transacao, dataExibicao);
+          return transacaoContaNoMesAteData(transacaoNaCompetencia, hoje.getMonth() + 1, hoje.getFullYear(), hoje);
+        })
+        .map(({ transacao, dataExibicao }) => `${transacao.id}|${dataExibicao}`),
+    )
+  ), [hoje, transacoesMesAtual]);
+
+  const primeiraReceitaSalarialMes = useMemo(() => {
+    const datas = transacoesMesAtual
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'receita'
+        && CATEGORIAS_SALARIAIS.has(transacao.categoria_id)
+        && realizadasMesAtualIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .map(({ dataExibicao }) => parseFinancialDate(dataExibicao))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    return datas[0] || null;
+  }, [realizadasMesAtualIds, transacoesMesAtual]);
+
+  const despesasPrevistasMesAtual = useMemo(() => (
+    transacoesMesAtual
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'despesa'
+        && !transacao.cartao_id
+        && permiteControleManualPagamento(transacao)
+        && !realizadasMesAtualIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0)
+  ), [realizadasMesAtualIds, transacoesMesAtual]);
+
+  const debitadasSaldoMesAtual = useMemo(() => (
+    transacoesMesAtual
+      .filter(({ transacao, dataExibicao }) => {
+        if (transacao.tipo !== 'despesa' || transacao.cartao_id) return false;
+        if (!realizadasMesAtualIds.has(`${transacao.id}|${dataExibicao}`)) return false;
+        if (transacao.metodo_pagamento && !METODOS_SAIDA_SALDO.has(transacao.metodo_pagamento)) return false;
+        if (!primeiraReceitaSalarialMes) return true;
+        return parseFinancialDate(dataExibicao) >= primeiraReceitaSalarialMes;
+      })
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0)
+  ), [primeiraReceitaSalarialMes, realizadasMesAtualIds, transacoesMesAtual]);
+
+  const totalSalariosAgendados = useMemo(
+    () => perfisSalariais.reduce((soma, perfil) => soma + (perfil.salario_liquido || 0), 0),
+    [perfisSalariais],
+  );
+
+  const receitasPendentesNaoSalariaisMesAtual = useMemo(() => (
+    transacoesMesAtual
+      .filter(({ transacao, dataExibicao }) => (
+        transacao.tipo === 'receita'
+        && !CATEGORIAS_SALARIAIS.has(transacao.categoria_id)
+        && !realizadasMesAtualIds.has(`${transacao.id}|${dataExibicao}`)
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0)
+  ), [realizadasMesAtualIds, transacoesMesAtual]);
+
+  const quantidadeReceitasAgendadasMesAtual = useMemo(() => {
+    const receitasNaoSalariais = transacoesMesAtual.filter(({ transacao, dataExibicao }) => (
+      transacao.tipo === 'receita'
+      && !CATEGORIAS_SALARIAIS.has(transacao.categoria_id)
+      && !realizadasMesAtualIds.has(`${transacao.id}|${dataExibicao}`)
+    )).length;
+
+    return receitasNaoSalariais + perfisSalariais.filter((perfil) => (perfil.salario_liquido || 0) > 0).length;
+  }, [perfisSalariais, realizadasMesAtualIds, transacoesMesAtual]);
+
+  const receitasAgendadasMesAtual = receitasPendentesNaoSalariaisMesAtual + totalSalariosAgendados;
+  const aPagarMesAtual = cartoes.reduce((soma, cartao) => soma + cartao.fatura_atual, 0) + despesasPrevistasMesAtual;
+
   const totais = useMemo(() => {
     const despesasPrevistas = transacoesFiltradas
       .filter(({ transacao, dataExibicao }) => (
@@ -993,26 +1108,34 @@ export default function Transacoes() {
         id: 'transacoes-apagar',
         titulo: 'A pagar',
         detalhe: 'Faturas + despesas que ainda não saíram da conta.',
-        valor: formatarMoeda(aPagar),
+        valor: formatarMoeda(aPagarMesAtual),
         tone: 'warning',
       },
       {
         id: 'transacoes-debitado',
         titulo: 'Debitado do saldo',
         detalhe: 'Saídas já liquidadas no período filtrado.',
-        valor: formatarMoeda(debitadasSaldo),
+        valor: formatarMoeda(debitadasSaldoMesAtual),
         tone: 'info',
       },
       {
         id: 'transacoes-receitas',
         titulo: 'Receitas agendadas',
         detalhe: 'Entradas futuras ainda não realizadas.',
-        quantidade: receitasPendentes.length,
-        valor: formatarMoeda(totais.receitasAgendadas),
-        tone: totais.receitasAgendadas > 0 ? 'success' : 'info',
+        quantidade: quantidadeReceitasAgendadasMesAtual,
+        valor: formatarMoeda(receitasAgendadasMesAtual),
+        tone: receitasAgendadasMesAtual > 0 ? 'success' : 'info',
       },
     ];
-  }, [aPagar, debitadasSaldo, hoje, realizadasIds, totais.receitasAgendadas, transacoesFiltradas]);
+  }, [
+    aPagarMesAtual,
+    debitadasSaldoMesAtual,
+    hoje,
+    quantidadeReceitasAgendadasMesAtual,
+    realizadasIds,
+    receitasAgendadasMesAtual,
+    transacoesFiltradas,
+  ]);
 
   const transacoesBaseExibidas = useMemo(() => {
     if (filtroLinha2 !== 'ja_debitadas' && filtroLinha2 !== 'previstas') {
@@ -1234,7 +1357,7 @@ export default function Transacoes() {
             <div className="text-3xl font-bold tabular-nums text-white">
               {formatarMoeda(resumoFiltroDespesas.total)}
             </div>
-            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
               <div><span className="text-slate-300">Total do filtro:</span> soma de todas as despesas que passaram pelos filtros ativos.</div>
               <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente despesas realizadas fora do cartão.</div>
               <div className="mt-1"><span className="text-slate-300">A pagar:</span> diferença entre o total filtrado e o que já foi debitado, incluindo faturas quando aplicável.</div>
@@ -1242,18 +1365,18 @@ export default function Transacoes() {
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <SummaryTile
                 title="Debitado do saldo"
-                value={formatarMoeda(resumoFiltroDespesas.debitadas)}
+                value={formatarMoeda(debitadasSaldoMesAtual)}
                 subtitle="Saídas que já saíram da conta."
                 tone="expense"
               />
               <SummaryTile
                 title="A pagar"
-                value={formatarMoeda(resumoFiltroDespesas.aPagar)}
+                value={formatarMoeda(aPagarMesAtual)}
                 subtitle="Faturas + pendências do mês."
                 tone="warning"
               />
             </div>
-            {resumoFiltroDespesas.total > 0 && resumoFiltroDespesas.aPagar > 0 && (
+            {false && (
               <div className="mt-4">
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
                   <div
@@ -1334,7 +1457,7 @@ export default function Transacoes() {
             <div className="text-3xl font-bold tabular-nums text-emerald-400">
               +{formatarMoeda(totais.receitas)}
             </div>
-            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
               <div><span className="text-slate-300">Recebido:</span> receitas já realizadas dentro do período filtrado.</div>
               <div className="mt-1"><span className="text-slate-300">Agendadas:</span> entradas futuras ainda não realizadas que já existem nos lançamentos.</div>
             </div>
@@ -1347,7 +1470,7 @@ export default function Transacoes() {
               />
               <SummaryTile
                 title="Agendadas"
-                value={`+${formatarMoeda(totais.receitasAgendadas)}`}
+                value={`+${formatarMoeda(receitasAgendadasMesAtual)}`}
                 subtitle="Receitas futuras previstas."
                 tone="warning"
               />
