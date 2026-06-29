@@ -1,11 +1,14 @@
 'use client';
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useMemo, useRef, useState } from 'react';
 import { Brain, Check, FileImage, Loader2, Pencil, Plus, Save, Trash2, UserRound } from 'lucide-react';
+import Image from 'next/image';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import OCRModelSelect from '@/components/ui/OCRModelSelect';
 import { formatarMoeda, gerarId, storageSalarios } from '@/lib/storage';
-import type { ContrachequeRegistro, PerfilSalarial, RubricaContracheque } from '@/types';
+import { formatFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { getDataCompetenciaDespesa, getDataOcorrenciaNoMes, transacaoContaNoMesAteData } from '@/lib/transacoes';
+import type { CartaoCredito, ContrachequeRegistro, PerfilSalarial, RubricaContracheque, Transacao } from '@/types';
 
 type AnaliseContracheque = {
   nome_perfil_sugerido: string;
@@ -53,6 +56,236 @@ type FormPerfil = {
   salario_liquido: string;
   observacoes: string;
 };
+
+type OcorrenciaMensal = {
+  transacao: Transacao;
+  dataExibicao: string;
+  realizada: boolean;
+};
+
+type ResumoMesSalario = {
+  chave: string;
+  titulo: string;
+  salarioReferencia: number;
+  recebimentosAvulsos: number;
+  saldoInicial: number;
+  totalDisponivel: number;
+  debitadoNoMes: number;
+  compromissosAutomaticos: number;
+  saldoFinal: number;
+};
+
+const CATEGORIAS_SALARIAIS = new Set(['salario', 'trabalho_receita']);
+const METODOS_SAIDA_SALDO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'outro']);
+const MESES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MAPA_REFERENCIA_MES: Record<string, number> = {
+  jan: 1,
+  janeiro: 1,
+  fev: 2,
+  fevereiro: 2,
+  mar: 3,
+  marco: 3,
+  abril: 4,
+  abr: 4,
+  maio: 5,
+  mai: 5,
+  jun: 6,
+  junho: 6,
+  jul: 7,
+  julho: 7,
+  ago: 8,
+  agosto: 8,
+  set: 9,
+  setembro: 9,
+  out: 10,
+  outubro: 10,
+  nov: 11,
+  novembro: 11,
+  dez: 12,
+  dezembro: 12,
+};
+
+function arredondarMoeda(valor: number) {
+  return Number(valor.toFixed(2));
+}
+
+function normalizarTexto(valor: string) {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getChaveMes(ano: number, mes: number) {
+  return `${ano}-${String(mes).padStart(2, '0')}`;
+}
+
+function getTituloMes(ano: number, mes: number) {
+  return `${MESES_LABEL[mes - 1]}/${ano}`;
+}
+
+function addMeses(ano: number, mes: number, incremento: number) {
+  const data = new Date(ano, mes - 1 + incremento, 1);
+  return { ano: data.getFullYear(), mes: data.getMonth() + 1 };
+}
+
+function extrairMesReferencia(referencia: string | undefined) {
+  if (!referencia) return null;
+  const normalizada = normalizarTexto(referencia);
+  const porNumero = normalizada.match(/\b(0?[1-9]|1[0-2])\s*\/\s*(\d{4})\b/);
+  if (porNumero) {
+    const mes = Number(porNumero[1]);
+    const ano = Number(porNumero[2]);
+    return { ano, mes, chave: getChaveMes(ano, mes) };
+  }
+
+  const porTexto = normalizada.match(/\b([a-z]+)\s*\/\s*(\d{4})\b/);
+  if (!porTexto) return null;
+
+  const mes = MAPA_REFERENCIA_MES[porTexto[1]];
+  const ano = Number(porTexto[2]);
+  if (!mes || !Number.isFinite(ano)) return null;
+
+  return { ano, mes, chave: getChaveMes(ano, mes) };
+}
+
+function calcularSalariosPorMes(perfis: PerfilSalarial[], referenciaAtual: { ano: number; mes: number }) {
+  const salariosPorMes = new Map<string, number>();
+
+  perfis.forEach((perfil) => {
+    const historicoOrdenado = [...perfil.historico].sort((a, b) => {
+      const marcaA = new Date(a.atualizado_em || a.criado_em).getTime();
+      const marcaB = new Date(b.atualizado_em || b.criado_em).getTime();
+      return marcaB - marcaA;
+    });
+    const vistos = new Set<string>();
+
+    historicoOrdenado.forEach((registro) => {
+      const referencia = extrairMesReferencia(registro.referencia);
+      if (!referencia || vistos.has(referencia.chave)) return;
+      vistos.add(referencia.chave);
+      const valor = registro.total_liquido ?? 0;
+      salariosPorMes.set(referencia.chave, arredondarMoeda((salariosPorMes.get(referencia.chave) || 0) + valor));
+    });
+
+    if (!historicoOrdenado.length && (perfil.salario_liquido || 0) > 0) {
+      const chaveAtual = getChaveMes(referenciaAtual.ano, referenciaAtual.mes);
+      salariosPorMes.set(chaveAtual, arredondarMoeda((salariosPorMes.get(chaveAtual) || 0) + (perfil.salario_liquido || 0)));
+    }
+  });
+
+  return salariosPorMes;
+}
+
+function listarOcorrenciasDoMes(
+  transacoes: Transacao[],
+  cartoes: CartaoCredito[],
+  ano: number,
+  mes: number,
+  hoje: Date,
+) {
+  const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const inicioMesConsulta = new Date(ano, mes - 1, 1);
+  const fimMesConsulta = new Date(ano, mes, 0, 23, 59, 59, 999);
+  const mesFuturo = inicioMesConsulta > inicioMesAtual;
+  const referenciaRealizacao = mesFuturo ? null : (inicioMesConsulta.getTime() === inicioMesAtual.getTime() ? hoje : fimMesConsulta);
+
+  return transacoes.flatMap<OcorrenciaMensal>((transacao) => {
+    const cartao = transacao.cartao_id ? cartoes.find((item) => item.id === transacao.cartao_id) : undefined;
+    const dataCompetencia = getDataCompetenciaDespesa(transacao, cartao);
+    let dataExibicao: string | null = null;
+
+    if (transacao.tipo === 'despesa' && transacao.classificacao !== 'fixa' && (transacao.parcelas || 1) <= 1) {
+      const [anoCompetencia, mesCompetencia] = dataCompetencia.split('-').map(Number);
+      if (anoCompetencia === ano && mesCompetencia === mes) {
+        dataExibicao = dataCompetencia;
+      }
+    } else {
+      const ocorrencia = getDataOcorrenciaNoMes(
+        transacao.tipo === 'despesa' ? { ...transacao, data: dataCompetencia } : transacao,
+        mes,
+        ano,
+      );
+      if (ocorrencia) {
+        dataExibicao = formatFinancialDate(ocorrencia);
+      }
+    }
+
+    if (!dataExibicao) return [];
+
+    const realizada = referenciaRealizacao
+      ? transacaoContaNoMesAteData({ ...transacao, data: dataExibicao }, mes, ano, referenciaRealizacao)
+      : false;
+
+    return [{ transacao, dataExibicao, realizada }];
+  });
+}
+
+function calcularFluxoSalarioMensal(
+  perfis: PerfilSalarial[],
+  transacoes: Transacao[],
+  cartoes: CartaoCredito[],
+  mesesProjetados = 3,
+) {
+  const hoje = startOfTodayLocal();
+  const referenciaAtual = { ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 };
+  const salariosPorMes = calcularSalariosPorMes(perfis, referenciaAtual);
+  const resumos: ResumoMesSalario[] = [];
+  let saldoCarregado = 0;
+
+  for (let indice = 0; indice < mesesProjetados; indice += 1) {
+    const { ano, mes } = addMeses(referenciaAtual.ano, referenciaAtual.mes, indice);
+    const chave = getChaveMes(ano, mes);
+    const ocorrencias = listarOcorrenciasDoMes(transacoes, cartoes, ano, mes, hoje);
+    const salarioReferencia = salariosPorMes.get(chave) || 0;
+    const recebimentosAvulsos = ocorrencias
+      .filter(({ transacao }) => transacao.tipo === 'receita' && !CATEGORIAS_SALARIAIS.has(transacao.categoria_id))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
+    const debitadoNoMes = ocorrencias
+      .filter(({ transacao, realizada }) => (
+        transacao.tipo === 'despesa'
+        && !transacao.cartao_id
+        && realizada
+        && (!transacao.metodo_pagamento || METODOS_SAIDA_SALDO.has(transacao.metodo_pagamento))
+      ))
+      .reduce((soma, { transacao }) => soma + transacao.valor, 0);
+
+    const chavesCompromissos = new Set<string>();
+    const compromissosAutomaticos = ocorrencias.reduce((soma, { transacao, dataExibicao, realizada }) => {
+      const manterAutomatico = transacao.classificacao === 'fixa' || Boolean(transacao.cartao_id && (transacao.parcelas || 1) > 1);
+      if (!manterAutomatico || transacao.tipo !== 'despesa') return soma;
+
+      const chaveCompromisso = `${transacao.id}|${dataExibicao}`;
+      if (chavesCompromissos.has(chaveCompromisso)) return soma;
+      chavesCompromissos.add(chaveCompromisso);
+
+      if (!transacao.cartao_id && realizada) return soma;
+      return soma + transacao.valor;
+    }, 0);
+
+    const saldoInicial = saldoCarregado;
+    const totalDisponivel = saldoInicial + salarioReferencia + recebimentosAvulsos;
+    const saldoFinal = arredondarMoeda(totalDisponivel - debitadoNoMes - compromissosAutomaticos);
+
+    resumos.push({
+      chave,
+      titulo: getTituloMes(ano, mes),
+      salarioReferencia: arredondarMoeda(salarioReferencia),
+      recebimentosAvulsos: arredondarMoeda(recebimentosAvulsos),
+      saldoInicial: arredondarMoeda(saldoInicial),
+      totalDisponivel: arredondarMoeda(totalDisponivel),
+      debitadoNoMes: arredondarMoeda(debitadoNoMes),
+      compromissosAutomaticos: arredondarMoeda(compromissosAutomaticos),
+      saldoFinal,
+    });
+
+    saldoCarregado = saldoFinal;
+  }
+
+  return resumos;
+}
 
 function paraString(valor?: string | number) {
   return valor === undefined || valor === null ? '' : String(valor);
@@ -189,8 +422,8 @@ function upsertPerfilPorAnalise(perfis: PerfilSalarial[], analise: AnaliseContra
 }
 
 export default function Salarios() {
-  const { config, atualizarConfig } = useFinanceiroStore();
-  const [perfis, setPerfis] = useState<PerfilSalarial[]>([]);
+  const { config, atualizarConfig, transacoes, cartoes } = useFinanceiroStore();
+  const [perfis, setPerfis] = useState<PerfilSalarial[]>(() => storageSalarios.getAll());
   const [analise, setAnalise] = useState<AnaliseContracheque | null>(null);
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [erro, setErro] = useState('');
@@ -201,10 +434,6 @@ export default function Salarios() {
   const [formPerfil, setFormPerfil] = useState<FormPerfil | null>(null);
   const [historicoAbertoId, setHistoricoAbertoId] = useState<string | null>(null);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setPerfis(storageSalarios.getAll());
-  }, []);
 
   function persistir(lista: PerfilSalarial[]) {
     setPerfis(lista);
@@ -321,6 +550,11 @@ export default function Salarios() {
     [perfis],
   );
 
+  const fluxoMensal = useMemo(
+    () => calcularFluxoSalarioMensal(perfis, transacoes, cartoes),
+    [cartoes, perfis, transacoes],
+  );
+
   return (
     <div className="space-y-6 pb-8">
       <div className="flex items-center gap-3">
@@ -345,6 +579,79 @@ export default function Salarios() {
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
           <div className="text-[11px] text-slate-500">Total líquido atual</div>
           <div className="mt-1 text-2xl font-bold text-emerald-300 tabular-nums">{formatarMoeda(totalLiquido)}</div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(59,130,246,0.12),rgba(255,255,255,0.02))] p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <h2 className="text-sm font-semibold text-white">Fluxo mensal do salario</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              O salario entra apenas no mes da referencia do contracheque. O que sobra vai como saldo inicial do proximo mes,
+              e os compromissos automaticos consideram somente despesas fixas e parcelas no cartao.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[11px] text-blue-100">
+            Proximo mes = saldo que sobrou + recebimentos avulsos daquele mes
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          {fluxoMensal.map((mes, indice) => (
+            <div key={mes.chave} className="rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">{mes.titulo}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {indice === 0 ? 'Mes atual' : indice === 1 ? 'Proximo mes' : 'Mes seguinte'}
+                  </div>
+                </div>
+                <div className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                  mes.saldoFinal >= 0 ? 'bg-emerald-500/10 text-emerald-300' : 'bg-red-500/10 text-red-300'
+                }`}>
+                  saldo final {formatarMoeda(mes.saldoFinal)}
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="text-[11px] text-slate-500">Saldo trazido</div>
+                  <div className="mt-1 text-sm font-semibold text-blue-200 tabular-nums">{formatarMoeda(mes.saldoInicial)}</div>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="text-[11px] text-slate-500">Salario da referencia</div>
+                  <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mes.salarioReferencia)}</div>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="text-[11px] text-slate-500">Recebimentos avulsos</div>
+                  <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mes.recebimentosAvulsos)}</div>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] p-3">
+                  <div className="text-[11px] text-slate-500">Total disponivel</div>
+                  <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mes.totalDisponivel)}</div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-400">Ja debitado no mes</span>
+                  <span className="font-semibold text-red-300 tabular-nums">{formatarMoeda(mes.debitadoNoMes)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-400">Compromissos automaticos</span>
+                  <span className="font-semibold text-amber-300 tabular-nums">{formatarMoeda(mes.compromissosAutomaticos)}</span>
+                </div>
+                <div className="border-t border-white/8 pt-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-slate-300">Saldo levado ao proximo mes</span>
+                    <span className={`font-semibold tabular-nums ${mes.saldoFinal >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      {formatarMoeda(mes.saldoFinal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -396,7 +703,15 @@ export default function Salarios() {
 
             <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4">
               {previewImagem ? (
-                <img src={previewImagem} alt="Preview do contracheque" className="max-h-[360px] w-full rounded-xl object-contain" />
+                <div className="relative mx-auto h-[360px] w-full">
+                  <Image
+                    src={previewImagem}
+                    alt="Preview do contracheque"
+                    fill
+                    unoptimized
+                    className="rounded-xl object-contain"
+                  />
+                </div>
               ) : (
                 <div className="flex min-h-[180px] items-center justify-center text-center text-sm text-slate-500">
                   Envie uma imagem do contracheque para gerar um perfil.
