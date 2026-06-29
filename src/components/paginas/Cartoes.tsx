@@ -197,7 +197,6 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
             {points.map((pt, i) => {
               const d = dados[i];
               const isAtual = d.tipo === 'atual';
-              const isFuturo = d.tipo === 'futuro';
               const isPast = d.tipo === 'passado';
               return (
                 <g key={d.mes}>
@@ -324,6 +323,14 @@ function normalizarTexto(valor: string | null | undefined) {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function formatarMesReferenciaFatura(dataReferencia: string | null | undefined) {
+  if (!dataReferencia) return 'este mes';
+  return parseFinancialDate(dataReferencia).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
@@ -589,7 +596,11 @@ export default function Cartoes() {
     excluirTransacao(transacao.id);
   }
 
-  function quitarFaturaCartao(cartao: CartaoCredito, listaAtual: LancamentoCartaoExibicao[]) {
+  function quitarFaturaCartao(
+    cartao: CartaoCredito,
+    listaAtual: LancamentoCartaoExibicao[],
+    referenciaFatura?: string | null,
+  ) {
     const pendencias = listaAtual
       .filter((item) => item.status !== 'paga')
       .map((item) => ({
@@ -599,14 +610,17 @@ export default function Cartoes() {
 
     if (pendencias.length === 0) return;
 
-    const confirmar = confirm(`Marcar a fatura de ${cartao.nome} como paga? ${pendencias.length} lançamento(s) serão quitados.`);
+    const descricaoReferencia = formatarMesReferenciaFatura(referenciaFatura);
+    const confirmar = confirm(
+      `Marcar como paga a fatura de ${descricaoReferencia} do cartao ${cartao.nome}? ${pendencias.length} lancamento(s) serao quitados.`,
+    );
     if (!confirmar) return;
 
     marcarFaturaCartaoComoPaga(cartao.id, pendencias);
     setStatusImportacao({
       cartaoId: cartao.id,
       tipo: 'sucesso',
-      mensagem: `Fatura marcada como paga. Os lançamentos quitados saíram desta fatura atual.`,
+      mensagem: `Fatura de ${descricaoReferencia} marcada como paga. Se houver novas parcelas ou compras futuras, o proximo mes aparece automaticamente.`,
     });
   }
 
@@ -942,11 +956,17 @@ export default function Cartoes() {
             periodoSeguinte.fim,
           );
           const mostrarProximaFatura = faturaAtualPendente.length === 0 && listaPeriodoAtual.some((item) => item.transacao.tipo === 'despesa');
-          const inicioFatura = mostrarProximaFatura ? periodoSeguinte.inicio : periodoAtual.inicio;
-          const fimFatura = mostrarProximaFatura ? periodoSeguinte.fim : periodoAtual.fim;
+          const periodoEmExibicao = mostrarProximaFatura ? periodoSeguinte : periodoAtual;
+          const inicioFatura = periodoEmExibicao.inicio;
+          const fimFatura = periodoEmExibicao.fim;
           const listaCompleta = mostrarProximaFatura
             ? listaProximaFatura
             : listaPeriodoAtual;
+          const despesasEmAberto = listaCompleta.filter((item) => item.transacao.tipo === 'despesa' && item.status !== 'paga');
+          const referenciaFaturaExibida = (
+            despesasEmAberto[0]?.dataExibicao
+            || listaCompleta.find((item) => item.transacao.tipo === 'despesa')?.dataExibicao
+          ) ?? null;
           const lista = listaCompleta.filter((item) => (
             filtroLancamentos === 'todos'
               ? true
@@ -978,10 +998,7 @@ export default function Cartoes() {
           const estornosProximaFatura = listaProximaFatura.filter((item) => item.transacao.tipo === 'receita');
           const totalProximaFatura = comprasProximaFatura.reduce((soma, item) => soma + item.transacao.valor, 0)
             - estornosProximaFatura.reduce((soma, item) => soma + item.transacao.valor, 0);
-          const datasPendentesFaturaAtual = faturaAtualPendente.map((item) => parseFinancialDate(item.dataExibicao));
-          const dataVencimentoAtual = datasPendentesFaturaAtual.length
-            ? new Date(Math.max(...datasPendentesFaturaAtual.map((data) => data.getTime())))
-            : null;
+          const dataVencimentoAtual = referenciaFaturaExibida ? parseFinancialDate(referenciaFaturaExibida) : null;
           const atrasoDias = dataVencimentoAtual
             ? Math.floor((startOfTodayLocal().getTime() - dataVencimentoAtual.getTime()) / 86400000)
             : -1;
@@ -989,8 +1006,8 @@ export default function Cartoes() {
           const diasVencimento = dataVencimentoAtual
             ? Math.ceil((dataVencimentoAtual.getTime() - startOfTodayLocal().getTime()) / 86400000)
             : 0;
-          const urgente = !faturaAtrasada && diasVencimento <= 5 && diasVencimento >= 0 && faturaAtualPendente.length > 0;
-          const podeQuitarFatura = faturaAtualPendente.length > 0 && Boolean(dataVencimentoAtual && dataVencimentoAtual <= startOfTodayLocal());
+          const urgente = !faturaAtrasada && diasVencimento <= 5 && diasVencimento >= 0 && despesasEmAberto.length > 0;
+          const podeQuitarFatura = despesasEmAberto.length > 0;
 
           return (
             <div key={cartao.id} className={`glass-card overflow-hidden ${urgente || faturaAtrasada ? 'border-red-500/30' : ''}`}>
@@ -1037,6 +1054,22 @@ export default function Cartoes() {
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        quitarFaturaCartao(cartao, listaCompleta, referenciaFaturaExibida);
+                      }}
+                      disabled={!podeQuitarFatura}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                        podeQuitarFatura
+                          ? 'text-emerald-300 hover:text-white bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/20'
+                          : 'text-slate-500 bg-white/[0.03] border-white/10 cursor-not-allowed'
+                      }`}
+                      aria-label="Marcar fatura exibida como paga"
+                    >
+                      pago
+                    </button>
+                    <button
                       onClick={(event) => {
                         event.stopPropagation();
                         setCartaoImportandoId(cartao.id);
@@ -1080,7 +1113,7 @@ export default function Cartoes() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                          <span>Fatura Atual</span>
+                          <span>{mostrarProximaFatura ? 'Proxima fatura' : 'Fatura atual'}</span>
                           <button
                             type="button"
                             onClick={(event) => {
@@ -1222,15 +1255,6 @@ export default function Cartoes() {
                         </p>
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
-                        {podeQuitarFatura && (
-                          <button
-                            type="button"
-                            onClick={() => quitarFaturaCartao(cartao, listaPeriodoAtual)}
-                            className="px-3 py-2 rounded-xl text-xs font-medium bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 transition-all"
-                          >
-                            Marcar fatura como paga
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => {
