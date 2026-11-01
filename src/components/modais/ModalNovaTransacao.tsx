@@ -23,6 +23,7 @@ interface Props {
   onFechar: () => void;
   transacaoEditar?: Transacao;
   tipoInicial?: TipoTransacao;
+  onAbrirContracheque?: () => void;
 }
 
 type FormState = {
@@ -74,7 +75,7 @@ function getFormVazio(tipo: TipoTransacao = 'despesa'): FormState {
   };
 }
 
-export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa' }: Props) {
+export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa', onAbrirContracheque }: Props) {
   const {
     categorias,
     contas,
@@ -370,6 +371,16 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 ))}
               </div>
             </div>
+
+            {!transacaoEditar && form.tipo === 'receita' && onAbrirContracheque && (
+              <button
+                type="button"
+                onClick={() => { onFechar(); onAbrirContracheque(); }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-purple-500/30 bg-purple-600/10 px-3 py-2 text-xs font-medium text-purple-300 transition-colors hover:bg-purple-600/20"
+              >
+                📄 Ler contracheque
+              </button>
+            )}
 
             {!transacaoEditar && (
               <div>

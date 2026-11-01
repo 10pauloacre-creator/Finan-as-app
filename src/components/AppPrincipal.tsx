@@ -653,6 +653,7 @@ export default function AppPrincipal() {
         aberto={modalAberto}
         onFechar={() => setModalAberto(false)}
         tipoInicial={tipoInicialModal}
+        onAbrirContracheque={() => setPagina('salarios')}
       />
     </div>
   );
