@@ -13,7 +13,7 @@ import { formatarMoeda, mesAtual } from '@/lib/storage';
 import { BANCO_INFO, BancoSlug, CartaoCredito, ContaBancaria, Categoria, Transacao } from '@/types';
 import { calcularScore, ScoreFinanceiro } from '@/lib/score-financeiro';
 import { calcularPrevisao } from '@/lib/previsao';
-import { formatFinancialDate, isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
+import { diasAteVencimento, formatFinancialDate, isSameFinancialMonth, parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import {
   getDataCobrancaCartao,
   getDataCompetenciaDespesa,
@@ -482,19 +482,16 @@ function DashboardMetricCard({
 }
 
 function UpcomingCard({ cartoes, onNavegar }: { cartoes: CartaoVenc[]; onNavegar: () => void }) {
-  const hoje = new Date().getDate();
   const proximos = useMemo(() => {
     return cartoes
       .map(c => {
-        const diasRestantes = c.dia_vencimento >= hoje
-          ? c.dia_vencimento - hoje
-          : 30 - hoje + c.dia_vencimento;
+        const diasRestantes = diasAteVencimento(c.dia_vencimento);
         return { ...c, diasRestantes };
       })
       .filter(c => c.diasRestantes <= 15)
       .sort((a, b) => a.diasRestantes - b.diasRestantes)
       .slice(0, 5);
-  }, [cartoes, hoje]);
+  }, [cartoes]);
 
   if (proximos.length === 0) return null;
 
@@ -1084,8 +1081,7 @@ function resolverCategoriaId(tx: TransacaoExtraida, categorias: Categoria[]) {
 }
 
 function diasAte(dia: number) {
-  const hoje = new Date().getDate();
-  return dia >= hoje ? dia - hoje : 30 - hoje + dia;
+  return diasAteVencimento(dia);
 }
 
 function aplicarDataDeExibicaoNaTransacao(transacao: Transacao, dataExibicao: string): Transacao {
@@ -1614,15 +1610,13 @@ export default function Dashboard({ onNovoPagina }: Props) {
     const cartoesPendentes = cartoes
       .filter((cartao) => cartao.fatura_atual > 0)
       .map((cartao) => {
-        const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), cartao.dia_vencimento);
-        if (vencimento < hoje) vencimento.setMonth(vencimento.getMonth() + 1);
         return {
           id: cartao.id,
           nome: cartao.nome,
           banco: cartao.banco,
           dia_vencimento: cartao.dia_vencimento,
           valor_total_fatura: cartao.fatura_atual,
-          diasParaVencer: Math.ceil((vencimento.getTime() - hoje.getTime()) / 86400000),
+          diasParaVencer: diasAteVencimento(cartao.dia_vencimento),
         };
       })
       .sort((a, b) => a.diasParaVencer - b.diasParaVencer || b.valor_total_fatura - a.valor_total_fatura);
@@ -1939,13 +1933,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
     [cartoes],
   );
   const proximoVencimento = useMemo(() => {
-    const hoje = new Date().getDate();
     const proximo = cartoes
       .filter((cartao) => cartao.fatura_atual > 0)
       .map((cartao) => {
-        const diasRestantes = cartao.dia_vencimento >= hoje
-          ? cartao.dia_vencimento - hoje
-          : 30 - hoje + cartao.dia_vencimento;
+        const diasRestantes = diasAteVencimento(cartao.dia_vencimento);
         return { ...cartao, diasRestantes };
       })
       .sort((a, b) => a.diasRestantes - b.diasRestantes)[0];
@@ -2350,10 +2341,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
             const pct = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;
             const disponivel = cartao.limite - cartao.fatura_atual;
-            const hoje = new Date().getDate();
-            const diasVenc = cartao.dia_vencimento >= hoje
-              ? cartao.dia_vencimento - hoje
-              : 30 - hoje + cartao.dia_vencimento;
+            const diasVenc = diasAteVencimento(cartao.dia_vencimento);
 
             return (
               <button key={cartao.id} onClick={() => onNovoPagina('cartoes')}

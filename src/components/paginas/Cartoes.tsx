@@ -1213,10 +1213,10 @@ export default function Cartoes() {
                       <div className="text-slate-600 text-[11px] mt-0.5">Disponível</div>
                     </div>
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
-                      <div className={`text-sm font-bold ${diasVencimento <= 5 ? 'text-red-400' : 'text-slate-300'}`}>
-                        {diasVencimento}d
+                      <div className={`text-sm font-bold ${podeQuitarFatura && diasVencimento <= 5 ? 'text-red-400' : 'text-slate-300'}`}>
+                        {podeQuitarFatura ? `${diasVencimento}d` : 'Em dia'}
                       </div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">p/ vencer</div>
+                      <div className="text-slate-600 text-[11px] mt-0.5">{podeQuitarFatura ? 'p/ vencer' : 'sem fatura em aberto'}</div>
                     </div>
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-slate-300 text-sm font-bold">{compras.length}</div>

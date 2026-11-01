@@ -24,3 +24,14 @@ export function startOfTodayLocal(): Date {
 export function diffDaysBetween(dateA: Date, dateB: Date): number {
   return Math.round((dateA.getTime() - dateB.getTime()) / 86400000);
 }
+
+/** Dias corridos até a próxima ocorrência do dia de vencimento (0 = hoje). */
+export function diasAteVencimento(diaVencimento: number, base: Date = startOfTodayLocal()): number {
+  const ultimoDiaMes = (ano: number, mes: number) => new Date(ano, mes + 1, 0).getDate();
+  let alvo = new Date(base.getFullYear(), base.getMonth(), Math.min(diaVencimento, ultimoDiaMes(base.getFullYear(), base.getMonth())));
+  if (alvo.getTime() < base.getTime()) {
+    const proximoMes = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+    alvo = new Date(proximoMes.getFullYear(), proximoMes.getMonth(), Math.min(diaVencimento, ultimoDiaMes(proximoMes.getFullYear(), proximoMes.getMonth())));
+  }
+  return diffDaysBetween(alvo, base);
+}
