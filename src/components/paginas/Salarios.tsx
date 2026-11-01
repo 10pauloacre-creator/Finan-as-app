@@ -4,7 +4,6 @@ import { ChangeEvent, useMemo, useRef, useState } from 'react';
 import { Brain, Check, FileImage, Loader2, Pencil, Plus, Save, Trash2, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
-import OCRModelSelect from '@/components/ui/OCRModelSelect';
 import { formatarMoeda, gerarId, storageSalarios } from '@/lib/storage';
 import { formatFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { getDataCompetenciaDespesa, getDataOcorrenciaNoMes, transacaoContaNoMesAteData } from '@/lib/transacoes';
@@ -662,13 +661,6 @@ export default function Salarios() {
             <p className="mt-1 text-xs text-slate-400">
               Envie um print do contracheque. A I.A. lê o documento, extrai os dados principais e gera ou atualiza um perfil salarial com histórico para acompanhamento.
             </p>
-          </div>
-          <div className="w-full max-w-xs">
-            <p className="mb-2 text-xs text-slate-500">Leitor OCR</p>
-            <OCRModelSelect
-              value={config.ai_modelo_ocr_padrao || 'automatico'}
-              onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
-            />
           </div>
         </div>
 

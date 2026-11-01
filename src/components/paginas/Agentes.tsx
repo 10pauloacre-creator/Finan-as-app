@@ -9,7 +9,6 @@ import { calcularScore } from '@/lib/score-financeiro';
 import { formatarMoeda } from '@/lib/storage';
 import { parseFinancialDate, startOfTodayLocal } from '@/lib/date';
 import { transacaoContaNoMesAteData } from '@/lib/transacoes';
-import AIModelSelect from '@/components/ui/AIModelSelect';
 import type { AIModelId } from '@/lib/ai/catalog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -584,14 +583,6 @@ export default function Agentes() {
         <p className="text-sm text-slate-500 mt-1">
           Análises especializadas com inteligência artificial — cada agente tem uma perspectiva única dos seus dados.
         </p>
-      </div>
-
-      <div className="max-w-xs">
-        <AIModelSelect
-          task="agents"
-          value={config.ai_modelo_padrao || 'automatico'}
-          onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
-        />
       </div>
 
       {/* Evolucao do Score — topo */}

@@ -15,7 +15,6 @@ import {
   Brain, FileText, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import type { Transacao, Categoria, ContaBancaria, CartaoCredito } from '@/types';
-import AIModelSelect from '@/components/ui/AIModelSelect';
 
 const CORES = ['#14B8A6','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#F97316'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -213,13 +212,6 @@ function RelatorioIA() {
     <div className="space-y-5">
       {/* Seletor de mes/ano + botao */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-[220px]">
-          <AIModelSelect
-            task="report"
-            value={config.ai_modelo_padrao || 'automatico'}
-            onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
-          />
-        </div>
         <select
           value={mesSel}
           onChange={e => { setMesSel(Number(e.target.value)); setRelatorio(null); }}

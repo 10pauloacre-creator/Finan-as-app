@@ -32,7 +32,6 @@ import {
 } from '@/lib/importacao-cartao';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
-import OCRModelSelect from '@/components/ui/OCRModelSelect';
 import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 import type { AIModelId } from '@/lib/ai/aiModels';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
@@ -1420,9 +1419,6 @@ function ModalCartaoCredito({
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <div className="text-xs text-slate-500 mb-3">Importar fatura</div>
             <div className="flex flex-wrap gap-2">
-              <div className="min-w-[200px]">
-                <OCRModelSelect value={configOcr} onChange={onAtualizarOcr} compact />
-              </div>
               <button type="button" onClick={onImportar}
                 className="px-3 py-2 rounded-xl text-xs font-medium bg-purple-600/15 border border-purple-500/25 text-purple-300 hover:bg-purple-600/25 transition-all flex items-center gap-1.5">
                 {importando ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}

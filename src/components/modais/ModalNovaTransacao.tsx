@@ -10,7 +10,6 @@ import ModalDuplicata from './ModalDuplicata';
 import { formatFinancialDate } from '@/lib/date';
 import { getDataCobrancaCartao } from '@/lib/transacoes';
 import BankLogo from '@/components/ui/BankLogo';
-import OCRModelSelect from '@/components/ui/OCRModelSelect';
 
 interface ItemCompraExtraido {
   nome: string;
@@ -374,13 +373,6 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
             {!transacaoEditar && (
               <div>
-                <div className="mb-3">
-                  <p className="mb-2 text-xs text-slate-500">Leitor OCR</p>
-                  <OCRModelSelect
-                    value={config.ai_modelo_ocr_padrao || 'automatico'}
-                    onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
-                  />
-                </div>
                 <input
                   type="file"
                   ref={fileRef}
