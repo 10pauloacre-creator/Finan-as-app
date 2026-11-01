@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic, MicOff, ImageIcon, Camera, Send, Bot, CheckCircle2, XCircle,
-  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet, X,
+  Loader2, Sparkles, Volume2, AlertCircle, FileText, CreditCard, Sheet, X, Settings2,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { construirContexto, construirSnapshotFinanceiro } from '@/lib/contexto-financeiro';
@@ -128,6 +128,8 @@ const MSG_BOAS_VINDAS: Mensagem = {
   texto: 'Olá! Sou o **Assistente IA** do FinanceiroIA 👋\n\nPode me contar sobre seus gastos por:\n• ✍️ **Texto** — "Gastei R$ 45 no iFood hoje"\n• 🎤 **Áudio** — segure o microfone e fale\n• 🖼️ **Imagem** — foto de comprovante ou nota fiscal\n• 📄 **PDF** — fatura do cartão de crédito\n• 📊 **CSV** — exportação de fatura aberta ou extrato\n\nVou extrair as informações e você confirma para salvar!',
   ts: Date.now(),
 };
+
+const ACOES_PRINCIPAIS: AcaoAssistente[] = ['resumo_mensal', 'plano_economia', 'alerta_gastos'];
 
 const ACOES_RAPIDAS: Array<{ id: AcaoAssistente; label: string; prompt: string }> = [
   {
@@ -628,6 +630,7 @@ export default function Assistente() {
   const [texto, setTexto]       = useState('');
   const [imagensPendentes, setImagensPendentes] = useState<ImagemPendente[]>([]);
   const [gravando, setGravando] = useState(false);
+  const [configAvancada, setConfigAvancada] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   const bottomRef        = useRef<HTMLDivElement>(null);
@@ -1238,22 +1241,7 @@ export default function Assistente() {
           </div>
         </div>
         <div className="px-4 py-3 border-b border-white/[0.06] flex gap-2 overflow-x-auto">
-          <div className="min-w-[210px] mr-1">
-            <AIModelSelect
-              task="chat"
-              value={config.ai_modelo_padrao || 'automatico'}
-              onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
-              compact
-            />
-          </div>
-          <div className="min-w-[210px] mr-1">
-            <OCRModelSelect
-              value={config.ai_modelo_ocr_padrao || 'automatico'}
-              onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
-              compact
-            />
-          </div>
-          {ACOES_RAPIDAS.map((acao) => (
+          {ACOES_RAPIDAS.filter((acao) => ACOES_PRINCIPAIS.includes(acao.id)).map((acao) => (
             <button
               key={acao.id}
               onClick={() => enviarPergunta(acao.prompt, acao.id, 'Atalho: ' + acao.label)}
@@ -1263,7 +1251,37 @@ export default function Assistente() {
               {acao.label}
             </button>
           ))}
+          <button
+            onClick={() => setConfigAvancada((v) => !v)}
+            aria-expanded={configAvancada}
+            aria-label="Configurações avançadas"
+            title="Configurações avançadas"
+            className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-xs text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+          >
+            <Settings2 size={13} />
+            Avançado
+          </button>
         </div>
+        {configAvancada && (
+          <div className="px-4 py-3 border-b border-white/[0.06] flex flex-wrap gap-3">
+            <p className="w-full text-xs text-slate-500">Por padrão o modelo é escolhido automaticamente. Troque só se precisar.</p>
+            <div className="min-w-[210px]">
+              <AIModelSelect
+                task="chat"
+                value={config.ai_modelo_padrao || 'automatico'}
+                onChange={(value) => atualizarConfig({ ai_modelo_padrao: value })}
+                compact
+              />
+            </div>
+            <div className="min-w-[210px]">
+              <OCRModelSelect
+                value={config.ai_modelo_ocr_padrao || 'automatico'}
+                onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
+                compact
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           {msgs.map(msg => (
