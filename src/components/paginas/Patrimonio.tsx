@@ -892,7 +892,7 @@ export default function Patrimonio() {
         {reservas.length === 0 ? (
           <div className="text-center py-8 text-slate-600">
             <div className="text-3xl mb-2 opacity-50">🛟</div>
-            <p className="text-sm font-medium text-slate-500">Nenhuma reserva criada</p>
+            <p className="text-sm font-medium text-slate-400">Sua primeira reserva começa aqui</p>
             <p className="text-xs mt-1 text-slate-600">Crie reservas para emergencia, viagem, carro, casa e o que mais fizer sentido.</p>
             <button
               onClick={() => { setReservaEditar(undefined); setModalReservaAberto(true); }}

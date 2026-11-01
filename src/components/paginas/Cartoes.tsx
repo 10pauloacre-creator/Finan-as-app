@@ -1438,7 +1438,7 @@ export default function Cartoes() {
         {cartoes.length === 0 && (
           <div className="glass-card flex flex-col items-center justify-center py-14 text-slate-600">
             <CreditCard size={40} className="mb-3 opacity-30" />
-            <p className="text-sm font-medium text-slate-500">Nenhum cartão cadastrado</p>
+            <p className="text-sm font-medium text-slate-400">Adicione seu primeiro cartão</p>
             <p className="text-xs mt-1">Clique em &quot;Novo Cartão&quot; para começar</p>
           </div>
         )}

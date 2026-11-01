@@ -1484,8 +1484,9 @@ export default function Transacoes() {
       <div className="space-y-4">
         {transacoesAgrupadas.length === 0 ? (
           <div className="py-12 text-center text-slate-600">
-            <div className="mb-3 text-4xl">?</div>
-            <p className="text-sm">Nenhuma transacao encontrada</p>
+            <div className="mb-3 text-4xl">🧾</div>
+            <p className="text-sm font-medium text-slate-400">Nada por aqui ainda</p>
+            <p className="mt-1 text-xs">Toque no + para registrar seu primeiro lançamento ou ajuste os filtros.</p>
           </div>
         ) : (
           transacoesAgrupadas.map(([data, grupo]) => {
