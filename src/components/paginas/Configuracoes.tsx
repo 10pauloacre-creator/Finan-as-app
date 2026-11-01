@@ -305,9 +305,9 @@ export default function Configuracoes() {
     fallbackUsed?: boolean;
     at?: string;
   } | null>(null);
-  const [taxasSelic, setTaxasSelic] = useState(String(selicAtual || 10.75));
-  const [taxasCdi, setTaxasCdi] = useState(String(cdiAtual || 10.65));
-  const [taxasIpca, setTaxasIpca] = useState(String(ipcaAtual || 4.83));
+  const [taxasSelic, setTaxasSelic] = useState(selicAtual != null ? String(selicAtual) : '');
+  const [taxasCdi, setTaxasCdi] = useState(cdiAtual != null ? String(cdiAtual) : '');
+  const [taxasIpca, setTaxasIpca] = useState(ipcaAtual != null ? String(ipcaAtual) : '');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -377,9 +377,13 @@ export default function Configuracoes() {
     try {
       const res = await fetch('/api/selic');
       const data = await res.json();
-      const selic = data.taxa || 10.75;
+      const selic = Number(data?.taxa);
+      if (!res.ok || !Number.isFinite(selic) || selic <= 0) {
+        mostrarToast('Taxa Selic indisponível no momento');
+        return;
+      }
       const cdi = selic - 0.1;
-      setTaxas(selic, cdi, parseFloat(taxasIpca) || 4.83);
+      setTaxas(selic, cdi, parseFloat(taxasIpca) || ipcaAtual || 4.83);
       setTaxasSelic(selic.toFixed(2));
       setTaxasCdi(cdi.toFixed(2));
       mostrarToast('Taxas atualizadas com sucesso!');
