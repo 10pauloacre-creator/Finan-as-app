@@ -24,6 +24,7 @@ interface Props {
   transacaoEditar?: Transacao;
   tipoInicial?: TipoTransacao;
   onAbrirContracheque?: () => void;
+  iniciarComFoto?: boolean;
 }
 
 type FormState = {
@@ -76,7 +77,7 @@ function getFormVazio(tipo: TipoTransacao = 'despesa'): FormState {
   };
 }
 
-export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa', onAbrirContracheque }: Props) {
+export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, tipoInicial = 'despesa', onAbrirContracheque, iniciarComFoto = false }: Props) {
   const {
     categorias,
     contas,
@@ -100,6 +101,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   const [duplicataEncontrada, setDuplicataEncontrada] = useState<Transacao | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ultimoContextoRef = useRef<string>('');
+
+  useEffect(() => {
+    if (aberto && iniciarComFoto && !transacaoEditar) {
+      const t = window.setTimeout(() => fileRef.current?.click(), 150);
+      return () => window.clearTimeout(t);
+    }
+  }, [aberto, iniciarComFoto, transacaoEditar]);
 
   useEffect(() => {
     if (!aberto) {

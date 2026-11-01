@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import iconV2 from '@/app/icons/Iconv2.png';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, TrendingUp,
-  Settings, Plus, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
+  Settings, Plus, Camera, Building2, CreditCard, Cloud, CloudOff, RefreshCw, Sparkles,
   Target, Repeat, BrainCircuit, CalendarDays, MoreHorizontal, X, Search, HardDrive, WalletCards,
 } from 'lucide-react';
 import { formatarMoeda } from '@/lib/storage';
@@ -285,6 +285,7 @@ export default function AppPrincipal() {
   const [pagina, setPagina]           = useState<Pagina>('dashboard');
   const [modalAberto, setModalAberto] = useState(false);
   const [tipoInicialModal, setTipoInicialModal] = useState<TipoTransacao>('despesa');
+  const [modalComFoto, setModalComFoto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [fazendoBackup, setFazendoBackup] = useState(false);
   const [maisAberto, setMaisAberto]   = useState(false);
@@ -340,8 +341,9 @@ export default function AppPrincipal() {
     return () => window.clearTimeout(timeout);
   }, []);
 
-  function abrirModalNovaTransacao(tipo: TipoTransacao = 'despesa') {
+  function abrirModalNovaTransacao(tipo: TipoTransacao = 'despesa', comFoto = false) {
     setTipoInicialModal(tipo);
+    setModalComFoto(comFoto);
     setModalAberto(true);
   }
 
@@ -542,13 +544,6 @@ export default function AppPrincipal() {
             >
               <Search size={18} />
             </button>
-            <button
-              onClick={() => abrirModalNovaTransacao('despesa')}
-              className="btn-primary text-white p-2 rounded-xl"
-              aria-label="Novo lançamento"
-            >
-              <Plus size={18} />
-            </button>
           </div>
         </header>
 
@@ -558,6 +553,24 @@ export default function AppPrincipal() {
             {renderizarPagina()}
           </div>
         </main>
+
+        {/* Botao flutuante: novo lancamento + atalho para foto de recibo */}
+        <div className="fixed right-4 z-20 flex flex-col items-end gap-3" style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+          <button
+            onClick={() => abrirModalNovaTransacao('despesa', true)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-slate-800 text-slate-200 shadow-lg transition-transform active:scale-95"
+            aria-label="Fotografar recibo"
+          >
+            <Camera size={18} />
+          </button>
+          <button
+            onClick={() => abrirModalNovaTransacao('despesa')}
+            className="btn-primary flex h-14 w-14 items-center justify-center rounded-full text-white transition-transform"
+            aria-label="Novo lançamento"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
 
         {/* Bottom Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 border-t border-white/[0.06] px-2 pt-2 pb-safe z-10 backdrop-blur-xl"
@@ -654,6 +667,7 @@ export default function AppPrincipal() {
         onFechar={() => setModalAberto(false)}
         tipoInicial={tipoInicialModal}
         onAbrirContracheque={() => setPagina('salarios')}
+        iniciarComFoto={modalComFoto}
       />
     </div>
   );
