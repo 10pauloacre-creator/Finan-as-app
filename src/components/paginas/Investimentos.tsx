@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, TrendingUp, Calculator, RefreshCw, Info, X, ShieldCheck } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
@@ -49,7 +49,7 @@ const TIPOS_INV: {
     descricao: '100% Selic — liquidez diária',
     seguranca: 10,
     infoDetalhada: 'Título de dívida pública emitido pelo Tesouro Nacional. A rentabilidade acompanha a taxa Selic do dia a dia, sendo atualizada diariamente. É a aplicação mais segura do Brasil — garantida pelo Governo Federal. Resgate disponível em D+1 útil.',
-    rentabilidadeEsperada: '100% da Selic (atual ~10,75% a.a.)',
+    rentabilidadeEsperada: '100% da Selic',
     liquidez: 'Diária (D+1)',
     ir: 'Tabela regressiva: 22,5% (<6m) → 15% (>2a)',
     garantia: 'Governo Federal',
@@ -174,35 +174,6 @@ const TIPOS_INV: {
   },
 ];
 
-// ── Ações e FIIs brasileiros populares ────────────────────
-const ATIVOS_B3 = [
-  // Bancos
-  { ticker: 'ITUB4', nome: 'Itaú Unibanco', setor: 'Bancos', tipo: 'Ação', dy: 5.2, seguranca: 7, descricao: 'Maior banco privado do Brasil por ativos. Alta diversificação, forte dividend yield e presença na América Latina.', variacao12m: 18.3 },
-  { ticker: 'BBDC4', nome: 'Bradesco', setor: 'Bancos', tipo: 'Ação', dy: 6.1, seguranca: 6, descricao: 'Segundo maior banco privado do Brasil. Dividend yield histórico elevado e ampla rede de agências.', variacao12m: 8.7 },
-  { ticker: 'BBAS3', nome: 'Banco do Brasil', setor: 'Bancos', tipo: 'Ação', dy: 8.3, seguranca: 7, descricao: 'Maior banco da América Latina por total de ativos. Controle estatal parcial e dividend yield acima da média.', variacao12m: 22.1 },
-  { ticker: 'SANB11', nome: 'Santander Brasil', setor: 'Bancos', tipo: 'Ação', dy: 5.8, seguranca: 6, descricao: 'Subsidiária brasileira do banco espanhol Santander. Foco em varejo e PMEs.', variacao12m: 5.4 },
-  // Energia
-  { ticker: 'CMIG4', nome: 'Cemig', setor: 'Energia', tipo: 'Ação', dy: 10.2, seguranca: 6, descricao: 'Distribuidora, transmissora e geradora de energia de Minas Gerais. Dividend yield elevado historicamente.', variacao12m: 15.6 },
-  { ticker: 'CPFE3', nome: 'CPFL Energia', setor: 'Energia', tipo: 'Ação', dy: 7.5, seguranca: 7, descricao: 'Uma das maiores geradoras e distribuidoras de energia do Brasil. Estável e previsível.', variacao12m: 12.8 },
-  { ticker: 'ENEV3', nome: 'Eneva', setor: 'Energia', tipo: 'Ação', dy: 2.1, seguranca: 5, descricao: 'Empresa de geração de energia termelétrica com foco em gás natural. Alta capacidade instalada.', variacao12m: 28.4 },
-  // Commodities
-  { ticker: 'PETR4', nome: 'Petrobras', setor: 'Petróleo', tipo: 'Ação', dy: 12.5, seguranca: 5, descricao: 'Maior empresa do Brasil e uma das maiores petrolíferas do mundo. Dividend yield extraordinário mas sujeito a política de dividendos variável.', variacao12m: 35.2 },
-  { ticker: 'VALE3', nome: 'Vale', setor: 'Mineração', tipo: 'Ação', dy: 8.7, seguranca: 5, descricao: 'Maior produtora de minério de ferro e níquel do mundo. Resultados atrelados às commodities internacionais.', variacao12m: -8.3 },
-  { ticker: 'PRIO3', nome: 'Prio (PetroRio)', setor: 'Petróleo', tipo: 'Ação', dy: 1.2, seguranca: 4, descricao: 'Empresa independente de exploração e produção de petróleo. Alto crescimento de produção.', variacao12m: 42.7 },
-  // Indústria/Tech
-  { ticker: 'WEGE3', nome: 'WEG', setor: 'Indústria', tipo: 'Ação', dy: 1.5, seguranca: 7, descricao: 'Fabricante de motores elétricos e soluções de automação. Exportadora com presença em 135 países. Crescimento consistente.', variacao12m: 24.1 },
-  { ticker: 'RENT3', nome: 'Localiza', setor: 'Serviços', tipo: 'Ação', dy: 1.1, seguranca: 6, descricao: 'Maior empresa de aluguel de carros da América Latina. Modelo de negócio resiliente com alta recorrência.', variacao12m: 19.8 },
-  // FIIs
-  { ticker: 'MXRF11', nome: 'Maxi Renda', setor: 'FII Papel', tipo: 'FII', dy: 12.8, seguranca: 5, descricao: 'Fundo de papel (CRIs) com diversificação em ativos de crédito imobiliário. Distribuição mensal de proventos.', variacao12m: 6.2 },
-  { ticker: 'HGLG11', nome: 'CSHG Logística', setor: 'FII Logístico', tipo: 'FII', dy: 7.2, seguranca: 7, descricao: 'Fundo de galpões logísticos com inquilinos de alta qualidade. Contratos longos e baixa vacância.', variacao12m: 11.4 },
-  { ticker: 'XPML11', nome: 'XP Malls', setor: 'FII Shopping', tipo: 'FII', dy: 8.4, seguranca: 6, descricao: 'Fundo de shoppings centers com ativos premium em São Paulo. Boa gestão e ativo valorizado.', variacao12m: 13.7 },
-  { ticker: 'KNRI11', nome: 'Kinea Renda', setor: 'FII Misto', tipo: 'FII', dy: 7.8, seguranca: 7, descricao: 'Fundo misto com lajes corporativas e galpões logísticos. Diversificação de risco e inquilinos sólidos.', variacao12m: 9.3 },
-  { ticker: 'VILG11', nome: 'Vinci Logística', setor: 'FII Logístico', tipo: 'FII', dy: 8.1, seguranca: 7, descricao: 'Fundo especializado em galpões logísticos e industriais. Contratos atypicals e inquilinos blue chips.', variacao12m: 10.8 },
-  { ticker: 'HCTR11', nome: 'Hectare', setor: 'FII Papel', tipo: 'FII', dy: 14.2, seguranca: 4, descricao: 'Fundo de papel com foco em CRIs de maior risco e maior retorno. DY elevado com risco maior.', variacao12m: -2.1 },
-];
-
-const SETORES_UNICOS = [...new Set(ATIVOS_B3.map(a => a.setor))];
-
 // ── Tabela IR ──────────────────────────────────────────────
 function calcularIR(rendimento: number, meses: number): number {
   if (meses <= 6)  return rendimento * 0.225;
@@ -250,9 +221,10 @@ function gerarCenarios(
 export default function Investimentos() {
   const { investimentos, adicionarInvestimento, excluirInvestimento, selicAtual, cdiAtual, ipcaAtual, setTaxas } = useFinanceiroStore();
 
-  const [aba, setAba]                 = useState<'simulador' | 'carteira' | 'acoes'>('simulador');
+  const [aba, setAba]                 = useState<'simulador' | 'carteira'>('simulador');
   const [mostrarForm, setMostrarForm] = useState(false);
   const [buscando, setBuscando]       = useState(false);
+  const [erroTaxas, setErroTaxas]     = useState(false);
   const [infoTipo, setInfoTipo]       = useState<typeof TIPOS_INV[0] | null>(null);
 
   // Simulador
@@ -263,11 +235,6 @@ export default function Investimentos() {
   const [simCustom, setSimCustom]         = useState('');
   const [modoCustom, setModoCustom]       = useState(false);
 
-  // Ações
-  const [filtroSetor, setFiltroSetor]     = useState('Todos');
-  const [filtroTipo, setFiltroTipo]       = useState('Todos');
-  const [ordenarPor, setOrdenarPor]       = useState<'dy' | 'seguranca' | 'variacao12m'>('dy');
-
   // Formulário
     const [form, setForm] = useState({
       nome: '', tipo: 'cdb' as TipoInvestimento,
@@ -276,16 +243,24 @@ export default function Investimentos() {
       isento_ir: false,
   });
 
-  async function buscarTaxas() {
+  const buscarTaxas = useCallback(async () => {
     setBuscando(true);
     try {
       const res  = await fetch('/api/selic');
       const data = await res.json();
-      const selic = data.taxa || 10.75;
-      setTaxas(selic, selic - 0.1, 4.83);
-    } catch { /* fallback */ }
-    finally { setBuscando(false); }
-  }
+      const selic = Number(data?.taxa);
+      if (!res.ok || !Number.isFinite(selic) || selic <= 0) {
+        setErroTaxas(true);
+        return;
+      }
+      setErroTaxas(false);
+      setTaxas(selic, selic - 0.1, ipcaAtual ?? 4.83);
+    } catch {
+      setErroTaxas(true);
+    } finally {
+      setBuscando(false);
+    }
+  }, [ipcaAtual, setTaxas]);
 
   useEffect(() => {
     if (selicAtual) return;
@@ -296,11 +271,14 @@ export default function Investimentos() {
     return () => window.clearTimeout(timeout);
   }, [buscarTaxas, selicAtual]);
 
-  const taxas = useMemo(() => ({
-    selic: selicAtual || 10.75,
-    cdi: cdiAtual || 10.65,
-    ipca: ipcaAtual || 4.83,
-  }), [selicAtual, cdiAtual, ipcaAtual]);
+  const taxas = useMemo(() => {
+    if (!selicAtual) return null;
+    return {
+      selic: selicAtual,
+      cdi: cdiAtual ?? selicAtual - 0.1,
+      ipca: ipcaAtual ?? 4.83,
+    };
+  }, [selicAtual, cdiAtual, ipcaAtual]);
 
   const prazoMeses = useMemo(() => {
     if (modoCustom) {
@@ -313,7 +291,7 @@ export default function Investimentos() {
   const cenarios = useMemo(() => {
     const principal = parseFloat(simPrincipal) || 0;
     const aporte    = parseFloat(simAporte)    || 0;
-    if (principal <= 0) return [];
+    if (principal <= 0 || !taxas) return [];
     return gerarCenarios(principal, aporte, prazoMeses, taxas);
   }, [simPrincipal, simAporte, prazoMeses, taxas]);
 
@@ -357,18 +335,6 @@ export default function Investimentos() {
     setMostrarForm(false);
   }
 
-  const ativosB3Filtrados = useMemo(() => {
-    let lista = ATIVOS_B3;
-    if (filtroSetor !== 'Todos') lista = lista.filter(a => a.setor === filtroSetor);
-    if (filtroTipo !== 'Todos')  lista = lista.filter(a => a.tipo === filtroTipo);
-    return [...lista].sort((a, b) => {
-      if (ordenarPor === 'dy')          return b.dy - a.dy;
-      if (ordenarPor === 'seguranca')   return b.seguranca - a.seguranca;
-      if (ordenarPor === 'variacao12m') return b.variacao12m - a.variacao12m;
-      return 0;
-    });
-  }, [filtroSetor, filtroTipo, ordenarPor]);
-
   const MESES_OPCOES = [1, 3, 6, 12, 18, 24, 36, 48, 60];
   const ANOS_OPCOES  = [1, 2, 3, 5, 10, 15, 20, 30];
 
@@ -380,9 +346,9 @@ export default function Investimentos() {
         <div>
           <h2 className="text-xl font-bold text-white">Investimentos</h2>
           <p className="text-slate-500 text-sm">
-            Selic: <span className="text-purple-400 font-semibold">{taxas.selic.toFixed(2)}%</span>
-            {' '}• CDI: <span className="text-purple-400 font-semibold">{taxas.cdi.toFixed(2)}%</span>
-            {' '}• IPCA: <span className="text-purple-400 font-semibold">{taxas.ipca.toFixed(2)}%</span>
+            Selic: <span className="text-purple-400 font-semibold">{taxas ? `${taxas.selic.toFixed(2)}%` : '—'}</span>
+            {' '}• CDI: <span className="text-purple-400 font-semibold">{taxas ? `${taxas.cdi.toFixed(2)}%` : '—'}</span>
+            {' '}• IPCA: <span className="text-purple-400 font-semibold">{taxas ? `${taxas.ipca.toFixed(2)}%` : '—'}</span>
             <button onClick={buscarTaxas} disabled={buscando} className="ml-2 text-slate-600 hover:text-purple-400 transition-colors">
               <RefreshCw size={12} className={buscando ? 'animate-spin inline' : 'inline'} />
             </button>
@@ -395,7 +361,6 @@ export default function Investimentos() {
         {([
           { id: 'simulador', label: '🧮 Simulador' },
           { id: 'carteira',  label: '📊 Carteira' },
-          { id: 'acoes',     label: '📈 Ações/FII' },
         ] as const).map(a => (
           <button key={a.id} onClick={() => setAba(a.id)}
             className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
@@ -490,6 +455,13 @@ export default function Investimentos() {
               </div>
             )}
           </div>
+
+          {!taxas && (
+            <div className="glass-card p-4 text-sm text-amber-300">
+              {erroTaxas ? 'Taxa Selic indisponível no momento.' : 'Buscando taxas...'}{' '}
+              <button onClick={buscarTaxas} className="underline">Tentar novamente</button>
+            </div>
+          )}
 
           {/* Tabela comparativa */}
           {cenarios.length > 0 && (
@@ -747,119 +719,6 @@ export default function Investimentos() {
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ── AÇÕES / FII ────────────────────────────────────── */}
-      {aba === 'acoes' && (
-        <div className="space-y-4">
-          {/* Disclaimer */}
-          <div className="bg-amber-950/20 border border-amber-700/30 rounded-xl px-4 py-3 flex gap-2">
-            <Info size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-300/80">
-              Dados históricos para referência educacional. Rentabilidade passada não garante resultados futuros.
-              Consulte um assessor de investimentos antes de aplicar.
-            </p>
-          </div>
-
-          {/* Filtros */}
-          <div className="glass-card p-4 space-y-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex-1">
-                <label className="text-xs text-slate-500 block mb-1">Tipo</label>
-                <div className="flex gap-1">
-                  {['Todos', 'Ação', 'FII'].map(t => (
-                    <button key={t} onClick={() => setFiltroTipo(t)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        filtroTipo === t ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'
-                      }`}>{t}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-slate-500 block mb-1">Ordenar por</label>
-                <div className="flex gap-1">
-                  {[
-                    { id: 'dy',          label: 'Dividendos' },
-                    { id: 'seguranca',   label: 'Segurança' },
-                    { id: 'variacao12m', label: 'Valoriz.' },
-                  ].map(o => (
-                    <button key={o.id} onClick={() => setOrdenarPor(o.id as typeof ordenarPor)}
-                      className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        ordenarPor === o.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'
-                      }`}>{o.label}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 block mb-1">Setor</label>
-              <div className="flex flex-wrap gap-1">
-                {['Todos', ...SETORES_UNICOS].map(s => (
-                  <button key={s} onClick={() => setFiltroSetor(s)}
-                    className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
-                      filtroSetor === s ? 'bg-purple-600/80 text-white' : 'bg-white/5 text-slate-500 hover:text-white'
-                    }`}>{s}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Lista de ativos */}
-          <div className="space-y-2">
-            {ativosB3Filtrados.map(ativo => (
-              <div key={ativo.ticker} className="glass-card p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-black text-white ${
-                      ativo.tipo === 'FII' ? 'bg-emerald-700/60' : 'bg-blue-700/60'
-                    }`}>
-                      {ativo.ticker.slice(0, 4)}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-white">{ativo.ticker}</span>
-                      <span className="text-xs text-slate-400">{ativo.nome}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
-                        ativo.tipo === 'FII' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-blue-900/40 text-blue-400'
-                      }`}>{ativo.tipo}</span>
-                      <span className="text-[10px] bg-white/5 text-slate-500 px-1.5 py-0.5 rounded-md">{ativo.setor}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{ativo.descricao}</p>
-
-                    {/* Métricas */}
-                    <div className="flex items-center gap-4 mt-2 flex-wrap">
-                      <div>
-                        <span className="text-[10px] text-slate-600">DY 12m</span>
-                        <span className="text-xs font-bold text-emerald-400 ml-1">{ativo.dy.toFixed(1)}%</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-600">Variação 12m</span>
-                        <span className={`text-xs font-bold ml-1 ${ativo.variacao12m >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {ativo.variacao12m >= 0 ? '+' : ''}{ativo.variacao12m.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-slate-600">Risco</span>
-                        <div className="flex gap-0.5 ml-1">
-                          {Array.from({ length: 10 }, (_, i) => (
-                            <div key={i} className="w-1.5 h-1.5 rounded-full"
-                              style={{ background: i < ativo.seguranca ? corSeguranca(ativo.seguranca) : 'rgba(255,255,255,0.1)' }} />
-                          ))}
-                        </div>
-                        <span className="text-[10px]" style={{ color: corSeguranca(ativo.seguranca) }}>{ativo.seguranca}/10</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center text-xs text-slate-600 pb-4">
-            Dados de referência histórica • Atualizado periodicamente
-          </p>
         </div>
       )}
 
