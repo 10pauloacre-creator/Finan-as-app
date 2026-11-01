@@ -32,7 +32,8 @@ import {
 } from '@/lib/importacao-cartao';
 import BankLogo from '@/components/ui/BankLogo';
 import CardBrandLogo from '@/components/ui/CardBrandLogo';
-import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
+import DicaAjuda from '@/components/ui/DicaAjuda';
+import { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 import type { AIModelId } from '@/lib/ai/aiModels';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import ModalDetalheTransacao from '@/components/modais/ModalDetalheTransacao';
@@ -2217,18 +2218,15 @@ export default function Dashboard({ onNovoPagina }: Props) {
             onClick={() => setModalResumo('apagar')}
           />
         </div>
-        <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs text-slate-500">
-          <div><span className="text-slate-300">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
-          <div className="mt-1"><span className="text-slate-300">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
-          <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
-          <div className="mt-1"><span className="text-slate-300">Falta pagar:</span> faturas atuais dos cartões + pendências extras ainda abertas.</div>
+        <div className="flex justify-end">
+          <DicaAjuda>
+            <div><span className="text-white">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
+            <div className="mt-1"><span className="text-white">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
+            <div className="mt-1"><span className="text-white">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
+            <div className="mt-1"><span className="text-white">Falta pagar:</span> faturas atuais dos cartões + pendências extras ainda abertas.</div>
+          </DicaAjuda>
         </div>
       </section>
-
-      <PainelPrioridadesFinanceiras
-        itens={prioridadesFinanceiras}
-        subtitulo="Leitura rápida do que pede ação agora antes de entrar nos blocos analíticos."
-      />
 
       {/* Modal detalhe dos cards resumo */}
       {modalResumo && (

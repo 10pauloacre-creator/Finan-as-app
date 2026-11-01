@@ -1199,11 +1199,7 @@ export default function Transacoes() {
       <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-white/[0.025] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Transações 3.0</p>
-            <h2 className="mt-2 text-2xl font-bold text-white">Transações</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Resumo principal, visão analítica e lista detalhada na mesma ordem da home para reduzir troca de contexto.
-            </p>
+            <h2 className="text-2xl font-bold text-white">Transações</h2>
           </div>
           <button
             onClick={() => { setTransacaoEditar(undefined); setModalAberto(true); }}
