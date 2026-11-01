@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, TrendingUp, Calculator, RefreshCw, Info, X, ShieldCheck } from 'lucide-react';
+import CalculadoraMoedas from './CalculadoraMoedas';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { formatarMoeda } from '@/lib/storage';
 import { formatFinancialDate } from '@/lib/date';
@@ -221,7 +222,7 @@ function gerarCenarios(
 export default function Investimentos() {
   const { investimentos, adicionarInvestimento, excluirInvestimento, selicAtual, cdiAtual, ipcaAtual, setTaxas } = useFinanceiroStore();
 
-  const [aba, setAba]                 = useState<'simulador' | 'carteira'>('simulador');
+  const [aba, setAba]                 = useState<'simulador' | 'carteira' | 'moedas'>('simulador');
   const [mostrarForm, setMostrarForm] = useState(false);
   const [buscando, setBuscando]       = useState(false);
   const [erroTaxas, setErroTaxas]     = useState(false);
@@ -361,6 +362,7 @@ export default function Investimentos() {
         {([
           { id: 'simulador', label: '🧮 Simulador' },
           { id: 'carteira',  label: '📊 Carteira' },
+          { id: 'moedas',    label: '💱 Moedas' },
         ] as const).map(a => (
           <button key={a.id} onClick={() => setAba(a.id)}
             className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
@@ -370,6 +372,8 @@ export default function Investimentos() {
           </button>
         ))}
       </div>
+
+      {aba === 'moedas' && <CalculadoraMoedas />}
 
       {/* ── SIMULADOR ─────────────────────────────────────── */}
       {aba === 'simulador' && (
