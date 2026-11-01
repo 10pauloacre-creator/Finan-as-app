@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowDownCircle, ArrowUpCircle, Check, Eye, EyeOff, Pencil,
+  ArrowDownCircle, ArrowUpCircle, Car, Check, Eye, EyeOff, Landmark, Pencil,
   PiggyBank, Plus, Sparkles, Target, Trash2, Wallet, X,
 } from 'lucide-react';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
@@ -1078,7 +1078,7 @@ export default function Patrimonio() {
       <section className="glass-card p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-base">??</span>
+            <Landmark size={16} className="text-purple-300" />
             <span className="text-sm font-semibold text-slate-200">Ativos patrimoniais</span>
           </div>
           <span className="text-sm font-bold tabular-nums" style={{ color: '#A78BFA' }}>
@@ -1088,9 +1088,9 @@ export default function Patrimonio() {
 
         {ativosManuais.length === 0 ? (
           <div className="text-center py-6 text-slate-600">
-            <div className="text-3xl mb-2 opacity-40">??</div>
+            <Landmark size={32} className="mx-auto mb-2 opacity-40" />
             <p className="text-sm text-slate-600">Nenhum ativo patrimonial</p>
-            <p className="text-xs mt-1 text-slate-700">Adicione imoveis, veiculos e outros bens.</p>
+            <p className="text-xs mt-1 text-slate-700">Adicione imóveis, veículos e outros bens.</p>
             <button
               onClick={() => { setItemEditar(undefined); setModalAberto(true); }}
               className="mt-3 text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 mx-auto"
@@ -1144,7 +1144,7 @@ export default function Patrimonio() {
       <section className="glass-card p-5" style={{ borderColor: 'rgba(239,68,68,0.15)' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-base">??</span>
+            <Car size={16} className="text-red-300" />
             <span className="text-sm font-semibold text-slate-200">Passivos patrimoniais</span>
           </div>
           <span className="text-sm font-bold text-red-400 tabular-nums">
@@ -1154,7 +1154,7 @@ export default function Patrimonio() {
 
         {passivosManuais.length === 0 ? (
           <div className="text-center py-6 text-slate-600">
-            <div className="text-3xl mb-2 opacity-40">??</div>
+            <Car size={32} className="mx-auto mb-2 opacity-40" />
             <p className="text-sm text-slate-600">Nenhum passivo patrimonial</p>
             <p className="text-xs mt-1 text-slate-700">Adicione carro, casa de uso, barco ou outros bens que geram gastos.</p>
           </div>
@@ -1216,11 +1216,11 @@ export default function Patrimonio() {
             <span className="text-emerald-400 tabular-nums">{ocultarValor(formatarMoeda(totais.totalInvest))}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">?? Passivos patrimoniais</span>
+            <span className="text-slate-500">Passivos patrimoniais</span>
             <span className="text-red-400 tabular-nums">-{ocultarValor(formatarMoeda(totais.totalPassivos))}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">?? Ativos patrimoniais</span>
+            <span className="text-slate-500">Ativos patrimoniais</span>
             <span className="text-purple-400 tabular-nums">{ocultarValor(formatarMoeda(totais.totalAtivosManuais))}</span>
           </div>
           <div className="h-px bg-white/[0.06] my-2" />
