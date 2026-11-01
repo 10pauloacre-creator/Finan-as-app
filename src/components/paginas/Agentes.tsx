@@ -392,6 +392,17 @@ function EvolucaoScore() {
       : 'Score estável em relação ao mês anterior.'
     : '';
 
+  if (scoreMesAtual.semDados) {
+    return (
+      <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5">
+        <h3 className="text-sm font-semibold text-white">Evolução do Score</h3>
+        <p className="text-sm text-slate-400 mt-2">
+          Ainda não há dados para analisar. Registre transações, contas ou metas para ver sua pontuação.
+        </p>
+      </div>
+    );
+  }
+
   const arcRaio = 44;
   const arcCirc = Math.PI * arcRaio;
   const arcOffset = arcCirc - (scoreMesAtual.total / 100) * arcCirc;

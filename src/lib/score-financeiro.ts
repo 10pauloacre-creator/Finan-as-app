@@ -12,6 +12,7 @@ export interface ScoreFinanceiro {
   total: number;       // 0-100
   nivel: 'critico' | 'atencao' | 'bom' | 'otimo';
   fatores: FatorScore[];
+  semDados: boolean;   // sem nenhum registro: o score não é uma análise
 }
 
 interface DadosScore {
@@ -44,8 +45,6 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
   if (totalReceitas > 0) {
     const ratio = (totalReceitas - totalDespesas) / totalReceitas;
     ptBalance = Math.round(Math.min(30, Math.max(0, ratio * 30 / 0.3))); // full 30pts at 30% savings
-  } else if (totalDespesas === 0) {
-    ptBalance = 15; // no data yet — neutral
   }
   fatores.push({
     nome: 'Equilíbrio financeiro',
@@ -58,7 +57,7 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
 
   // 2. Cumprimento de orçamentos — 20 pts
   const orcMes = dados.orcamentos.filter(o => o.mes === mes && o.ano === ano);
-  let ptOrc = 20;
+  let ptOrc = 0;
   if (orcMes.length > 0) {
     let violacoes = 0;
     for (const o of orcMes) {
@@ -97,7 +96,7 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
   // 4. Metas ativas — 10 pts
   const metasAtivas = dados.metas.filter(m => m.valor_atual < m.valor_alvo);
   const metasComProgresso = metasAtivas.filter(m => m.valor_atual / m.valor_alvo >= 0.1);
-  const ptMetas = metasAtivas.length === 0 ? 5 : Math.min(10, metasComProgresso.length * 5);
+  const ptMetas = metasAtivas.length === 0 ? (dados.metas.length > 0 ? 5 : 0) : Math.min(10, metasComProgresso.length * 5);
   fatores.push({
     nome: 'Metas financeiras',
     pontos: ptMetas,
@@ -108,7 +107,7 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
   });
 
   // 5. Uso do cartão de crédito — 10 pts
-  let ptCartao = 10;
+  let ptCartao = 0;
   if (limiteTotal > 0) {
     const utilizacao = faturaTotal / limiteTotal;
     ptCartao = Math.round(Math.max(0, 10 - utilizacao * 10 / 0.7)); // 0pts at 70%+ utilization
@@ -139,5 +138,12 @@ export function calcularScore(dados: DadosScore): ScoreFinanceiro {
     total >= 60 ? 'bom' :
     total >= 40 ? 'atencao' : 'critico';
 
-  return { total, nivel, fatores };
+  const semDados =
+    txMes.length === 0 &&
+    dados.contas.length === 0 &&
+    dados.cartoes.length === 0 &&
+    orcMes.length === 0 &&
+    dados.metas.length === 0;
+
+  return { total, nivel, fatores, semDados };
 }

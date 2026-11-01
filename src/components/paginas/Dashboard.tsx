@@ -964,6 +964,17 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
     score.nivel === 'bom' ? 'Bom' :
     score.nivel === 'atencao' ? 'Atenção' : 'Crítico';
 
+  if (score.semDados) {
+    return (
+      <div className="glass-card p-4 w-full text-left">
+        <span className="text-xs font-semibold text-slate-300">Saúde financeira</span>
+        <p className="text-sm text-slate-400 mt-1">
+          Registre suas primeiras transações para ver sua análise.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
