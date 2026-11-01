@@ -238,8 +238,8 @@ function Orcamentos() {
   const totalCarteiraSimulada = simulacoes.reduce((soma, simulacao) => soma + simulacao.valor_total, 0);
   const totalParcelasAbertas = simulacoes.reduce((soma, simulacao) => soma + simulacao.parcelas, 0);
   const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
-    const mesesNoLimite = projecoes.filter((projecao) => projecao.folga < 0);
-    const mesesApertados = projecoes.filter((projecao) => projecao.folga >= 0 && projecao.folga < 500);
+    const mesesNoLimite = projecoes.filter((projecao) => projecao.orcado > 0 && projecao.folga < 0);
+    const mesesApertados = projecoes.filter((projecao) => projecao.orcado > 0 && projecao.folga >= 0 && projecao.folga < 500);
     const prioridadesAltas = simulacoes.filter((simulacao) => simulacao.prioridade === 'alta');
     return [
       {
