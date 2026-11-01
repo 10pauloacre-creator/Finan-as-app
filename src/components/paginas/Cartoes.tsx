@@ -826,8 +826,6 @@ export default function Cartoes() {
         )}
       </div>
 
-      <TimelineFaturas cartoes={cartoes} transacoes={transacoes} />
-
       {mostrarForm && (
         <form onSubmit={handleSubmit} className="glass-card p-5 space-y-4 border-purple-500/30">
           <h3 className="text-sm font-semibold text-purple-300">{cartaoEmEdicao ? 'Editar cartão' : 'Novo cartão'}</h3>

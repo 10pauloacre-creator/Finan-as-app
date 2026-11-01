@@ -1392,8 +1392,6 @@ export default function Transacoes() {
             )}
           </div>
 
-          <TimelineGastos transacoes={transacoes} categorias={categorias} cartoes={cartoes} />
-
           {/* Category chips */}
           {chipsCategoria.length > 0 && (
             <div className="fin-scroll-snap flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory">
@@ -1476,8 +1474,6 @@ export default function Transacoes() {
               />
             </div>
           </div>
-
-          <TimelineReceitas transacoes={transacoes} categorias={categorias} />
 
           {/* Search */}
           <div className="relative">
