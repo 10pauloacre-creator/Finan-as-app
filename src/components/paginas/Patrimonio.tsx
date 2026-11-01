@@ -65,10 +65,10 @@ const RESERVA_ICONES = ['🛟', '💰', '🏦', '🎯', '🧳', '🏖️', '🏡
 
 function BarraProgresso({ pct, cor }: { pct: number; cor: string }) {
   return (
-    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden mt-2">
+    <div className={`h-1.5 bg-white/[0.06] rounded-full overflow-hidden mt-2 ${pct >= 100 ? 'animate-celebrate' : ''}`}>
       <div
         className="h-full rounded-full transition-all duration-700"
-        style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, background: cor }}
+        style={{ width: `${Math.min(Math.max(pct, 0), 100)}%`, background: pct >= 100 ? '#D4AF37' : cor }}
       />
     </div>
   );
