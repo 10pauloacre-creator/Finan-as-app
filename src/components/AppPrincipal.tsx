@@ -10,18 +10,7 @@ import {
 import { formatarMoeda } from '@/lib/storage';
 import { capturarBackupSnapshot } from '@/lib/storage';
 import Dashboard      from '@/components/paginas/Dashboard';
-import Transacoes     from '@/components/paginas/Transacoes';
-import Relatorios     from '@/components/paginas/Relatorios';
-import Investimentos  from '@/components/paginas/Investimentos';
-import Bancos         from '@/components/paginas/Bancos';
-import Cartoes        from '@/components/paginas/Cartoes';
-import Salarios       from '@/components/paginas/Salarios';
-import Assistente     from '@/components/paginas/Assistente';
-import Patrimonio     from '@/components/paginas/Patrimonio';
-import Orcamentos     from '@/components/paginas/Orcamentos';
-import Agentes        from '@/components/paginas/Agentes';
-import Calendario     from '@/components/paginas/Calendario';
-import Configuracoes  from '@/components/paginas/Configuracoes';
+import dynamic from 'next/dynamic';
 import ModalNovaTransacao from '@/components/modais/ModalNovaTransacao';
 import { useFinanceiroStore } from '@/store/useFinanceiroStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -29,6 +18,20 @@ import { TipoTransacao } from '@/types';
 
 import { Transacao, Categoria } from '@/types';
 
+
+const CarregandoPagina = () => <div className="h-40 animate-pulse rounded-2xl bg-white/[0.03]" />;
+const Transacoes = dynamic(() => import('@/components/paginas/Transacoes'), { loading: CarregandoPagina });
+const Relatorios = dynamic(() => import('@/components/paginas/Relatorios'), { loading: CarregandoPagina });
+const Investimentos = dynamic(() => import('@/components/paginas/Investimentos'), { loading: CarregandoPagina });
+const Bancos = dynamic(() => import('@/components/paginas/Bancos'), { loading: CarregandoPagina });
+const Cartoes = dynamic(() => import('@/components/paginas/Cartoes'), { loading: CarregandoPagina });
+const Salarios = dynamic(() => import('@/components/paginas/Salarios'), { loading: CarregandoPagina });
+const Assistente = dynamic(() => import('@/components/paginas/Assistente'), { loading: CarregandoPagina });
+const Patrimonio = dynamic(() => import('@/components/paginas/Patrimonio'), { loading: CarregandoPagina });
+const Orcamentos = dynamic(() => import('@/components/paginas/Orcamentos'), { loading: CarregandoPagina });
+const Agentes = dynamic(() => import('@/components/paginas/Agentes'), { loading: CarregandoPagina });
+const Calendario = dynamic(() => import('@/components/paginas/Calendario'), { loading: CarregandoPagina });
+const Configuracoes = dynamic(() => import('@/components/paginas/Configuracoes'), { loading: CarregandoPagina });
 type Pagina = 'dashboard' | 'transacoes' | 'relatorios' | 'investimentos' | 'bancos' | 'cartoes' | 'salarios' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes' | 'calendario';
 
 // ─── Busca Global ─────────────────────────────────────────────────────────────
