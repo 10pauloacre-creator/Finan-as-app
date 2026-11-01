@@ -213,7 +213,7 @@ const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
   { id: 'transacoes',   label: 'Transações',    icone: ArrowLeftRight  },
   { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
-  { id: 'patrimonio',   label: 'Contas',        icone: TrendingUp      },
+  { id: 'patrimonio',   label: 'Contas e Patrimônio', icone: TrendingUp      },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
@@ -229,7 +229,7 @@ const grupos: Record<string, { id: Pagina; label: string }[]> = {
   ],
   patrimonio: [
     { id: 'patrimonio', label: 'Patrimônio' },
-    { id: 'bancos',     label: 'Bancos' },
+    { id: 'bancos',     label: 'Contas' },
   ],
   assistente: [
     { id: 'assistente', label: 'Assistente' },
@@ -274,7 +274,7 @@ const navMobile = [
 /** Extra pages shown in the "Mais" bottom sheet */
 const navMais = [
   { id: 'cartoes',      label: 'Cartões',    icone: CreditCard      },
-  { id: 'patrimonio',   label: 'Patrimônio', icone: TrendingUp      },
+  { id: 'patrimonio',   label: 'Contas e Patrimônio', icone: TrendingUp      },
   { id: 'relatorios',   label: 'Relatórios', icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos', icone: Target          },
   { id: 'investimentos',label: 'Investir',   icone: TrendingUp      },
