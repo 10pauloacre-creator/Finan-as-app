@@ -43,8 +43,8 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-2xl: calc(var(--radius) * 1.4);
+  --radius-3xl: calc(var(--radius) * 1.7);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
@@ -150,7 +150,8 @@
   --fin-glow-red:          rgba(239,68,68,0.2);
   --fin-nubank:            #820AD1;
   --fin-itau:              #F08300;
-  --fin-radius-card:       16px;
+  --fin-radius-card:       12px;
+  --fin-gold:              #D4AF37;
   --fin-transition:        cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -171,13 +172,13 @@
 
 /* ── Glow button ───────────────────────────────────────── */
 .btn-primary {
-  background: #7C3AED;
-  box-shadow: 0 0 20px rgba(124,58,237,0.35);
+  background: #8B5CF6;
+  box-shadow: 0 2px 10px rgba(139,92,246,0.28);
   transition: all 150ms var(--fin-transition);
 }
 .btn-primary:hover {
-  background: #6D28D9;
-  box-shadow: 0 0 28px rgba(124,58,237,0.5);
+  background: #7C3AED;
+  box-shadow: 0 4px 14px rgba(139,92,246,0.38);
 }
 .btn-primary:active { transform: scale(0.97); }
 
@@ -202,7 +203,7 @@
 
 .fin-panel {
   position: relative;
-  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.16);
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.12);
   transition:
     transform 180ms var(--fin-transition),
     border-color 180ms var(--fin-transition),
@@ -227,7 +228,7 @@
 
 .fin-panel-interactive:hover {
   transform: translateY(-2px);
-  box-shadow: 0 22px 48px rgba(2, 6, 23, 0.22);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.18);
 }
 
 .fin-panel-interactive:hover::after,
@@ -255,6 +256,23 @@
 
 /* ── Tabular numbers for financial data ─────────────────── */
 .tabular-nums { font-variant-numeric: tabular-nums; }
+.text-2xl, .text-3xl, .text-4xl, .text-5xl { font-variant-numeric: tabular-nums; }
+
+/* ── Dourado discreto: logo, metas atingidas e reservas ─── */
+.text-gold { color: var(--fin-gold); }
+.bg-gold { background: var(--fin-gold); }
+.border-gold { border-color: var(--fin-gold); }
+
+/* ── Micro-celebracao (200-300 ms) ──────────────────────── */
+@keyframes celebrate {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(212,175,55,0.28); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+}
+.animate-celebrate { animation: celebrate 280ms var(--fin-transition) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-celebrate, .animate-fade-up, .fin-soft-rise, .fin-soft-rise-delay { animation: none; }
+}
 
 /* ── Remove tap highlight ───────────────────────────────── */
 * { -webkit-tap-highlight-color: transparent; }

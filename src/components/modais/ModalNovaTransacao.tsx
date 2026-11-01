@@ -341,10 +341,10 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
                     form.tipo === tipo
                       ? tipo === 'despesa'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-slate-600 text-white'
                         : tipo === 'receita'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-emerald-700 text-white'
+                        : 'bg-slate-600 text-white'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
