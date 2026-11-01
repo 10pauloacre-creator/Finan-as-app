@@ -24,7 +24,7 @@ import type { SimulacaoCompra, Transacao } from '@/types';
 import PainelPrioridadesFinanceiras, { type ItemPrioridadeFinanceira } from '@/components/ui/PainelPrioridadesFinanceiras';
 
 const CORES_PRESET = [
-  '#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+  '#14B8A6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
   '#EC4899', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316',
   '#14B8A6', '#6366F1', '#A855F7', '#22C55E', '#EAB308',
 ];
@@ -121,7 +121,7 @@ function Orcamentos() {
   const [novaCategoria, setNovaCategoria] = useState({
     nome: '',
     icone: '🎯',
-    cor: '#7C3AED',
+    cor: '#14B8A6',
   });
 
   const [simulacoes, setSimulacoes] = useState<SimulacaoCompra[]>(() => storageSimulacoes.getAll());
@@ -328,7 +328,7 @@ function Orcamentos() {
       cor: novaCategoria.cor,
       tipo: 'despesa',
     });
-    setNovaCategoria({ nome: '', icone: '🎯', cor: '#7C3AED' });
+    setNovaCategoria({ nome: '', icone: '🎯', cor: '#14B8A6' });
     setModalNovaCat(false);
   }
 
@@ -406,7 +406,7 @@ function Orcamentos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 sm:p-6">
+      <section className="fin-panel fin-soft-rise rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.16),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.95),rgba(10,14,26,0.92))] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-500/25 bg-purple-600/18">
@@ -455,7 +455,7 @@ function Orcamentos() {
         <select
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
-          className="flex-1 rounded-xl border border-white/10 bg-[#0F1629] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
+          className="flex-1 rounded-xl border border-white/10 bg-[#111A2E] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50"
         >
           {MESES.map((nome, indice) => (
             <option key={nome} value={indice + 1}>{nome}</option>
@@ -464,7 +464,7 @@ function Orcamentos() {
         <select
           value={ano}
           onChange={(e) => setAno(Number(e.target.value))}
-          className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 sm:w-28"
+          className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 sm:w-28"
         >
           {anosOpcoes.map((itemAno) => (
             <option key={itemAno} value={itemAno}>{itemAno}</option>
@@ -485,7 +485,7 @@ function Orcamentos() {
           </div>
 
           {resumo.totalOrcado > 0 && (
-            <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-[#0F1629] p-4">
+            <div className="space-y-3 rounded-2xl border border-white/[0.06] bg-[#111A2E] p-4">
               <div className="mb-1 flex items-center gap-2">
                 <TrendingUp size={14} className="text-purple-400" />
                 <span className="text-sm font-semibold text-slate-300">Resumo do mês</span>
@@ -521,7 +521,7 @@ function Orcamentos() {
 
           <div className="space-y-2">
             {catsOrdenadas.length === 0 && (
-              <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0F1629] p-10 text-slate-600">
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#111A2E] p-10 text-slate-600">
                 <Target size={32} className="opacity-30" />
                 <p className="text-center text-sm">Nenhuma categoria de despesa cadastrada</p>
                 <button
@@ -541,7 +541,7 @@ function Orcamentos() {
               const pct = limite > 0 ? (gasto / limite) * 100 : 0;
 
               return (
-                <div key={categoria.id} className="rounded-2xl border border-white/[0.06] bg-[#0F1629] p-4">
+                <div key={categoria.id} className="rounded-2xl border border-white/[0.06] bg-[#111A2E] p-4">
                   <div className="mb-2 flex items-center gap-3">
                     <div
                       className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-sm"
@@ -614,7 +614,7 @@ function Orcamentos() {
 
       {abaAtiva === 'simulacao' && (
         <>
-          <div className="fin-panel fin-soft-rise-delay overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(10,14,26,0.92))] p-5">
+          <div className="fin-panel fin-soft-rise-delay overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(10,14,26,0.92))] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200">
@@ -670,7 +670,7 @@ function Orcamentos() {
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[1.05fr_1.35fr]">
-            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
+            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#111A2E] p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -768,7 +768,7 @@ function Orcamentos() {
               </div>
             </section>
 
-            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#0F1629] p-4">
+            <section className="fin-panel rounded-3xl border border-white/[0.08] bg-[#111A2E] p-4">
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -845,7 +845,7 @@ function Orcamentos() {
 
         return (
           <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={fecharModal}>
-            <div className="w-full max-w-sm space-y-4 rounded-2xl border border-white/[0.08] bg-[#0A0E1A] p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-sm space-y-4 rounded-2xl border border-white/[0.08] bg-[#0B1220] p-5" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg text-sm" style={{ background: `${categoria?.cor}22`, color: categoria?.cor }}>
@@ -871,7 +871,7 @@ function Orcamentos() {
                   onChange={(e) => setValorInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && salvarOrcamento()}
                   autoFocus
-                  className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-base font-semibold text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
+                  className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-base font-semibold text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
                 />
                 <p className="mt-1.5 text-[11px] text-slate-600">
                   Aplica este limite a partir de {`${MESES[mes - 1]}/${ano}`} e todos os meses seguintes
@@ -900,7 +900,7 @@ function Orcamentos() {
 
       {modalNovaCat && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setModalNovaCat(false)}>
-          <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0A0E1A] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B1220] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl text-lg" style={{ background: `${novaCategoria.cor}22` }}>
@@ -922,7 +922,7 @@ function Orcamentos() {
                   placeholder="Ex: Viagens, Academia, Pets..."
                   value={novaCategoria.nome}
                   onChange={(e) => setNovaCategoria((anterior) => ({ ...anterior, nome: e.target.value }))}
-                  className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
+                  className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
                 />
               </div>
 
@@ -971,7 +971,7 @@ function Orcamentos() {
                       type="button"
                       onClick={() => setNovaCategoria((anterior) => ({ ...anterior, cor }))}
                       className={`h-7 w-7 rounded-full transition-all ${
-                        novaCategoria.cor === cor ? 'scale-110 ring-2 ring-white ring-offset-1 ring-offset-[#0A0E1A]' : 'hover:scale-105'
+                        novaCategoria.cor === cor ? 'scale-110 ring-2 ring-white ring-offset-1 ring-offset-[#0B1220]' : 'hover:scale-105'
                       }`}
                       style={{ background: cor }}
                     />
@@ -1001,7 +1001,7 @@ function Orcamentos() {
 
       {modalSimulacaoId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={resetarFormSimulacao}>
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0A0E1A] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B1220] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-200">
@@ -1029,7 +1029,7 @@ function Orcamentos() {
                     placeholder="Ex: Notebook, sofá, kit home office..."
                     value={formSimulacao.nome}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, nome: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
                   />
                 </div>
                 <div>
@@ -1037,7 +1037,7 @@ function Orcamentos() {
                   <select
                     value={formSimulacao.tipo}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, tipo: e.target.value as TipoSimulacao }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
                   >
                     <option value="produto">Produto</option>
                     <option value="combo">Combo</option>
@@ -1052,7 +1052,7 @@ function Orcamentos() {
                   placeholder="Use para agrupar itens, lembrar motivo ou anotar composição do combo"
                   value={formSimulacao.descricao}
                   onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, descricao: e.target.value }))}
-                  className="w-full resize-none rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
+                  className="w-full resize-none rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
                 />
               </div>
 
@@ -1066,7 +1066,7 @@ function Orcamentos() {
                     placeholder="0,00"
                     value={formSimulacao.valor_total}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, valor_total: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
                   />
                 </div>
                 <div>
@@ -1077,7 +1077,7 @@ function Orcamentos() {
                     step="1"
                     value={formSimulacao.parcelas}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, parcelas: e.target.value }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-sky-500/50"
                   />
                 </div>
               </div>
@@ -1088,7 +1088,7 @@ function Orcamentos() {
                   <select
                     value={formSimulacao.mes_inicio}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, mes_inicio: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
                   >
                     {MESES.map((nome, indice) => (
                       <option key={nome} value={indice + 1}>{nome}</option>
@@ -1100,7 +1100,7 @@ function Orcamentos() {
                   <select
                     value={formSimulacao.ano_inicio}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, ano_inicio: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
                   >
                     {anosOpcoes.concat(hoje.getFullYear() + 3).map((itemAno) => (
                       <option key={itemAno} value={itemAno}>{itemAno}</option>
@@ -1112,7 +1112,7 @@ function Orcamentos() {
                   <select
                     value={formSimulacao.prioridade}
                     onChange={(e) => setFormSimulacao((anterior) => ({ ...anterior, prioridade: e.target.value as PrioridadeSimulacao }))}
-                    className="w-full rounded-xl border border-white/10 bg-[#0F1629] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500/50"
                   >
                     <option value="baixa">Baixa</option>
                     <option value="media">Média</option>

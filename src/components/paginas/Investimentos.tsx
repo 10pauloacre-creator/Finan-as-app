@@ -727,7 +727,7 @@ export default function Investimentos() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.75)' }}
           onClick={() => setInfoTipo(null)}>
-          <div className="w-full max-w-sm bg-[#0A0E1A] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl"
+          <div className="w-full max-w-sm bg-[#0B1220] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">

@@ -511,7 +511,7 @@ function Bubble({ msg, contas, cartoes, onConfirmar, onCancelar, onConfirmarLote
             px-4 py-3 rounded-2xl text-sm leading-relaxed
             ${isUser
               ? 'bg-purple-600/80 text-white rounded-br-md'
-              : 'bg-[#0F1629] border border-white/[0.07] text-slate-300 rounded-bl-md'
+              : 'bg-[#111A2E] border border-white/[0.07] text-slate-300 rounded-bl-md'
             }
             ${msg.carregando ? 'flex items-center gap-2' : ''}
           `}>
@@ -1228,7 +1228,7 @@ export default function Assistente() {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] shrink-0"
-          style={{ background: '#0A0E1A' }}>
+          style={{ background: '#0B1220' }}>
           <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
             <Sparkles size={17} className="text-purple-400" />
           </div>
@@ -1293,7 +1293,7 @@ export default function Assistente() {
 
         {/* Input bar */}
         <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/[0.06]"
-          style={{ background: '#0A0E1A' }}>
+          style={{ background: '#0B1220' }}>
           <div className="flex items-end gap-2">
 
             {/* Botão galeria */}
@@ -1375,7 +1375,7 @@ export default function Assistente() {
                   {imagensPendentes.map((imagem, index) => (
                     <div
                       key={imagem.id}
-                      className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-[#0F1629]"
+                      className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-[#111A2E]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -1411,7 +1411,7 @@ export default function Assistente() {
                 placeholder='Ex: "Paguei R$ 35 no almoço no crédito"'
                 disabled={enviando || gravando}
                 rows={1}
-                className="w-full bg-[#0F1629] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-purple-500/50 disabled:opacity-40 max-h-24 overflow-auto"
+                className="w-full bg-[#111A2E] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-purple-500/50 disabled:opacity-40 max-h-24 overflow-auto"
                 style={{ lineHeight: '1.5' }}
               />
             </div>

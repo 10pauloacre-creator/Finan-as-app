@@ -25,7 +25,7 @@ export default function ModalDuplicata({ transacaoExistente: tx, onConfirmar, on
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancelar} />
 
       {/* Card */}
-      <div className="relative bg-[#0F1629] border border-amber-500/30 rounded-2xl w-full max-w-sm shadow-2xl z-10">
+      <div className="relative bg-[#111A2E] border border-amber-500/30 rounded-2xl w-full max-w-sm shadow-2xl z-10">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-amber-500/20">
           <div className="flex items-center gap-2.5">

@@ -17,7 +17,7 @@ import {
 import type { Transacao, Categoria, ContaBancaria, CartaoCredito } from '@/types';
 import AIModelSelect from '@/components/ui/AIModelSelect';
 
-const CORES = ['#7C3AED','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#F97316'];
+const CORES = ['#14B8A6','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#F97316'];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESES_NOMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -256,7 +256,7 @@ function RelatorioIA() {
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0F1629] p-8 text-center space-y-3">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#111A2E] p-8 text-center space-y-3">
           <Brain size={28} className="mx-auto text-purple-400 animate-pulse" />
           <p className="text-sm text-slate-400">Analisando seus dados financeiros...</p>
           <p className="text-xs text-slate-600">A IA está preparando seu relatório personalizado</p>
@@ -267,7 +267,7 @@ function RelatorioIA() {
       {relatorio && !loading && (
         <div className="space-y-4">
           {/* Header card: mes + nota */}
-          <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5 flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-white">
                 {MESES_NOMES[relatorio.mes - 1]} {relatorio.ano}
@@ -280,7 +280,7 @@ function RelatorioIA() {
           </div>
 
           {/* Resumo narrativo */}
-          <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5">
+          <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <FileText size={15} className="text-purple-400" />
               <h4 className="text-sm font-semibold text-slate-300">Resumo do Mês</h4>
@@ -290,7 +290,7 @@ function RelatorioIA() {
 
           {/* Destaques */}
           {relatorio.destaques?.length > 0 && (
-            <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5">
+            <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5">
               <h4 className="text-sm font-semibold text-slate-300 mb-3">Destaques</h4>
               <div className="space-y-3">
                 {relatorio.destaques.map((d, i) => (
@@ -318,7 +318,7 @@ function RelatorioIA() {
 
           {/* Recomendacoes */}
           {relatorio.recomendacoes?.length > 0 && (
-            <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5">
+            <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5">
               <h4 className="text-sm font-semibold text-slate-300 mb-3">Recomendacoes</h4>
               <div className="space-y-3">
                 {relatorio.recomendacoes.map((r, i) => (

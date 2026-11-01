@@ -153,7 +153,7 @@ export default function Calendario() {
       </div>
 
       {/* Navegacao mes */}
-      <div className="flex items-center justify-between bg-[#0F1629] border border-white/[0.06] rounded-2xl px-5 py-3">
+      <div className="flex items-center justify-between bg-[#111A2E] border border-white/[0.06] rounded-2xl px-5 py-3">
         <button
           onClick={mesAnterior}
           className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all"
@@ -172,7 +172,7 @@ export default function Calendario() {
       </div>
 
       {/* Grid do calendario */}
-      <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl overflow-hidden">
         {/* Cabecalho dias da semana */}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DIAS_SEMANA.map(d => (
@@ -263,7 +263,7 @@ export default function Calendario() {
 
       {/* Painel de detalhe do dia */}
       {diaDetalhe && !diaDetalhe.foraDoMes && (
-        <div className="bg-[#0F1629] border border-purple-500/20 rounded-2xl p-5 space-y-3">
+        <div className="bg-[#111A2E] border border-purple-500/20 rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">
               Transacoes de {parseFinancialDate(diaDetalhe.data).toLocaleDateString('pt-BR', {
@@ -325,7 +325,7 @@ export default function Calendario() {
       )}
 
       {/* Resumo do mes */}
-      <div className="bg-[#0A0E1A] border border-white/[0.06] rounded-2xl px-5 py-3">
+      <div className="bg-[#0B1220] border border-white/[0.06] rounded-2xl px-5 py-3">
         <p className="text-xs text-slate-500 text-center">
           <span className="text-white font-medium">{MESES_NOMES[mesSel - 1]}:</span>
           {' '}{resumoMes.qtd} transacoes{' '}

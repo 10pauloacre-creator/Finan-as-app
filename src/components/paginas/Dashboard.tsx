@@ -43,7 +43,7 @@ import type { TransacaoExtraida } from '@/lib/assistente-types';
 type Pagina = 'dashboard' | 'transacoes' | 'bancos' | 'cartoes' | 'relatorios' | 'investimentos' | 'assistente' | 'patrimonio' | 'orcamentos' | 'configuracoes' | 'agentes';
 interface Props { onNovoPagina: (p: Pagina) => void; }
 
-const CORES = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
+const CORES = ['#14B8A6', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#F97316', '#8B5CF6'];
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const METODOS_DEBITO = new Set(['pix', 'debito', 'transferencia', 'dinheiro', 'emprestimo', 'financiamento']);
 
@@ -334,12 +334,12 @@ function InsightCard({ dicas, onVerAssistente }: { dicas: DicaItem[]; onVerAssis
   const indicadorCor =
     dica.tipo === 'alerta' ? '#EF4444' :
     dica.tipo === 'conquista' ? '#10B981' :
-    '#7C3AED';
+    '#14B8A6';
 
   const borderCor =
     dica.tipo === 'alerta' ? 'rgba(239,68,68,0.2)' :
     dica.tipo === 'conquista' ? 'rgba(16,185,129,0.2)' :
-    'rgba(124,58,237,0.2)';
+    'rgba(20,184,166,0.2)';
 
   return (
     <div className="glass-card p-4" style={{ borderColor: borderCor }}>
@@ -463,7 +463,7 @@ function DashboardMetricCard({
     <button
       type="button"
       onClick={onClick}
-      className="fin-panel fin-panel-interactive fin-button-press group relative overflow-hidden rounded-[24px] border bg-[#0F1423]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#12182A] sm:p-5"
+      className="fin-panel fin-panel-interactive fin-button-press group relative overflow-hidden rounded-[24px] border bg-[#111A2E]/88 p-4 text-left transition-all hover:border-white/15 hover:bg-[#172338] sm:p-5"
       style={{ borderColor: palette.border }}
     >
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.glow}`} />
@@ -2157,19 +2157,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
 
           <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Estrutura</p>
               <p className="mt-1 text-xs font-semibold text-slate-200 sm:text-sm">
                 {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
               </p>
             </div>
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Fatura atual</p>
               <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
                 {ocultar(formatarMoeda(totalFaturaAtual))}
               </p>
             </div>
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#0F1423]/72 px-4 py-3">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
               <p className="text-[11px] font-medium text-slate-500">Próximo vencimento</p>
               <p className="mt-1 text-sm font-semibold text-slate-200">
                 {proximoVencimento

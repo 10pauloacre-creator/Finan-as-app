@@ -394,7 +394,7 @@ function EvolucaoScore() {
 
   if (scoreMesAtual.semDados) {
     return (
-      <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5">
+      <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-white">Evolução do Score</h3>
         <p className="text-sm text-slate-400 mt-2">
           Ainda não há dados para analisar. Registre transações, contas ou metas para ver sua pontuação.
@@ -409,7 +409,7 @@ function EvolucaoScore() {
   const arcColor = corNivel(scoreMesAtual.nivel).bar;
 
   return (
-    <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-5 space-y-5">
+    <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-5 space-y-5">
       <div>
         <h3 className="text-sm font-semibold text-white">Evolução do Score</h3>
         <p className="text-xs text-slate-500 mt-0.5">Últimos 6 meses</p>

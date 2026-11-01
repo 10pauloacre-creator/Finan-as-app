@@ -147,7 +147,7 @@ export default function ModalPluggyConnect({ aberto, onFechar, onSincronizado }:
         />
       )}
 
-      <div className="bg-[#0F1629] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl">
+      <div className="bg-[#111A2E] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl">
 
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">

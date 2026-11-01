@@ -62,7 +62,7 @@ export default function Assinaturas() {
 
       {/* Resumo */}
       {assinaturas.length > 0 && (
-        <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-4">
+        <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[11px] text-slate-500 mb-0.5">Assinaturas detectadas</p>
@@ -78,7 +78,7 @@ export default function Assinaturas() {
 
       {/* Estado vazio */}
       {assinaturas.length === 0 && (
-        <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-10 flex flex-col items-center gap-3 text-center">
+        <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-10 flex flex-col items-center gap-3 text-center">
           <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
             <Repeat size={24} className="text-blue-400 opacity-50" />
           </div>
@@ -105,7 +105,7 @@ export default function Assinaturas() {
           const urgente  = diasProx <= 3;
 
           return (
-            <div key={i} className="bg-[#0F1629] border border-white/[0.06] rounded-2xl p-4">
+            <div key={i} className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-4">
 
               {/* Linha superior */}
               <div className="flex items-start justify-between gap-3 mb-3">

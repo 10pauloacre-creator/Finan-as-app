@@ -1200,7 +1200,7 @@ export default function Patrimonio() {
           </div>
         )}
       </section>
-      <section className="glass-card p-5" style={{ borderColor: 'rgba(124,58,237,0.2)' }}>
+      <section className="glass-card p-5" style={{ borderColor: 'rgba(20,184,166,0.2)' }}>
         <h3 className="text-sm font-semibold text-slate-300 mb-4">Resumo</h3>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">

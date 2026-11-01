@@ -27,7 +27,7 @@ function Secao({
         <div className="text-purple-400">{icone}</div>
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{titulo}</h2>
       </div>
-      <div className="bg-[#0F1629] border border-white/[0.06] rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+      <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
         {children}
       </div>
     </div>
@@ -109,7 +109,7 @@ function ModalPin({ onFechar, onSalvar }: { onFechar: () => void; onSalvar: (pin
       onClick={onFechar}
     >
       <div
-        className="w-full max-w-sm bg-[#0A0E1A] border border-white/[0.08] rounded-2xl p-6 space-y-4"
+        className="w-full max-w-sm bg-[#0B1220] border border-white/[0.08] rounded-2xl p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -197,7 +197,7 @@ function ModalBackup({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onFechar}>
       <div
-        className="w-full max-w-md bg-[#0A0E1A] border border-white/[0.08] rounded-2xl p-6 space-y-4"
+        className="w-full max-w-md bg-[#0B1220] border border-white/[0.08] rounded-2xl p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">

@@ -540,7 +540,7 @@ export default function Bancos() {
                     <div className="relative">
                       <BankLogo banco={conta.banco} size={44} className="h-11 w-11 object-contain flex-shrink-0" />
                       {conectado && (
-                        <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#0F1629] bg-emerald-500">
+                        <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#111A2E] bg-emerald-500">
                           <Wifi size={8} className="text-white" />
                         </div>
                       )}
