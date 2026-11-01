@@ -39,7 +39,7 @@ function jsonFromText(text: string) {
 }
 
 function inferCategoryId(data: ReceiptData) {
-  if (data.itens_compra.length > 0) return 'feira_mantimentos';
+  if (data.itens_compra.length > 0) return 'mercado';
 
   const source = `${data.categoria_sugerida} ${data.estabelecimento}`.toLowerCase();
   for (const [keyword, categoryId] of Object.entries(PALAVRAS_CHAVE_CATEGORIAS)) {

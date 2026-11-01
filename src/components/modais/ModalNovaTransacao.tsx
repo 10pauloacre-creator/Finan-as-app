@@ -198,12 +198,10 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             categoria_id: categoriaOCR,
             data: data.dados.data || atual.data,
             horario: data.dados.horario || atual.horario,
-            metodo_pagamento: categoriaOCR === 'feira_mantimentos'
-              ? 'credito'
-              : data.dados.metodo_pagamento || data.dados.forma_pagamento || atual.metodo_pagamento,
+            metodo_pagamento: data.dados.metodo_pagamento || data.dados.forma_pagamento || atual.metodo_pagamento,
             parcelas: data.dados.parcelas?.toString() || atual.parcelas,
             local: data.dados.local || atual.local,
-            conta_id: categoriaOCR === 'feira_mantimentos' ? '' : atual.conta_id,
+            conta_id: atual.conta_id,
           };
         });
         setItensCompraIA(Array.isArray(data.dados.itens_compra) ? data.dados.itens_compra : []);
@@ -509,12 +507,10 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                       ...atual,
                       tipo: categoria.tipo,
                       categoria_id: categoria.id,
-                      metodo_pagamento: categoria.id === 'feira_mantimentos'
-                        ? 'credito'
-                        : categoria.tipo === 'transferencia' && atual.metodo_pagamento === 'credito'
+                      metodo_pagamento: categoria.tipo === 'transferencia' && atual.metodo_pagamento === 'credito'
                         ? 'pix'
                         : atual.metodo_pagamento,
-                      conta_id: categoria.id === 'feira_mantimentos' ? '' : atual.conta_id,
+                      conta_id: atual.conta_id,
                       cartao_id: categoria.tipo === 'transferencia' ? '' : atual.cartao_id,
                     }))}
                     className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs transition-all ${

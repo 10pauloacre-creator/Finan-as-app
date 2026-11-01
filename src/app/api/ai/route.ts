@@ -287,7 +287,7 @@ function extractTextFromSimplePdf(pdfBuffer: Buffer) {
 }
 
 function inferCategoryId(data: Record<string, unknown>) {
-  if (Array.isArray(data.itens_compra) && data.itens_compra.length > 0) return 'feira_mantimentos';
+  if (Array.isArray(data.itens_compra) && data.itens_compra.length > 0) return 'mercado';
 
   const source = String(data.categoria_sugerida || data.categoria || data.descricao || '').toLowerCase();
 

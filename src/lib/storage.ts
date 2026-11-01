@@ -136,9 +136,28 @@ export const storageTransacoes = {
 };
 
 // ── CATEGORIAS ──────────────────────────────────────────
+// Categorias antigas fundidas em outras (migração única dos dados salvos)
+const CATEGORIAS_FUNDIDAS: Record<string, string> = { feira_mantimentos: 'mercado', farmacia: 'saude' };
+
+function migrarCategoriasFundidas(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    for (const chave of [KEYS.TRANSACOES, KEYS.ORCAMENTOS]) {
+      const lista = get<{ categoria_id?: string }>(chave);
+      if (!lista.some(x => x.categoria_id && CATEGORIAS_FUNDIDAS[x.categoria_id])) continue;
+      set(chave, lista.map(x => (x.categoria_id && CATEGORIAS_FUNDIDAS[x.categoria_id] ? { ...x, categoria_id: CATEGORIAS_FUNDIDAS[x.categoria_id] } : x)));
+    }
+  } catch { /* migração best-effort */ }
+}
+
 export const storageCategoriass = {
   getAll: (): Categoria[] => {
-    const salvas = get<Categoria>(KEYS.CATEGORIAS);
+    let salvas = get<Categoria>(KEYS.CATEGORIAS);
+    if (salvas.some(c => CATEGORIAS_FUNDIDAS[c.id])) {
+      migrarCategoriasFundidas();
+      salvas = salvas.filter(c => !CATEGORIAS_FUNDIDAS[c.id]);
+      set(KEYS.CATEGORIAS, salvas);
+    }
     if (salvas.length === 0) {
       const padrao = CATEGORIAS_PADRAO.map(c => ({
         ...c,
