@@ -1248,7 +1248,7 @@ function ModalContaBancaria({
                     className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                       style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                      {cat?.icone || '??'}
+                      {cat?.icone || '•'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{t.descricao}</div>
@@ -1467,7 +1467,7 @@ function ModalCartaoCredito({
                     className="w-full rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2.5 flex items-center gap-3 text-left hover:bg-white/[0.05] transition-colors">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                       style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                      {cat?.icone || '??'}
+                      {cat?.icone || '•'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{t.descricao}</div>
@@ -1553,7 +1553,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
     doMes.filter(t => t.tipo === 'despesa').forEach(t => {
       const cat = categorias.find(c => c.id === t.categoria_id);
       const nome = cat?.nome || 'Outros';
-      if (!porCat[nome]) porCat[nome] = { valor: 0, cor: cat?.cor || '#6B7280', icone: cat?.icone || '??' };
+      if (!porCat[nome]) porCat[nome] = { valor: 0, cor: cat?.cor || '#6B7280', icone: cat?.icone || '•' };
       porCat[nome].valor += t.valor;
     });
 
@@ -1598,7 +1598,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
         return {
           id: `${transacao.id}-${dataExibicao}`,
           nome: transacao.descricao,
-          icone: categoria?.icone || '??',
+          icone: categoria?.icone || '•',
           cor: categoria?.cor || '#6B7280',
           valor: transacao.valor,
           data: dataExibicao,
@@ -1869,7 +1869,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       if (existente) {
         existente.valor += t.valor;
       } else {
-        acc.push({ nome, valor: t.valor, cor: cat?.cor || '#6B7280', icone: cat?.icone || '??' });
+        acc.push({ nome, valor: t.valor, cor: cat?.cor || '#6B7280', icone: cat?.icone || '•' });
       }
       return acc;
     }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
@@ -1881,7 +1881,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       const nome = cat?.nome || 'Outros';
       const ex = acc.find(a => a.nome === nome);
       if (ex) { ex.valor += t.valor; }
-      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
+      else acc.push({ nome, icone: cat?.icone || '•', cor: cat?.cor || '#6B7280', valor: t.valor });
       return acc;
     }, []).sort((a, b) => b.valor - a.valor);
 
@@ -1901,7 +1901,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
       const nome = cat?.nome || 'Outros';
       const ex = acc.find(a => a.nome === nome);
       if (ex) { ex.valor += t.valor; }
-      else acc.push({ nome, icone: cat?.icone || '??', cor: cat?.cor || '#6B7280', valor: t.valor });
+      else acc.push({ nome, icone: cat?.icone || '•', cor: cat?.cor || '#6B7280', valor: t.valor });
       return acc;
     }, []).sort((a, b) => b.valor - a.valor).slice(0, 5);
 
@@ -1943,7 +1943,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
     return proximo || null;
   }, [cartoes]);
-  const ocultar = (v: string) => saldoOculto ? '??????' : v;
+  const ocultar = (v: string) => saldoOculto ? '••••••' : v;
   const prioridadesFinanceiras = useMemo<ItemPrioridadeFinanceira[]>(() => {
     const vencimentosUrgentes = detalheResumo.apagar.cartoes.filter((cartao) => cartao.diasParaVencer <= 3);
     const previsoesUrgentes = detalheResumo.apagar.despesasPendentes.filter((despesa) => (
@@ -2456,7 +2456,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                         style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                        {cat?.icone || '??'}
+                        {cat?.icone || '•'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
@@ -2483,7 +2483,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
                         style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                        {cat?.icone || '??'}
+                        {cat?.icone || '•'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
@@ -2580,7 +2580,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
                         style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
                       >
-                        {cat?.icone || '??'}
+                        {cat?.icone || '•'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-white truncate">{cat?.nome || 'Outros'}</p>
