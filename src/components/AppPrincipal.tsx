@@ -213,34 +213,70 @@ const navDesktop = [
   { id: 'dashboard',    label: 'Início',       icone: LayoutDashboard },
   { id: 'transacoes',   label: 'Transações',    icone: ArrowLeftRight  },
   { id: 'assistente',   label: 'Assistente IA', icone: Sparkles        },
-  { id: 'agentes',      label: 'Agentes IA',    icone: BrainCircuit    },
-  { id: 'patrimonio',   label: 'Patrimônio',    icone: TrendingUp      },
-  { id: 'bancos',       label: 'Bancos',        icone: Building2       },
+  { id: 'patrimonio',   label: 'Contas',        icone: TrendingUp      },
   { id: 'cartoes',      label: 'Cartões',       icone: CreditCard      },
-  { id: 'salarios',     label: 'Salário',       icone: WalletCards     },
   { id: 'relatorios',   label: 'Relatórios',    icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos',    icone: Target          },
-  { id: 'calendario',   label: 'Calendário',    icone: CalendarDays    },
   { id: 'investimentos',label: 'Investir',      icone: TrendingUp      },
 ] as const;
+
+/** Sub-páginas agrupadas sob um item do menu */
+const grupos: Record<string, { id: Pagina; label: string }[]> = {
+  transacoes: [
+    { id: 'transacoes', label: 'Transações' },
+    { id: 'salarios',   label: 'Salário' },
+    { id: 'calendario', label: 'Calendário' },
+  ],
+  patrimonio: [
+    { id: 'patrimonio', label: 'Patrimônio' },
+    { id: 'bancos',     label: 'Bancos' },
+  ],
+  assistente: [
+    { id: 'assistente', label: 'Assistente' },
+    { id: 'agentes',    label: 'Agentes' },
+  ],
+};
+
+function paiDe(p: Pagina): string {
+  for (const [pai, itens] of Object.entries(grupos)) {
+    if (itens.some(i => i.id === p)) return pai;
+  }
+  return p;
+}
+
+function SubNavegacao({ pagina, onIr }: { pagina: Pagina; onIr: (p: Pagina) => void }) {
+  const itens = grupos[paiDe(pagina)];
+  if (!itens) return null;
+  return (
+    <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+      {itens.map(i => (
+        <button
+          key={i.id}
+          onClick={() => onIr(i.id)}
+          className={`flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            pagina === i.id ? 'bg-purple-600/25 text-purple-200' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {i.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Mobile bottom nav - 4 primary + "Mais" button */
 const navMobile = [
   { id: 'dashboard',  label: 'Início', icone: LayoutDashboard },
   { id: 'transacoes', label: 'Transações', icone: ArrowLeftRight  },
   { id: 'assistente', label: 'IA',     icone: Sparkles        },
-  { id: 'bancos',     label: 'Bancos', icone: Building2       },
 ] as const;
 
 /** Extra pages shown in the "Mais" bottom sheet */
 const navMais = [
   { id: 'cartoes',      label: 'Cartões',    icone: CreditCard      },
-  { id: 'salarios',     label: 'Salário',    icone: WalletCards     },
   { id: 'patrimonio',   label: 'Patrimônio', icone: TrendingUp      },
   { id: 'relatorios',   label: 'Relatórios', icone: BarChart3       },
   { id: 'orcamentos',   label: 'Orçamentos', icone: Target          },
-  { id: 'calendario',   label: 'Calendário', icone: CalendarDays    },
-  { id: 'agentes',      label: 'Agentes IA', icone: BrainCircuit    },
   { id: 'investimentos',label: 'Investir',   icone: TrendingUp      },
   { id: 'configuracoes',label: 'Config.',    icone: Settings        },
 ] as const;
@@ -345,6 +381,15 @@ export default function AppPrincipal() {
   }
 
   function renderizarPagina() {
+    return (
+      <>
+        <SubNavegacao pagina={pagina} onIr={setPagina} />
+        {renderizarConteudo()}
+      </>
+    );
+  }
+
+  function renderizarConteudo() {
     switch (pagina) {
       case 'dashboard':     return <Dashboard onNovoPagina={setPagina} />;
       case 'transacoes':    return <Transacoes />;
@@ -396,7 +441,7 @@ export default function AppPrincipal() {
           <nav className="flex-1 space-y-0.5">
             {navDesktop.map(item => {
               const Icon = item.icone;
-              const ativo = pagina === item.id;
+              const ativo = paiDe(pagina) === item.id;
               return (
                 <button
                   key={item.id}
@@ -520,7 +565,7 @@ export default function AppPrincipal() {
           <div className="flex justify-around max-w-md mx-auto">
             {navMobile.map(item => {
               const Icon = item.icone;
-              const ativo = pagina === item.id;
+              const ativo = paiDe(pagina) === item.id;
               return (
                 <button
                   key={item.id}
@@ -545,7 +590,7 @@ export default function AppPrincipal() {
               className={`
                 flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl
                 transition-all duration-150 min-w-[52px]
-                ${maisAberto || navMais.some(i => i.id === pagina) ? 'text-purple-400' : 'text-slate-600 hover:text-slate-400'}
+                ${maisAberto || navMais.some(i => i.id === paiDe(pagina)) ? 'text-purple-400' : 'text-slate-600 hover:text-slate-400'}
               `}
               aria-label="Mais páginas"
             >
@@ -570,7 +615,7 @@ export default function AppPrincipal() {
               <div className="grid grid-cols-3 gap-2">
                 {navMais.map(item => {
                   const Icon = item.icone;
-                  const ativo = pagina === item.id;
+                  const ativo = paiDe(pagina) === item.id;
                   return (
                     <button
                       key={item.id}
