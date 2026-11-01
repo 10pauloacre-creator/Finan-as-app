@@ -44,13 +44,14 @@ type FormState = {
   cartao_id: string;
 };
 
+const METODOS_PRINCIPAIS: MetodoPagamento[] = ['pix', 'debito', 'credito', 'dinheiro'];
 const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
-  { valor: 'pix', label: 'Pix', icone: 'PIX' },
-  { valor: 'debito', label: 'Débito', icone: 'DB' },
-  { valor: 'credito', label: 'Crédito', icone: 'CR' },
+  { valor: 'pix', label: 'Pix', icone: '' },
+  { valor: 'debito', label: 'Débito', icone: '' },
+  { valor: 'credito', label: 'Crédito', icone: '' },
   { valor: 'emprestimo', label: 'Emprestimo', icone: 'EMP' },
   { valor: 'financiamento', label: 'Financiamento', icone: 'FIN' },
-  { valor: 'dinheiro', label: 'Dinheiro', icone: 'R$' },
+  { valor: 'dinheiro', label: 'Dinheiro', icone: '' },
   { valor: 'transferencia', label: 'TED/DOC', icone: 'TED' },
   { valor: 'outro', label: 'Outro', icone: 'OUT' },
 ];
@@ -89,6 +90,8 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
   } = useFinanceiroStore();
 
   const [form, setForm] = useState<FormState>(() => getFormVazio(tipoInicial));
+  const [maisOpcoes, setMaisOpcoes] = useState(false);
+  const maisOpcoesVisivel = maisOpcoes || Boolean(transacaoEditar);
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroIA, setErroIA] = useState('');
@@ -435,7 +438,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Valor da parcela (R$) *</label>
+                <label className="mb-1 block text-xs text-slate-400">Valor (R$) *</label>
                 <input
                   type="number"
                   placeholder="0,00"
@@ -448,54 +451,13 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Data da realizacao</label>
+                <label className="mb-1 block text-xs text-slate-400">Data</label>
                 <input
                   type="date"
                   value={form.data}
                   onChange={(e) => setForm((atual) => ({ ...atual, data: e.target.value }))}
                   className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
                 />
-              </div>
-            </div>
-
-            {form.tipo === 'despesa' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs text-slate-400">Data de cobranca</label>
-                  <input
-                    type="date"
-                    value={form.data_cobranca}
-                    onChange={(e) => setForm((atual) => ({ ...atual, data_cobranca: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <div className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs text-slate-400">
-                    A despesa entra nas listas e previsoes pelo mes da cobranca.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs text-slate-400">Horario</label>
-                <input
-                  type="time"
-                  value={form.horario}
-                  onChange={(e) => setForm((atual) => ({ ...atual, horario: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-slate-400">Regra da data</label>
-                <div className="flex h-[42px] items-center rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs text-slate-400">
-                  {form.classificacao === 'fixa'
-                    ? 'Repete todo mes a partir desta data'
-                    : form.classificacao === 'futura'
-                    ? 'Entra apenas nesta data'
-                    : 'Considera exatamente esta data'}
-                </div>
               </div>
             </div>
 
@@ -532,7 +494,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             <div>
               <label className="mb-1 block text-xs text-slate-400">Forma de pagamento</label>
               <div className="flex flex-wrap gap-2">
-                {METODOS.map((metodo) => (
+                {METODOS.filter((m) => METODOS_PRINCIPAIS.includes(m.valor) || m.valor === form.metodo_pagamento).map((metodo) => (
                   <button
                     key={metodo.valor}
                     type="button"
@@ -548,7 +510,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                         : 'bg-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    {metodo.icone} {metodo.label}
+                    {metodo.label}
                   </button>
                 ))}
               </div>
@@ -618,7 +580,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
               </div>
             )}
 
-            {form.tipo === 'despesa' && !usaControleDeSerie && (
+            {form.tipo === 'despesa' && !usaControleDeSerie && (form.metodo_pagamento === 'credito' || maisOpcoesVisivel) && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-slate-400">Parcelamento</label>
@@ -694,6 +656,60 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             )}
 
             <div>
+              <button
+                type="button"
+                onClick={() => setMaisOpcoes((v) => !v)}
+                aria-expanded={maisOpcoesVisivel}
+                className="text-xs font-medium text-slate-400 transition-colors hover:text-white"
+              >
+                {maisOpcoesVisivel ? '− Menos opções' : '+ Mais opções'}
+              </button>
+            </div>
+
+            {maisOpcoesVisivel && (
+              <div className="space-y-4">
+            {form.tipo === 'despesa' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Data de cobranca</label>
+                  <input
+                    type="date"
+                    value={form.data_cobranca}
+                    onChange={(e) => setForm((atual) => ({ ...atual, data_cobranca: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <div className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-xs text-slate-400">
+                    A despesa entra nas listas e previsoes pelo mes da cobranca.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">Horario</label>
+                <input
+                  type="time"
+                  value={form.horario}
+                  onChange={(e) => setForm((atual) => ({ ...atual, horario: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">Regra da data</label>
+                <div className="flex h-[42px] items-center rounded-xl border border-slate-700 bg-slate-800 px-3 text-xs text-slate-400">
+                  {form.classificacao === 'fixa'
+                    ? 'Repete todo mes a partir desta data'
+                    : form.classificacao === 'futura'
+                    ? 'Entra apenas nesta data'
+                    : 'Considera exatamente esta data'}
+                </div>
+              </div>
+            </div>
+
+            <div>
               <label className="mb-1 block text-xs text-slate-400">Local (opcional)</label>
               <input
                 type="text"
@@ -714,6 +730,9 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                 className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-purple-500"
               />
             </div>
+
+              </div>
+            )}
 
             <div className="flex gap-3">
               {transacaoEditar && (
