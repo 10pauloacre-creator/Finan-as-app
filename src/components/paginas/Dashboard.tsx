@@ -1554,10 +1554,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
       porCat[nome].valor += t.valor;
     });
 
-    const graficoPizza = Object.entries(porCat)
-      .sort(([, a], [, b]) => b.valor - a.valor)
-      .slice(0, 6)
+    const categoriasOrdenadas = Object.entries(porCat).sort(([, a], [, b]) => b.valor - a.valor);
+    const graficoPizza = categoriasOrdenadas
+      .slice(0, 5)
       .map(([nome, info], i) => ({ nome, valor: info.valor, cor: info.cor || CORES[i % CORES.length], icone: info.icone }));
+    const valorOutrasCategorias = categoriasOrdenadas.slice(5).reduce((soma, [, info]) => soma + info.valor, 0);
+    if (valorOutrasCategorias > 0) {
+      graficoPizza.push({ nome: 'Outros', valor: valorOutrasCategorias, cor: '#64748B', icone: '•' });
+    }
 
     const areaData = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
