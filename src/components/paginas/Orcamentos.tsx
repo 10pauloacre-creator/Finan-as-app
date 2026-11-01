@@ -94,6 +94,8 @@ function obterClasseBarra(pct: number) {
   return 'bg-emerald-500';
 }
 
+const CATS_PRINCIPAIS = ['alimentacao', 'mercado', 'transporte', 'moradia', 'lazer'];
+
 function Orcamentos() {
   const hoje = useMemo(() => startOfTodayLocal(), []);
   const mesPadraoSimulacao = useMemo(() => adicionarMeses(hoje.getMonth() + 1, hoje.getFullYear(), 1), [hoje]);
@@ -113,6 +115,7 @@ function Orcamentos() {
     adicionarCategoria,
   } = useFinanceiroStore();
 
+  const [verTodasCats, setVerTodasCats] = useState(false);
   const [modalCatId, setModalCatId] = useState<string | null>(null);
   const [valorInput, setValorInput] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -178,6 +181,14 @@ function Orcamentos() {
     const semOrcamento = catsDespesa.filter((categoria) => !orcamentosMes.some((orcamento) => orcamento.categoria_id === categoria.id));
     return [...comOrcamento, ...semOrcamento];
   }, [catsDespesa, orcamentosMes]);
+
+  // Começa enxuto: categorias com orçamento + as 5 principais; o resto fica atrás de "Mostrar mais"
+  const catsVisiveis = useMemo(() => {
+    if (verTodasCats) return catsOrdenadas;
+    const comOrcamento = catsOrdenadas.filter((c) => orcamentosMes.some((o) => o.categoria_id === c.id));
+    const principais = CATS_PRINCIPAIS.map((id) => catsOrdenadas.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c && !comOrcamento.includes(c));
+    return [...comOrcamento, ...principais].slice(0, Math.max(5, comOrcamento.length));
+  }, [catsOrdenadas, orcamentosMes, verTodasCats]);
 
   const totaisOrcadosPorMes = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -495,7 +506,7 @@ function Orcamentos() {
               </div>
             )}
 
-            {catsOrdenadas.map((categoria) => {
+            {catsVisiveis.map((categoria) => {
               const orcamento = orcamentosMes.find((item) => item.categoria_id === categoria.id);
               const gasto = gastosPorCat.get(categoria.id) ?? 0;
               const limite = orcamento?.valor_limite ?? 0;
@@ -569,6 +580,15 @@ function Orcamentos() {
                 </div>
               );
             })}
+
+            {catsOrdenadas.length > catsVisiveis.length || verTodasCats ? (
+              <button
+                onClick={() => setVerTodasCats((v) => !v)}
+                className="w-full rounded-xl border border-white/[0.06] py-2 text-xs text-slate-400 transition-colors hover:bg-white/[0.04]"
+              >
+                {verTodasCats ? 'Mostrar menos' : `Mostrar mais categorias (${catsOrdenadas.length - catsVisiveis.length})`}
+              </button>
+            ) : null}
           </div>
         </>
       )}
