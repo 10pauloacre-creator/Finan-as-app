@@ -2135,10 +2135,12 @@ export default function Dashboard({ onNovoPagina }: Props) {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <p className="mb-1 text-sm font-medium text-slate-400">Olá, Paulo!</p>
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Resumo principal</p>
-            <div className="mt-3 flex items-center gap-3">
-              <h1 className="text-3xl font-bold tabular-nums sm:text-4xl" style={{ color: corSaldoMes }}>
-                {saldoOculto ? 'R$ ??????' : formatarMoeda(saldoMesAnimado)}
+            <p className="text-sm text-slate-400">
+              {saldoProjetado >= 0 ? 'Você pode gastar até o fim do mês' : 'Atenção: faltam recursos para fechar o mês'}
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <h1 className="text-3xl font-semibold tabular-nums sm:text-4xl" style={{ color: corSaldoMes }}>
+                {saldoOculto ? 'R$ ??????' : formatarMoeda(Math.abs(saldoMesAnimado))}
               </h1>
               <button
                 onClick={() => setSaldoOculto(v => !v)}
@@ -2149,32 +2151,10 @@ export default function Dashboard({ onNovoPagina }: Props) {
               </button>
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              Saldo em conta menos o que ainda precisa ser pago em {MESES_ABREV[mes - 1]} {ano}
+              Já descontado o que ainda falta pagar em {MESES_ABREV[mes - 1]} {ano}
             </p>
           </div>
 
-          <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-xs font-medium text-slate-500">Estrutura</p>
-              <p className="mt-1 text-xs font-semibold text-slate-200 sm:text-sm">
-                {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
-              </p>
-            </div>
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-xs font-medium text-slate-500">Fatura atual</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
-                {ocultar(formatarMoeda(totalFaturaAtual))}
-              </p>
-            </div>
-            <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-xs font-medium text-slate-500">Próximo vencimento</p>
-              <p className="mt-1 text-sm font-semibold text-slate-200">
-                {proximoVencimento
-                  ? `${proximoVencimento.nome} · ${proximoVencimento.diasRestantes === 0 ? 'hoje' : `${proximoVencimento.diasRestantes}d`}`
-                  : 'Sem pendência'}
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -2182,9 +2162,8 @@ export default function Dashboard({ onNovoPagina }: Props) {
       <section>
         <SectionHeader
           title="Visão do mês"
-          subtitle="Quatro indicadores centrais. O detalhe completo aparece só ao abrir cada card."
         />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <DashboardMetricCard
             title="Gastos do mês"
             value={ocultar(formatarMoeda(despesasAnimado))}
@@ -2202,14 +2181,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
             onClick={() => setModalResumo('recebimentos')}
           />
           <DashboardMetricCard
-            title="Debitado do saldo"
-            value={ocultar(formatarMoeda(totalPagoAnimado))}
-            subtitle="Saídas que já saíram da conta."
-            icon={<CheckCircle2 size={16} />}
-            tone="income"
-            onClick={() => setModalResumo('pago')}
-          />
-          <DashboardMetricCard
             title="Falta pagar"
             value={ocultar(formatarMoeda(aPagarAnimado))}
             subtitle="Faturas e pendências ainda abertas."
@@ -2222,7 +2193,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
           <DicaAjuda>
             <div><span className="text-white">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
             <div className="mt-1"><span className="text-white">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
-            <div className="mt-1"><span className="text-white">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
             <div className="mt-1"><span className="text-white">Falta pagar:</span> faturas atuais dos cartões + pendências extras ainda abertas.</div>
           </DicaAjuda>
         </div>
@@ -2242,141 +2212,11 @@ export default function Dashboard({ onNovoPagina }: Props) {
       {/* Próximas faturas */}
       <UpcomingCard cartoes={cartoes} onNavegar={() => onNovoPagina('cartoes')} />
 
-      {/* Contas bancárias com sparkline */}
-      <section>
-        <SectionHeader
-          title="Contas bancárias"
-          subtitle="Saldos agrupados em uma faixa mais leve, sem disputar com os KPIs."
-          icon={<Building2 size={15} />}
-          actionLabel="Ver tudo"
-          onAction={() => onNovoPagina('bancos')}
-        />
-        {contas.length > 0 ? (
-          <>
-            <div className="overflow-x-auto pb-1">
-              <div className="fin-scroll-snap flex min-w-max snap-x snap-mandatory gap-2 pr-4">
-                {contas.map((conta) => {
-                  const info = BANCO_INFO[conta.banco] || BANCO_INFO.outro;
-                  return (
-                    <button
-                      key={conta.id}
-                      type="button"
-                      onClick={() => setContaModalId(conta.id)}
-                      className="fin-panel fin-panel-interactive fin-button-press min-w-[140px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
-                    >
-                      <div className="flex items-center gap-2">
-                        <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs font-medium tracking-wide text-slate-500">{info.nome}</div>
-                          <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(conta.saldo))}</div>
-                        </div>
-                        <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-          </>
-        ) : (
-          <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
-            <Building2 size={36} className="mb-2 opacity-30" />
-            <p className="text-sm text-slate-500">Nenhuma conta cadastrada</p>
-          </div>
-        )}
-      </section>
-
-      {/* Cartões de crédito */}
-      <section>
-        <SectionHeader
-          title="Cartões de crédito"
-          subtitle="Faturas atuais visíveis, com o detalhe completo só quando você abrir o cartão."
-          icon={<CreditCard size={15} />}
-          actionLabel="Ver tudo"
-          onAction={() => onNovoPagina('cartoes')}
-        />
-        {cartoes.length > 0 ? (
-          <>
-            <div className="overflow-x-auto pb-1">
-              <div className="fin-scroll-snap flex min-w-max snap-x snap-mandatory gap-2 pr-4">
-                {cartoes.map((cartao) => (
-                  <button
-                    key={cartao.id}
-                    type="button"
-                    onClick={() => setCartaoModalId(cartao.id)}
-                    className="fin-panel fin-panel-interactive fin-button-press min-w-[148px] snap-start rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-left text-white transition-all hover:bg-white/[0.05] hover:border-white/15"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-shrink-0">
-                        <BankLogo banco={cartao.banco} size={24} className="h-6 w-6 object-contain" />
-                        <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-medium tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
-                        <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
-                      </div>
-                      <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </>
-        ) : (
-          <div className="glass-card flex flex-col items-center justify-center py-10 text-slate-600">
-            <CreditCard size={36} className="mb-2 opacity-30" />
-            <p className="text-sm text-slate-500">Nenhum cartão cadastrado</p>
-          </div>
-        )}
-        <div className="hidden space-y-3">
-          {cartoes.map(cartao => {
-            const info = BANCO_INFO[cartao.banco] || BANCO_INFO.outro;
-            const pct = cartao.limite > 0 ? (cartao.fatura_atual / cartao.limite) * 100 : 0;
-            const disponivel = cartao.limite - cartao.fatura_atual;
-            const diasVenc = diasAteVencimento(cartao.dia_vencimento);
-
-            return (
-              <button key={cartao.id} onClick={() => onNovoPagina('cartoes')}
-                className="glass-card p-4 w-full text-left relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: info.cor }} />
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <BankLogo banco={cartao.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1 flex-shrink-0" />
-                    <div>
-                      <div className="text-sm font-semibold text-white">{cartao.nome}</div>
-                      <div className="text-xs text-slate-500 capitalize">{cartao.bandeira}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-bold tabular-nums ${pct > 80 ? 'text-red-400' : pct > 50 ? 'text-yellow-400' : 'text-white'}`}>
-                      {ocultar(formatarMoeda(cartao.fatura_atual))}
-                    </div>
-                    <div className="text-xs text-slate-500">fatura atual</div>
-                  </div>
-                </div>
-                <div className="mb-2">
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : info.cor }} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>Disponível: <span className="text-emerald-400 font-medium">{ocultar(formatarMoeda(disponivel))}</span></span>
-                  <span>Vence em <span className={`font-medium ${diasVenc <= 5 ? "text-red-400" : "text-slate-300"}`}>{diasVenc}d</span> • dia {cartao.dia_vencimento}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       {/* Gastos por Categoria */}
       <div className="fin-panel fin-soft-rise-delay rounded-[24px] border border-white/8 bg-white/[0.025] p-5">
         <SectionHeader
           title="Gastos por categoria"
-          subtitle="Visão analítica com foco nas maiores categorias do mês."
+          subtitle="As 5 maiores categorias do mês."
         />
         {catFiltro && (
           <button onClick={() => setCatFiltro(null)} className="-mt-1 mb-3 text-xs text-slate-400 transition-colors hover:text-white">
@@ -2396,252 +2236,6 @@ export default function Dashboard({ onNovoPagina }: Props) {
           </div>
         )}
       </div>
-
-      {/* Análise IA com typewriter */}
-      {dicasIA.length > 0 && (
-        <section>
-          <SectionHeader
-            title="Análise da IA"
-            subtitle="Insights e alertas em segundo plano, sem poluir a leitura principal."
-            icon={<Sparkles size={15} className="text-sky-400" />}
-          />
-          {carregandoAutomacoes && (
-            <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-500">
-              <Loader2 size={11} className="animate-spin" />
-              Atualizando automações
-            </div>
-          )}
-          <div className="mb-3 flex justify-end">
-            <button
-              type="button"
-              onClick={() => void atualizarAnaliseIA()}
-              disabled={carregandoAutomacoes}
-              className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {carregandoAutomacoes ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-              {carregandoAutomacoes ? 'Atualizando análise' : 'Atualizar análise'}
-            </button>
-          </div>
-          <InsightCard
-            dicas={dicasIA as DicaItem[]}
-            onVerAssistente={() => onNovoPagina('assistente')}
-          />
-        </section>
-      )}
-
-      {/* Gastos Fixos e Recorrentes */}
-      {(gastosFixos.fixos.length > 0 || gastosFixos.parcelados.length > 0) && (
-        <section>
-          <SectionHeader
-            title="Fixos e recorrentes"
-            subtitle="Detalhe rápido das obrigações que mais se repetem no fluxo."
-            actionLabel="Ver tudo"
-            onAction={() => onNovoPagina('transacoes')}
-          />
-
-          {gastosFixos.fixos.length > 0 && (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Gastos fixos</p>
-              <div className="space-y-2 mb-3">
-                {gastosFixos.fixos.map(t => {
-                  const cat = categorias.find(c => c.id === t.categoria_id);
-                  return (
-                    <button key={t.id} type="button" onClick={() => setTransacaoDetalhe(t)}
-                      className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                        {cat?.icone || '•'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                        <div className="text-xs text-slate-500">{cat?.nome || 'Outros'} • Recorrente mensal</div>
-                      </div>
-                      <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
-                        -{ocultar(formatarMoeda(t.valor))}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {gastosFixos.parcelados.length > 0 && (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Parcelados em andamento</p>
-              <div className="space-y-2 mb-3">
-                {gastosFixos.parcelados.map(t => {
-                  const cat = categorias.find(c => c.id === t.categoria_id);
-                  return (
-                    <button key={t.id} type="button" onClick={() => setTransacaoDetalhe(t)}
-                      className="glass-card flex items-center gap-3 p-3 w-full text-left hover:bg-white/[0.06] transition-colors">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}>
-                        {cat?.icone || '•'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                        <div className="text-xs text-slate-500">{cat?.nome || 'Outros'} • {t.parcelas}x parcelado</div>
-                      </div>
-                      <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
-                        -{ocultar(formatarMoeda(t.valor))}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          <div className="glass-card p-3 flex items-center justify-between">
-            <span className="text-xs text-slate-400">
-              Total fixos + recorrentes
-              <span className="text-slate-600 ml-1">({gastosFixos.fixos.length + gastosFixos.parcelados.length} itens)</span>
-            </span>
-            <span className="text-sm font-bold text-red-400 tabular-nums">
-              -{ocultar(formatarMoeda(
-                [...gastosFixos.fixos, ...gastosFixos.parcelados].reduce((s, t) => s + t.valor, 0)
-              ))}
-            </span>
-          </div>
-        </section>
-      )}
-
-      <ModalNovaTransacao
-        aberto={modalEdicaoAberto}
-        onFechar={() => {
-          setModalEdicaoAberto(false);
-          setTransacaoEditando(undefined);
-        }}
-        transacaoEditar={transacaoEditando}
-        tipoInicial={transacaoEditando?.tipo || 'despesa'}
-      />
-
-      {transacaoDetalhe && (
-        <ModalDetalheTransacao
-          transacao={transacaoDetalhe}
-          conta={contas.find(c => c.id === transacaoDetalhe.conta_id)}
-          cartao={cartoes.find(c => c.id === transacaoDetalhe.cartao_id)}
-          categoriaNome={categorias.find(c => c.id === transacaoDetalhe.categoria_id)?.nome || 'Outros'}
-          onEditar={() => abrirEdicaoTransacao(transacaoDetalhe)}
-          onFechar={() => setTransacaoDetalhe(null)}
-        />
-      )}
-
-      {/* Alertas de Orçamento */}
-      {(() => {
-        const alertas = orcamentos
-          .filter(o => o.mes === mes && o.ano === ano && o.valor_limite > 0)
-          .map(o => {
-            const gasto = transacoes
-              .filter(t => {
-                return t.tipo === 'despesa'
-                  && t.categoria_id === o.categoria_id
-                  && transacaoContaNoMesAteData(t, mes, ano, hoje);
-              })
-              .reduce((s, t) => s + t.valor, 0);
-            const pct = (gasto / o.valor_limite) * 100;
-            return { o, gasto, pct };
-          })
-          .filter(({ pct }) => pct >= 80)
-          .sort((a, b) => b.pct - a.pct)
-          .slice(0, 3);
-
-        if (alertas.length === 0) return null;
-
-        return (
-          <section>
-            <SectionHeader
-              title="Alertas de orçamento"
-              subtitle="Categorias que estão pressionando o limite do mês."
-              actionLabel="Ver orçamentos"
-              onAction={() => onNovoPagina('orcamentos')}
-            />
-            <div className="space-y-2">
-              {alertas.map(({ o, gasto, pct }) => {
-                const cat = categorias.find(c => c.id === o.categoria_id);
-                const corBarra = pct >= 100 ? '#EF4444' : pct >= 90 ? '#F97316' : '#F59E0B';
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => onNovoPagina('orcamentos')}
-                    className="glass-card p-3 w-full text-left"
-                    style={{ borderColor: `${corBarra}33` }}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
-                        style={{ background: cat?.cor ? `${cat.cor}22` : 'rgba(255,255,255,0.05)', color: cat?.cor || '#94A3B8' }}
-                      >
-                        {cat?.icone || '•'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-white truncate">{cat?.nome || 'Outros'}</p>
-                        <p className="text-xs text-slate-500 tabular-nums">
-                          {formatarMoeda(gasto)} / {formatarMoeda(o.valor_limite)}
-                        </p>
-                      </div>
-                      <span className="text-xs font-bold tabular-nums" style={{ color: corBarra }}>
-                        {pct.toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${Math.min(pct, 100)}%`, background: corBarra }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* Próximos gastos (7 dias) */}
-      {proximosGastos.length > 0 && (
-        <section>
-          <SectionHeader
-            title="Gastos previstos - 7 dias"
-            subtitle="Pendências de curto prazo para priorizar agora."
-            actionLabel="Ver todos"
-            onAction={() => onNovoPagina('agentes')}
-          />
-          <div className="space-y-2">
-            {proximosGastos.slice(0, 3).map((g, i) => {
-              const urgente = g.diasRestantes <= 3;
-              const dataFormatada = parseFinancialDate(g.data).toLocaleDateString('pt-BR', {
-                day: '2-digit', month: 'short',
-              });
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onNovoPagina('agentes')}
-                  className={`glass-card flex items-center gap-3 p-3 w-full text-left ${urgente ? 'border-amber-500/20' : ''}`}
-                >
-                  <div className="text-lg flex-shrink-0">•</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{g.descricao}</div>
-                    <div className={`text-xs mt-0.5 ${urgente ? 'text-amber-400 font-semibold' : 'text-slate-500'}`}>
-                      {urgente && 'Atenção: '}
-                      {dataFormatada} • {g.diasRestantes === 0 ? 'Hoje' : g.diasRestantes === 1 ? 'Amanhã' : `Em ${g.diasRestantes} dias`}
-                    </div>
-                  </div>
-                  <div className="text-sm font-bold text-red-400 tabular-nums flex-shrink-0">
-                    -{formatarMoeda(g.valor)}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Score de Saúde Financeira */}
-      <ScoreWidget score={score} onNavegar={() => onNovoPagina('agentes')} />
 
       {contaModal && (
         <ModalContaBancaria
