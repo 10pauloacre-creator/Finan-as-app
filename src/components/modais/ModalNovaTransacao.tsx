@@ -377,7 +377,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             {!transacaoEditar && (
               <div>
                 <div className="mb-3">
-                  <p className="mb-2 text-[11px] text-slate-500">Leitor OCR</p>
+                  <p className="mb-2 text-xs text-slate-500">Leitor OCR</p>
                   <OCRModelSelect
                     value={config.ai_modelo_ocr_padrao || 'automatico'}
                     onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
@@ -524,7 +524,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                     }`}
                   >
                     <span className="text-lg">{categoria.icone}</span>
-                    <span className="w-full truncate text-center text-[10px]">{categoria.nome}</span>
+                    <span className="w-full truncate text-center text-xs">{categoria.nome}</span>
                   </button>
                 ))}
               </div>
@@ -580,7 +580,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.conta_id && (
-                  <p className="mt-1 text-[11px] text-amber-400">Selecione uma conta para continuar.</p>
+                  <p className="mt-1 text-xs text-amber-400">Selecione uma conta para continuar.</p>
                 )}
               </div>
             )}
@@ -605,7 +605,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                         <BankLogo banco={cartao.banco} size={20} className="mt-0.5 h-5 w-5 object-contain" />
                         <span className="flex flex-col items-start">
                           <span>{cartao.nome}</span>
-                          <span className={`mt-0.5 text-[10px] ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
+                          <span className={`mt-0.5 text-xs ${ativo ? 'text-purple-400/70' : 'text-slate-600'}`}>
                             Fatura: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartao.fatura_atual)}
                           </span>
                         </span>
@@ -614,7 +614,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
                   })}
                 </div>
                 {!form.cartao_id && (
-                  <p className="mt-1 text-[11px] text-amber-400">Selecione um cartao para continuar.</p>
+                  <p className="mt-1 text-xs text-amber-400">Selecione um cartao para continuar.</p>
                 )}
               </div>
             )}

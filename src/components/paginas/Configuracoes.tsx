@@ -55,7 +55,7 @@ function Item({
         {icone && <div className={`text-sm flex-shrink-0 ${danger ? 'text-red-400' : 'text-slate-400'}`}>{icone}</div>}
         <div className="min-w-0">
           <p className={`text-sm font-medium ${danger ? 'text-red-400' : 'text-slate-200'} truncate`}>{label}</p>
-          {descricao && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{descricao}</p>}
+          {descricao && <p className="text-xs text-slate-500 mt-0.5 truncate">{descricao}</p>}
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -609,7 +609,7 @@ export default function Configuracoes() {
             }}
           />
           <div>
-            <p className="text-[11px] text-slate-500 mb-2">Leitor OCR padrão</p>
+            <p className="text-xs text-slate-500 mb-2">Leitor OCR padrão</p>
             <OCRModelSelect
               value={config.ai_modelo_ocr_padrao || 'automatico'}
               onChange={(value) => {
@@ -623,7 +623,7 @@ export default function Configuracoes() {
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 space-y-1.5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-slate-200">OpenRouter</p>
-                <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
+                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                   openRouterInfo.configured
                     ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
                     : 'bg-red-500/15 text-red-300 border border-red-500/20'
@@ -631,37 +631,37 @@ export default function Configuracoes() {
                   {openRouterInfo.configured ? 'Configurado' : 'Não configurado'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 Provedor padrão real: {openRouterInfo.defaultProvider === 'automatico' ? 'Automático' : openRouterInfo.defaultProvider}
                 {openRouterInfo.defaultProviderRaw && openRouterInfo.defaultProviderRaw !== openRouterInfo.defaultProvider
                   ? ` (alias recebido: ${openRouterInfo.defaultProviderRaw})`
                   : ''}
               </p>
-              <p className="text-[11px] text-slate-400">Modelo rápido: {openRouterInfo.fastModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo de raciocínio: {openRouterInfo.reasoningModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo premium: {openRouterInfo.premiumModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo gratuito: {openRouterInfo.freeModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo de imagem: {openRouterInfo.visionModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo de PDF: {openRouterInfo.pdfModel}</p>
-              <p className="text-[11px] text-slate-400">Modelo de áudio: {openRouterInfo.audioModel}</p>
+              <p className="text-xs text-slate-400">Modelo rápido: {openRouterInfo.fastModel}</p>
+              <p className="text-xs text-slate-400">Modelo de raciocínio: {openRouterInfo.reasoningModel}</p>
+              <p className="text-xs text-slate-400">Modelo premium: {openRouterInfo.premiumModel}</p>
+              <p className="text-xs text-slate-400">Modelo gratuito: {openRouterInfo.freeModel}</p>
+              <p className="text-xs text-slate-400">Modelo de imagem: {openRouterInfo.visionModel}</p>
+              <p className="text-xs text-slate-400">Modelo de PDF: {openRouterInfo.pdfModel}</p>
+              <p className="text-xs text-slate-400">Modelo de áudio: {openRouterInfo.audioModel}</p>
             </div>
           )}
 
           {lastExecution?.providerUsed && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3 space-y-1">
-              <p className="text-[11px] text-slate-500">Última IA usada</p>
+              <p className="text-xs text-slate-500">Última IA usada</p>
               <p className="text-xs text-slate-200">{lastExecution.providerUsed === 'automatico' ? 'Automático' : lastExecution.providerUsed}</p>
-              {lastExecution.modelUsed && <p className="text-[11px] text-slate-400">Modelo: {lastExecution.modelUsed}</p>}
-              <p className="text-[11px] text-slate-400">Fallback usado: {lastExecution.fallbackUsed ? 'Sim' : 'Não'}</p>
+              {lastExecution.modelUsed && <p className="text-xs text-slate-400">Modelo: {lastExecution.modelUsed}</p>}
+              <p className="text-xs text-slate-400">Fallback usado: {lastExecution.fallbackUsed ? 'Sim' : 'Não'}</p>
               {lastExecution.at && (
-                <p className="text-[11px] text-slate-500">Em: {new Date(lastExecution.at).toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-slate-500">Em: {new Date(lastExecution.at).toLocaleString('pt-BR')}</p>
               )}
             </div>
           )}
 
           {aiFallbackOrder.length > 0 && (
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
-              <p className="text-[11px] text-slate-500">Ordem de fallback</p>
+              <p className="text-xs text-slate-500">Ordem de fallback</p>
               <p className="text-xs text-slate-300 mt-1">{aiFallbackOrder.join(' → ')}</p>
             </div>
           )}
@@ -672,9 +672,9 @@ export default function Configuracoes() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-200">{provider.label}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{provider.description}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{provider.description}</p>
                   </div>
-                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                     provider.availability === 'healthy'
                       ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
                       : provider.availability === 'degraded'
@@ -686,21 +686,21 @@ export default function Configuracoes() {
                     {provider.statusLabel || (provider.configured ? 'Configurado' : 'Não configurado')}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-2">Modelo: {provider.model}</p>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-400 mt-2">Modelo: {provider.model}</p>
+                <p className="text-xs text-slate-500 mt-1">
                   Tipo: {provider.type === 'ocr' ? 'OCR especializado' : 'Chat / análise financeira'}
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1">Forças: {provider.strengths.join(', ')}</p>
+                <p className="text-xs text-slate-500 mt-1">Forças: {provider.strengths.join(', ')}</p>
                 {provider.lastCheckedAt && (
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Último teste: {new Date(provider.lastCheckedAt).toLocaleString('pt-BR')}
                   </p>
                 )}
                 {provider.lastError && (
-                  <p className="text-[11px] text-amber-300/90 mt-1">Última falha: {provider.lastError}</p>
+                  <p className="text-xs text-amber-300/90 mt-1">Última falha: {provider.lastError}</p>
                 )}
                 {provider.configHint && (
-                  <p className="text-[11px] text-sky-300/90 mt-1">Ajuste sugerido: {provider.configHint}</p>
+                  <p className="text-xs text-sky-300/90 mt-1">Ajuste sugerido: {provider.configHint}</p>
                 )}
               </div>
             ))}
@@ -718,7 +718,7 @@ export default function Configuracoes() {
               { label: 'IPCA (% a.a.)', val: taxasIpca, set: setTaxasIpca },
             ].map(({ label, val, set }) => (
               <div key={label}>
-                <label className="text-[10px] text-slate-500 mb-1 block">{label}</label>
+                <label className="text-xs text-slate-500 mb-1 block">{label}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -783,7 +783,7 @@ export default function Configuracoes() {
             ].map(({ label, val }) => (
               <div key={label} className="bg-white/[0.03] rounded-xl py-2.5 px-3">
                 <p className="text-base font-bold text-white">{val}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{label}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{label}</p>
               </div>
             ))}
           </div>

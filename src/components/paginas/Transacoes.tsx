@@ -125,7 +125,7 @@ function SectionHeader({
         <button
           type="button"
           onClick={onAction}
-          className="w-full rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
+          className="w-full rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
         >
           {actionLabel}
         </button>
@@ -165,9 +165,9 @@ function SummaryTile({
 
   return (
     <div className={`fin-panel rounded-2xl border ${palette.border} ${palette.bg} p-3`}>
-      <div className="text-[11px] font-medium text-slate-500">{title}</div>
+      <div className="text-xs font-medium text-slate-500">{title}</div>
       <div className={`mt-1 text-lg font-bold tabular-nums ${palette.value}`}>{value}</div>
-      <div className="mt-1 text-[11px] text-slate-500">{subtitle}</div>
+      <div className="mt-1 text-xs text-slate-500">{subtitle}</div>
     </div>
   );
 }
@@ -307,10 +307,10 @@ function TimelineGastos({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="mb-1 text-sm font-semibold text-white">Leitura mensal de despesas</h3>
-            <p className="mb-0 text-[11px] text-slate-400">O gráfico mostra o mês atual em destaque e empurra os próximos meses para a direita.</p>
+            <p className="mb-0 text-xs text-slate-400">O gráfico mostra o mês atual em destaque e empurra os próximos meses para a direita.</p>
           </div>
           <div className="rounded-2xl border border-red-400/15 bg-red-500/10 px-3 py-2 text-right">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-red-200/70">Pico</div>
+            <div className="text-xs uppercase tracking-[0.18em] text-red-200/70">Pico</div>
             <div className="mt-1 text-sm font-bold tabular-nums text-red-300">{formatarMoeda(maxValor)}</div>
           </div>
         </div>
@@ -385,7 +385,7 @@ function TimelineGastos({
                     boxShadow: isAtual || isSel ? tgGlowPorTotal(d.total) : 'none',
                   }}
                 />
-                <div className="relative mb-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                <div className="relative mb-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.18em]"
                   style={{
                     color: isAtual ? '#F8FAFC' : isFuturo ? '#C7D2FE' : '#CBD5E1',
                     borderColor: isAtual ? `${corMes.replace('rgb', 'rgba').replace(')', ', 0.35)')}` : isFuturo ? 'rgba(129,140,248,0.28)' : 'rgba(255,255,255,0.08)',
@@ -396,7 +396,7 @@ function TimelineGastos({
                 <div className="relative text-base font-black tabular-nums" style={{ color: d.total > 0 ? corMes : isFuturo ? '#94A3B8' : '#FFFFFF' }}>
                   {formatarMoeda(d.total)}
                 </div>
-                <div className="relative mt-1 text-[10px] font-medium text-slate-400">
+                <div className="relative mt-1 text-xs font-medium text-slate-400">
                   {isFuturo ? 'projetado' : isAtual ? 'em andamento' : 'fechado'}
                 </div>
                 <div className="relative mt-2 h-1.5 w-20 overflow-hidden rounded-full bg-white/8">
@@ -442,12 +442,12 @@ function TimelineGastos({
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-white truncate">{item.transacao.descricao}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
                           item.tipoLabel === 'Recorrente' ? 'bg-purple-500/20 text-purple-300' :
                           item.tipoLabel === 'Parcela' ? 'bg-blue-500/20 text-blue-300' :
                           'bg-amber-500/20 text-amber-300'
                         }`}>{item.tipoLabel}{item.parcelaLabel ? ` ${item.parcelaLabel}` : ''}</span>
-                        {cat && <span className="text-[10px] text-slate-600 truncate">{cat.nome}</span>}
+                        {cat && <span className="text-xs text-slate-600 truncate">{cat.nome}</span>}
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-red-400 tabular-nums shrink-0">
@@ -476,7 +476,7 @@ function TimelineGastos({
                       <div className="h-full rounded-full"
                         style={{ width: `${(c.valor / mesSel.total) * 100}%`, background: `linear-gradient(90deg, ${c.cor}, rgba(255,255,255,0.92))`, opacity: 0.95 }} />
                     </div>
-                    <div className="mt-1 text-[10px] text-slate-500">{((c.valor / mesSel.total) * 100).toFixed(0)}% do mês</div>
+                    <div className="mt-1 text-xs text-slate-500">{((c.valor / mesSel.total) * 100).toFixed(0)}% do mês</div>
                   </div>
                   </div>
                 </div>
@@ -636,7 +636,7 @@ function TimelineReceitas({
                 <div className={`text-sm font-bold tabular-nums ${isAtual ? 'text-emerald-300' : isFuturo ? 'text-slate-500' : 'text-white'}`}>
                   {formatarMoeda(d.total)}
                 </div>
-                {isFuturo && d.total > 0 && <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>}
+                {isFuturo && d.total > 0 && <div className="text-xs text-slate-600 mt-0.5">estimado</div>}
               </button>
             );
           })}
@@ -1357,7 +1357,7 @@ export default function Transacoes() {
             <div className="text-3xl font-bold tabular-nums text-white">
               {formatarMoeda(resumoFiltroDespesas.total)}
             </div>
-            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs text-slate-500">
               <div><span className="text-slate-300">Total do filtro:</span> soma de todas as despesas que passaram pelos filtros ativos.</div>
               <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente despesas realizadas fora do cartão.</div>
               <div className="mt-1"><span className="text-slate-300">A pagar:</span> diferença entre o total filtrado e o que já foi debitado, incluindo faturas quando aplicável.</div>
@@ -1384,7 +1384,7 @@ export default function Transacoes() {
                     style={{ width: `${Math.min((resumoFiltroDespesas.debitadas / resumoFiltroDespesas.total) * 100, 100)}%` }}
                   />
                 </div>
-                <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                <div className="mt-1 flex justify-between text-xs text-slate-500">
                   <span>debitado do saldo</span>
                   <span>faturas e pendências</span>
                 </div>
@@ -1438,7 +1438,7 @@ export default function Transacoes() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-xs text-slate-500">
               "Fixas" são recorrentes. "Já debitadas" mostra PIX, débito e transferências realizados. "Previstas" mostra o que ainda não foi pago.
             </p>
           </div>
@@ -1457,7 +1457,7 @@ export default function Transacoes() {
             <div className="text-3xl font-bold tabular-nums text-emerald-400">
               +{formatarMoeda(totais.receitas)}
             </div>
-            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+            <div className="hidden mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs text-slate-500">
               <div><span className="text-slate-300">Recebido:</span> receitas já realizadas dentro do período filtrado.</div>
               <div className="mt-1"><span className="text-slate-300">Agendadas:</span> entradas futuras ainda não realizadas que já existem nos lançamentos.</div>
             </div>
@@ -1554,32 +1554,32 @@ export default function Transacoes() {
                           </div>
                           {badgeClassificacao && (
                             <div className="mt-1">
-                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeClassificacao.className}`}>
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${badgeClassificacao.className}`}>
                                 {badgeClassificacao.label}
                               </span>
                             </div>
                           )}
                           {eFutura && (
-                            <div className="mt-1 text-[11px] text-amber-400">
+                            <div className="mt-1 text-xs text-amber-400">
                               {t.cartao_id ? 'Cobranca em ' : 'Prevista para '}{parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </div>
                           )}
                           {contaAtrasada && (
-                            <div className="mt-1 text-[11px] text-red-300">
+                            <div className="mt-1 text-xs text-red-300">
                               Conta vencida e ainda não marcada como paga.
                             </div>
                           )}
                           {contaPaga && permiteControleManual && (
-                            <div className="mt-1 text-[11px] text-emerald-300">
+                            <div className="mt-1 text-xs text-emerald-300">
                               Conta marcada como paga.
                             </div>
                           )}
                           {t.itens_compra && t.itens_compra.length > 0 && (
                             <div className="mt-1">
-                              <div className="text-[11px] font-medium text-emerald-400">
+                              <div className="text-xs font-medium text-emerald-400">
                                 {t.itens_compra.length} item(ns) salvos da nota fiscal
                               </div>
-                              <div className="truncate text-[11px] text-slate-500">
+                              <div className="truncate text-xs text-slate-500">
                                 {t.itens_compra.slice(0, 3).map((item) => item.nome).join(' • ')}
                               </div>
                             </div>

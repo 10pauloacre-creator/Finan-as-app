@@ -92,23 +92,23 @@ export default function ModalDetalheTransacao({
           {/* Linha 1: valor, data, categoria, classificação */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className={`rounded-2xl border p-3 ${ehReceita ? 'border-emerald-500/15 bg-emerald-500/5' : 'border-red-500/15 bg-red-500/5'}`}>
-              <div className="text-[11px] text-slate-500">Valor</div>
+              <div className="text-xs text-slate-500">Valor</div>
               <div className={`mt-1 text-sm font-semibold tabular-nums ${ehReceita ? 'text-emerald-400' : 'text-red-400'}`}>
                 {ehReceita ? '+' : '-'}{formatarMoeda(parcelamento?.valorTotal ?? transacao.valor)}
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">{transacao.cartao_id ? 'Data da compra' : 'Data'}</div>
+              <div className="text-xs text-slate-500">{transacao.cartao_id ? 'Data da compra' : 'Data'}</div>
               <div className="mt-1 text-sm font-semibold text-white">
                 {parseFinancialDate(transacao.data).toLocaleDateString('pt-BR')}
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Categoria</div>
+              <div className="text-xs text-slate-500">Categoria</div>
               <div className="mt-1 text-sm font-semibold text-white truncate">{categoriaNome}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Classificação</div>
+              <div className="text-xs text-slate-500">Classificação</div>
               <div className="mt-1 text-sm font-semibold text-white capitalize">{classificacaoLabel}</div>
             </div>
           </div>
@@ -117,39 +117,39 @@ export default function ModalDetalheTransacao({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
               <div>
-                <div className="text-[11px] text-slate-500">Forma de pagamento</div>
+                <div className="text-xs text-slate-500">Forma de pagamento</div>
                 <div className="mt-1 text-sm font-semibold text-white uppercase">
                   {transacao.metodo_pagamento || 'Não informado'}
                 </div>
               </div>
               {dataCobranca && (
                 <div>
-                  <div className="text-[11px] text-slate-500">Data de cobrança</div>
+                  <div className="text-xs text-slate-500">Data de cobrança</div>
                   <div className="mt-1 text-sm text-amber-300">
                     {parseFinancialDate(dataCobranca).toLocaleDateString('pt-BR')}
                   </div>
                 </div>
               )}
               <div>
-                <div className="text-[11px] text-slate-500">Conta</div>
+                <div className="text-xs text-slate-500">Conta</div>
                 <div className="mt-1 text-sm text-slate-200">{getNomeConta(conta)}</div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-500">Cartão</div>
+                <div className="text-xs text-slate-500">Cartão</div>
                 <div className="mt-1 text-sm text-slate-200">{getNomeCartao(cartao)}</div>
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
               <div>
-                <div className="text-[11px] text-slate-500">Origem</div>
+                <div className="text-xs text-slate-500">Origem</div>
                 <div className="mt-1 text-sm font-semibold text-white">{transacao.origem}</div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-500">Local</div>
+                <div className="text-xs text-slate-500">Local</div>
                 <div className="mt-1 text-sm text-slate-200">{transacao.local || 'Não informado'}</div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-500">Horário</div>
+                <div className="text-xs text-slate-500">Horário</div>
                 <div className="mt-1 text-sm text-slate-200">{transacao.horario || 'Não informado'}</div>
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function ModalDetalheTransacao({
           {/* Gasto anual estimado */}
           {gastoAnual !== null && (
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
-              <div className="text-[11px] text-slate-500">Gasto anual estimado</div>
+              <div className="text-xs text-slate-500">Gasto anual estimado</div>
               <div className="mt-1 text-base font-semibold text-blue-300 tabular-nums">
                 {formatarMoeda(gastoAnual)}
               </div>
@@ -173,33 +173,33 @@ export default function ModalDetalheTransacao({
             <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <div className="text-[11px] text-slate-500">Parcelas</div>
+                  <div className="text-xs text-slate-500">Parcelas</div>
                   <div className="mt-1 text-sm font-semibold text-white">{parcelamento.totalParcelas}x</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Já recebido' : 'Já pago'}</div>
+                  <div className="text-xs text-slate-500">{ehReceita ? 'Já recebido' : 'Já pago'}</div>
                   <div className="mt-1 text-sm font-semibold text-white">
                     {parcelamento.parcelasLiquidadasAntes}/{parcelamento.totalParcelas}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Faltam receber' : 'Faltam pagar'}</div>
+                  <div className="text-xs text-slate-500">{ehReceita ? 'Faltam receber' : 'Faltam pagar'}</div>
                   <div className="mt-1 text-sm font-semibold text-amber-300">{parcelamento.parcelasRestantes}x</div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">Valor da parcela</div>
+                  <div className="text-xs text-slate-500">Valor da parcela</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">
                     {formatarMoeda(parcelamento.valorParcela)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">{ehReceita ? 'Valor a receber' : 'Valor restante'}</div>
+                  <div className="text-xs text-slate-500">{ehReceita ? 'Valor a receber' : 'Valor restante'}</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">
                     {formatarMoeda(parcelamento.valorRestante)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-slate-500">Termina em</div>
+                  <div className="text-xs text-slate-500">Termina em</div>
                   <div className="mt-1 text-sm font-semibold text-white">
                     {parcelamento.dataFinal.toLocaleDateString('pt-BR')}
                   </div>
@@ -216,7 +216,7 @@ export default function ModalDetalheTransacao({
           {/* Observações */}
           {transacao.observacoes && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="text-[11px] text-slate-500">Observações</div>
+              <div className="text-xs text-slate-500">Observações</div>
               <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">{transacao.observacoes}</p>
             </div>
           )}
@@ -224,7 +224,7 @@ export default function ModalDetalheTransacao({
           {/* Itens da compra */}
           {transacao.itens_compra && transacao.itens_compra.length > 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="text-[11px] text-slate-500 mb-3">Itens da compra</div>
+              <div className="text-xs text-slate-500 mb-3">Itens da compra</div>
               <div className="space-y-2">
                 {transacao.itens_compra.map((item, index) => (
                   <div

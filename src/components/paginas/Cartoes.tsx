@@ -159,7 +159,7 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-semibold text-slate-300 mb-1">Estimativa de Gastos dos Próximos Meses</h3>
-      <p className="text-[11px] text-slate-600 mb-4">Inclui já debitadas, ativas, recorrentes, futuras e parceladas de todos os cartões</p>
+      <p className="text-xs text-slate-600 mb-4">Inclui já debitadas, ativas, recorrentes, futuras e parceladas de todos os cartões</p>
 
       <div ref={scrollRef} className="overflow-x-auto -mx-1 px-1" style={{ scrollBehavior: 'smooth' }}>
         <div className="relative" style={{ width: totalW, height: TL_CARD_H }}>
@@ -240,7 +240,7 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
                   {formatarMoeda(d.total)}
                 </div>
                 {isFuturo && d.total > 0 && (
-                  <div className="text-[10px] text-slate-600 mt-0.5">estimado</div>
+                  <div className="text-xs text-slate-600 mt-0.5">estimado</div>
                 )}
               </button>
             );
@@ -259,15 +259,15 @@ function TimelineFaturas({ cartoes, transacoes }: { cartoes: CartaoCredito[]; tr
           </div>
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="rounded-xl bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Total de despesas</div>
+              <div className="text-xs text-slate-500">Total de despesas</div>
               <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mesSel.total)}</div>
             </div>
             <div className="rounded-xl bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Já debitadas</div>
+              <div className="text-xs text-slate-500">Já debitadas</div>
               <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mesSel.total_debitado)}</div>
             </div>
             <div className="rounded-xl bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Ativas</div>
+              <div className="text-xs text-slate-500">Ativas</div>
               <div className="mt-1 text-sm font-semibold text-amber-300 tabular-nums">{formatarMoeda(mesSel.total_previsto)}</div>
             </div>
           </div>
@@ -1028,7 +1028,7 @@ export default function Cartoes() {
                   </div>
                 )}
                 {mostrarProximaFatura && (
-                  <div className="mb-3 inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300">
+                  <div className="mb-3 inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
                     Fatura anterior quitada • exibindo próxima
                   </div>
                 )}
@@ -1128,7 +1128,7 @@ export default function Cartoes() {
                           </button>
                         </div>
                         {!emEdicao && (
-                          <div className="mb-1 text-[11px] text-slate-500">
+                          <div className="mb-1 text-xs text-slate-500">
                             Lançamentos identificados: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
                             {totalProximaFatura > 0 ? <> {' '}• Próxima: <span className="text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</span></> : null}
                           </div>
@@ -1210,17 +1210,17 @@ export default function Cartoes() {
                     <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-emerald-400 text-sm font-bold tabular-nums">{formatarMoeda(disponivel)}</div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">Disponível</div>
+                      <div className="text-slate-600 text-xs mt-0.5">Disponível</div>
                     </div>
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className={`text-sm font-bold ${podeQuitarFatura && diasVencimento <= 5 ? 'text-red-400' : 'text-slate-300'}`}>
                         {podeQuitarFatura ? `${diasVencimento}d` : 'Em dia'}
                       </div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">{podeQuitarFatura ? 'p/ vencer' : 'sem fatura em aberto'}</div>
+                      <div className="text-slate-600 text-xs mt-0.5">{podeQuitarFatura ? 'p/ vencer' : 'sem fatura em aberto'}</div>
                     </div>
                     <div className="bg-white/[0.03] rounded-xl p-3 text-center">
                       <div className="text-slate-300 text-sm font-bold">{compras.length}</div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">
+                      <div className="text-slate-600 text-xs mt-0.5">
                         {expandido ? 'lançamentos visíveis' : 'clique para ver gastos'}
                       </div>
                     </div>
@@ -1271,17 +1271,17 @@ export default function Cartoes() {
 
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Compras</div>
+                        <div className="text-xs text-slate-500">Compras</div>
                         <div className="text-sm font-semibold text-white mt-1">{compras.length}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Estornos / créditos</div>
+                        <div className="text-xs text-slate-500">Estornos / créditos</div>
                         <div className="text-sm font-semibold text-emerald-400 mt-1 tabular-nums">
                           {formatarMoeda(estornos.reduce((soma, item) => soma + item.transacao.valor, 0))}
                         </div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Período da fatura</div>
+                        <div className="text-xs text-slate-500">Período da fatura</div>
                         <div className="text-xs font-semibold text-white mt-1">
                           {inicioFatura.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                           {' – '}
@@ -1292,15 +1292,15 @@ export default function Cartoes() {
 
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Total do mês</div>
+                        <div className="text-xs text-slate-500">Total do mês</div>
                         <div className="text-sm font-semibold text-white mt-1 tabular-nums">{formatarMoeda(baseLancamentos)}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Já pagas</div>
+                        <div className="text-xs text-slate-500">Já pagas</div>
                         <div className="text-sm font-semibold text-emerald-300 mt-1 tabular-nums">{formatarMoeda(totalDebitado)}</div>
                       </div>
                       <div className="rounded-xl bg-white/[0.03] p-3">
-                        <div className="text-[11px] text-slate-500">Pendentes</div>
+                        <div className="text-xs text-slate-500">Pendentes</div>
                         <div className="text-sm font-semibold text-amber-300 mt-1 tabular-nums">{formatarMoeda(totalPrevistas)}</div>
                       </div>
                     </div>
@@ -1310,14 +1310,14 @@ export default function Cartoes() {
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <h4 className="text-sm font-semibold text-blue-200">Próxima fatura</h4>
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1 text-xs text-slate-400">
                               {periodoSeguinte.inicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                               {' – '}
                               {periodoSeguinte.fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-[11px] text-slate-500">Total previsto</div>
+                            <div className="text-xs text-slate-500">Total previsto</div>
                             <div className="mt-1 text-sm font-semibold text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</div>
                           </div>
                         </div>
@@ -1329,7 +1329,7 @@ export default function Cartoes() {
                               <div key={`proxima-${transacao.id}-${dataExibicao}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2">
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm text-white">{transacao.descricao}</div>
-                                  <div className="text-[11px] text-slate-500">
+                                  <div className="text-xs text-slate-500">
                                     cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                     {categoria?.nome ? ` • ${categoria.nome}` : ''}
                                     {` • ${status === 'paga' ? 'paga' : status === 'atrasada' ? 'em atraso' : 'pendente'}`}
@@ -1401,7 +1401,7 @@ export default function Cartoes() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm text-white truncate">{transacao.descricao}</div>
-                                <div className={`text-[11px] ${emAtraso ? 'text-red-200/80' : 'text-slate-500'}`}>
+                                <div className={`text-xs ${emAtraso ? 'text-red-200/80' : 'text-slate-500'}`}>
                                   cobra em {parseFinancialDate(dataExibicao).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                   {transacao.parcelas && transacao.parcelas > 1 ? ` • ${transacao.parcelas}x` : ''}
                                   {categoria?.nome ? ` • ${categoria.nome}` : ''}

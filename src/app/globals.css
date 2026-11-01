@@ -64,6 +64,8 @@
   --color-red-400: #FCA5A5;
   --color-red-500: #F87171;
   --color-red-600: #EF5F67;
+  --color-slate-500: #8494AD;
+  --color-slate-600: #6F7F99;
 }
 
 :root {
@@ -114,7 +116,7 @@
   --secondary:             rgba(255,255,255,0.06);
   --secondary-foreground:  #F1F5F9;
   --muted:                 rgba(255,255,255,0.05);
-  --muted-foreground:      #64748B;
+  --muted-foreground:      #8494AD;
   --accent:                rgba(20,184,166,0.15);
   --accent-foreground:     #2DD4BF;
   --destructive:           #EF4444;

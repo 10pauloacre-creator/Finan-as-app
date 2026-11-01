@@ -134,7 +134,7 @@ function BuscaGlobal({
               <X size={16} />
             </button>
           )}
-          <kbd className="hidden lg:inline-flex shrink-0 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-500">
+          <kbd className="hidden lg:inline-flex shrink-0 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-xs text-slate-500">
             ESC
           </kbd>
         </div>
@@ -148,7 +148,7 @@ function BuscaGlobal({
               </div>
             ) : (
               <>
-                <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wide text-slate-600">
+                <div className="px-4 pt-3 pb-1 text-xs uppercase tracking-wide text-slate-600">
                   {resultados.length} resultado{resultados.length !== 1 ? 's' : ''}
                 </div>
                 <div className="divide-y divide-white/5 max-h-[60vh] overflow-y-auto">
@@ -171,7 +171,7 @@ function BuscaGlobal({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-white truncate">{tx.descricao}</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
+                          <div className="text-xs text-slate-500 mt-0.5">
                             {dataFmt}
                             {cat?.nome ? ` · ${cat.nome}` : ''}
                             {tx.parcelas && tx.parcelas > 1 ? ` · ${tx.parcelas}x` : ''}
@@ -197,7 +197,7 @@ function BuscaGlobal({
         )}
 
         {termo.trim().length < 2 && (
-          <div className="mt-2 rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-4 text-[11px] text-slate-600 space-y-1">
+          <div className="mt-2 rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-4 text-xs text-slate-600 space-y-1">
             <p>💡 <span className="text-slate-500">Nome:</span> "mercado", "uber", "netflix"</p>
             <p>📅 <span className="text-slate-500">Data:</span> "15/05", "janeiro", "2026"</p>
             <p>💰 <span className="text-slate-500">Valor aprox.:</span> "150", "R$ 49,90"</p>
@@ -378,7 +378,7 @@ export default function AppPrincipal() {
             <img src={iconV2.src} alt="FinanceiroIA" className="w-9 h-9 rounded-xl shadow-lg shadow-purple-900/50" />
             <div>
               <h1 className="text-base font-bold text-white leading-tight">FinanceiroIA</h1>
-              <p className="text-[11px] text-slate-500">Controle inteligente</p>
+              <p className="text-xs text-slate-500">Controle inteligente</p>
             </div>
           </div>
 
@@ -389,7 +389,7 @@ export default function AppPrincipal() {
           >
             <Search size={15} />
             <span className="flex-1 text-left text-xs">Buscar transação...</span>
-            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+            <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-xs">⌘K</kbd>
           </button>
 
           {/* Navigation */}
@@ -533,7 +533,7 @@ export default function AppPrincipal() {
                   aria-label={item.label}
                 >
                   <Icon size={21} strokeWidth={ativo ? 2.4 : 1.7} />
-                  <span className={`text-[10px] font-medium ${ativo ? 'text-purple-400' : 'text-slate-600'}`}>
+                  <span className={`text-xs font-medium ${ativo ? 'text-purple-400' : 'text-slate-600'}`}>
                     {item.label}
                   </span>
                 </button>
@@ -550,7 +550,7 @@ export default function AppPrincipal() {
               aria-label="Mais páginas"
             >
               <MoreHorizontal size={21} strokeWidth={1.7} />
-              <span className="text-[10px] font-medium">Mais</span>
+              <span className="text-xs font-medium">Mais</span>
             </button>
           </div>
         </nav>
@@ -583,7 +583,7 @@ export default function AppPrincipal() {
                       `}
                     >
                       <Icon size={22} strokeWidth={ativo ? 2.2 : 1.7} />
-                      <span className="text-[11px] font-medium leading-tight text-center">{item.label}</span>
+                      <span className="text-xs font-medium leading-tight text-center">{item.label}</span>
                     </button>
                   );
                 })}

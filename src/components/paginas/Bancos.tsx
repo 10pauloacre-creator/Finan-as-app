@@ -613,15 +613,15 @@ export default function Bancos() {
                   <div className="hidden mt-4 grid grid-cols-3 gap-3">
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold tabular-nums text-emerald-400">{formatarMoeda(recMes)}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Entradas do mês</div>
+                      <div className="mt-0.5 text-xs text-slate-600">Entradas do mês</div>
                     </div>
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold tabular-nums text-red-400">{formatarMoeda(despMes)}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Saídas do mês</div>
+                      <div className="mt-0.5 text-xs text-slate-600">Saídas do mês</div>
                     </div>
                     <div className="rounded-xl bg-white/[0.03] p-3 text-center">
                       <div className="text-sm font-semibold text-slate-300">{txConta.length}</div>
-                      <div className="mt-0.5 text-[11px] text-slate-600">Transações</div>
+                      <div className="mt-0.5 text-xs text-slate-600">Transações</div>
                     </div>
                   </div>
 
@@ -652,7 +652,7 @@ export default function Bancos() {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-xs font-medium text-slate-300">{transacao.descricao}</div>
-                            <div className="text-[11px] text-slate-600">
+                            <div className="text-xs text-slate-600">
                               {categoria?.nome} - {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                             </div>
                           </div>

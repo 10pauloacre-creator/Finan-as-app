@@ -65,10 +65,10 @@ export default function PainelPrioridadesFinanceiras({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold ${palette.title}`}>{item.titulo}</div>
-                  <div className="mt-1 text-[11px] text-slate-500">{item.detalhe}</div>
+                  <div className="mt-1 text-xs text-slate-500">{item.detalhe}</div>
                 </div>
                 {typeof item.quantidade === 'number' && item.quantidade > 0 && (
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${palette.badge}`}>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${palette.badge}`}>
                     {item.quantidade}
                   </span>
                 )}

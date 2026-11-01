@@ -569,15 +569,15 @@ export default function Salarios() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-          <div className="text-[11px] text-slate-500">Perfis</div>
+          <div className="text-xs text-slate-500">Perfis</div>
           <div className="mt-1 text-2xl font-bold text-white">{perfis.length}</div>
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-          <div className="text-[11px] text-slate-500">Contracheques salvos</div>
+          <div className="text-xs text-slate-500">Contracheques salvos</div>
           <div className="mt-1 text-2xl font-bold text-white">{perfis.reduce((soma, perfil) => soma + perfil.historico.length, 0)}</div>
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-          <div className="text-[11px] text-slate-500">Total líquido atual</div>
+          <div className="text-xs text-slate-500">Total líquido atual</div>
           <div className="mt-1 text-2xl font-bold text-emerald-300 tabular-nums">{formatarMoeda(totalLiquido)}</div>
         </div>
       </div>
@@ -591,7 +591,7 @@ export default function Salarios() {
               e os compromissos automaticos consideram somente despesas fixas e parcelas no cartao.
             </p>
           </div>
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[11px] text-blue-100">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100">
             Proximo mes = saldo que sobrou + recebimentos avulsos daquele mes
           </div>
         </div>
@@ -602,11 +602,11 @@ export default function Salarios() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-white">{mes.titulo}</div>
-                  <div className="mt-1 text-[11px] text-slate-500">
+                  <div className="mt-1 text-xs text-slate-500">
                     {indice === 0 ? 'Mes atual' : indice === 1 ? 'Proximo mes' : 'Mes seguinte'}
                   </div>
                 </div>
-                <div className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                <div className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                   mes.saldoFinal >= 0 ? 'bg-emerald-500/10 text-emerald-300' : 'bg-red-500/10 text-red-300'
                 }`}>
                   saldo final {formatarMoeda(mes.saldoFinal)}
@@ -615,19 +615,19 @@ export default function Salarios() {
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Saldo trazido</div>
+                  <div className="text-xs text-slate-500">Saldo trazido</div>
                   <div className="mt-1 text-sm font-semibold text-blue-200 tabular-nums">{formatarMoeda(mes.saldoInicial)}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Salário da referência</div>
+                  <div className="text-xs text-slate-500">Salário da referência</div>
                   <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mes.salarioReferencia)}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Recebimentos avulsos</div>
+                  <div className="text-xs text-slate-500">Recebimentos avulsos</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mes.recebimentosAvulsos)}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Total disponivel</div>
+                  <div className="text-xs text-slate-500">Total disponivel</div>
                   <div className="mt-1 text-sm font-semibold text-white tabular-nums">{formatarMoeda(mes.totalDisponivel)}</div>
                 </div>
               </div>
@@ -664,7 +664,7 @@ export default function Salarios() {
             </p>
           </div>
           <div className="w-full max-w-xs">
-            <p className="mb-2 text-[11px] text-slate-500">Leitor OCR</p>
+            <p className="mb-2 text-xs text-slate-500">Leitor OCR</p>
             <OCRModelSelect
               value={config.ai_modelo_ocr_padrao || 'automatico'}
               onChange={(value) => atualizarConfig({ ai_modelo_ocr_padrao: value })}
@@ -727,16 +727,16 @@ export default function Salarios() {
             ) : (
               <div className="mt-3 space-y-3">
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Perfil sugerido</div>
+                  <div className="text-xs text-slate-500">Perfil sugerido</div>
                   <div className="mt-1 text-sm font-semibold text-white">{analise.nome_perfil_sugerido}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl bg-white/[0.03] p-3">
-                    <div className="text-[11px] text-slate-500">Referência</div>
+                    <div className="text-xs text-slate-500">Referência</div>
                     <div className="mt-1 text-sm font-semibold text-white">{analise.referencia}</div>
                   </div>
                   <div className="rounded-xl bg-white/[0.03] p-3">
-                    <div className="text-[11px] text-slate-500">Líquido</div>
+                    <div className="text-xs text-slate-500">Líquido</div>
                     <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(analise.total_liquido || 0)}</div>
                   </div>
                 </div>
@@ -748,7 +748,7 @@ export default function Salarios() {
                   <div className="mt-1"><span className="text-slate-500">Matrícula:</span> {analise.matricula || '—'}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Rubricas lidas</div>
+                  <div className="text-xs text-slate-500">Rubricas lidas</div>
                   <div className="mt-2 space-y-1">
                     {analise.rubricas.slice(0, 6).map((rubrica, index) => (
                       <div key={`${rubrica.descricao}-${index}`} className="flex items-center justify-between gap-3 text-xs">
@@ -879,7 +879,7 @@ export default function Salarios() {
                       ['salario_liquido', 'Líquido'],
                     ] as const).map(([campo, label]) => (
                       <label key={campo} className="block">
-                        <span className="mb-1 block text-[11px] text-slate-500">{label}</span>
+                        <span className="mb-1 block text-xs text-slate-500">{label}</span>
                         <input
                           type="text"
                           value={formPerfil[campo]}
@@ -889,7 +889,7 @@ export default function Salarios() {
                       </label>
                     ))}
                     <label className="block md:col-span-2">
-                      <span className="mb-1 block text-[11px] text-slate-500">Observações</span>
+                      <span className="mb-1 block text-xs text-slate-500">Observações</span>
                       <textarea
                         rows={3}
                         value={formPerfil.observacoes}
@@ -901,19 +901,19 @@ export default function Salarios() {
                 ) : (
                   <div className="mt-4 grid gap-3 md:grid-cols-4">
                     <div className="rounded-2xl bg-white/[0.03] p-3">
-                      <div className="text-[11px] text-slate-500">Líquido atual</div>
+                      <div className="text-xs text-slate-500">Líquido atual</div>
                       <div className="mt-1 text-lg font-semibold text-emerald-300 tabular-nums">{formatarMoeda(perfil.salario_liquido || 0)}</div>
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] p-3">
-                      <div className="text-[11px] text-slate-500">Bruto</div>
+                      <div className="text-xs text-slate-500">Bruto</div>
                       <div className="mt-1 text-lg font-semibold text-white tabular-nums">{formatarMoeda(perfil.salario_bruto || 0)}</div>
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] p-3">
-                      <div className="text-[11px] text-slate-500">Base</div>
+                      <div className="text-xs text-slate-500">Base</div>
                       <div className="mt-1 text-lg font-semibold text-white tabular-nums">{formatarMoeda(perfil.salario_base || 0)}</div>
                     </div>
                     <div className="rounded-2xl bg-white/[0.03] p-3">
-                      <div className="text-[11px] text-slate-500">Última referência</div>
+                      <div className="text-xs text-slate-500">Última referência</div>
                       <div className="mt-1 text-sm font-semibold text-white">{ultimo?.referencia || '—'}</div>
                     </div>
                   </div>
@@ -927,13 +927,13 @@ export default function Salarios() {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <div className="text-sm font-semibold text-white">{registro.referencia}</div>
-                              <div className="mt-1 text-[11px] text-slate-500">
+                              <div className="mt-1 text-xs text-slate-500">
                                 {registro.cargo || 'Cargo não informado'}
                                 {registro.arquivo_nome ? ` • ${registro.arquivo_nome}` : ''}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[11px] text-slate-500">Total líquido</div>
+                              <div className="text-xs text-slate-500">Total líquido</div>
                               <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(registro.total_liquido || 0)}</div>
                             </div>
                           </div>
@@ -948,7 +948,7 @@ export default function Salarios() {
                           </div>
                           <div className="space-y-2">
                             <div className="rounded-xl bg-white/[0.03] p-3">
-                              <div className="text-[11px] text-slate-500">Rubricas</div>
+                              <div className="text-xs text-slate-500">Rubricas</div>
                               <div className="mt-2 space-y-1.5">
                                 {registro.rubricas.map((rubrica, index) => (
                                   <div key={`${registro.id}-${index}`} className="flex items-center justify-between gap-3 text-xs">
@@ -971,8 +971,8 @@ export default function Salarios() {
 
                         {registro.texto_extraido && (
                           <div className="mt-4 rounded-xl border border-white/8 bg-black/20 p-3">
-                            <div className="mb-2 text-[11px] text-slate-500">Texto OCR salvo para acompanhamento</div>
-                            <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-slate-300">{registro.texto_extraido}</pre>
+                            <div className="mb-2 text-xs text-slate-500">Texto OCR salvo para acompanhamento</div>
+                            <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-xs leading-5 text-slate-300">{registro.texto_extraido}</pre>
                           </div>
                         )}
                       </details>

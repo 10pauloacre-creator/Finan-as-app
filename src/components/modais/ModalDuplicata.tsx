@@ -34,7 +34,7 @@ export default function ModalDuplicata({ transacaoExistente: tx, onConfirmar, on
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Registro semelhante</h3>
-              <p className="text-[11px] text-slate-500">Possível duplicata encontrada</p>
+              <p className="text-xs text-slate-500">Possível duplicata encontrada</p>
             </div>
           </div>
           <button
@@ -56,7 +56,7 @@ export default function ModalDuplicata({ transacaoExistente: tx, onConfirmar, on
               <p className="text-sm font-semibold text-white leading-tight flex-1">{tx.descricao}</p>
               <p className="text-sm font-bold text-amber-400 whitespace-nowrap">{formatBRL(tx.valor)}</p>
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
               <span>📅 {formatData(tx.data)}</span>
               {tx.categoria_id && <span>📂 {tx.categoria_id}</span>}
               {tx.metodo_pagamento && (

@@ -492,17 +492,17 @@ function Orcamentos() {
               </div>
               <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                 <div>
-                  <p className="mb-0.5 text-[11px] text-slate-500">Orçado</p>
+                  <p className="mb-0.5 text-xs text-slate-500">Orçado</p>
                   <p className="text-sm font-bold tabular-nums text-white">{formatarMoeda(resumo.totalOrcado)}</p>
                 </div>
                 <div>
-                  <p className="mb-0.5 text-[11px] text-slate-500">Gasto</p>
+                  <p className="mb-0.5 text-xs text-slate-500">Gasto</p>
                   <p className={`text-sm font-bold tabular-nums ${resumo.pct >= 90 ? 'text-red-400' : resumo.pct >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                     {formatarMoeda(resumo.totalGasto)}
                   </p>
                 </div>
                 <div>
-                  <p className="mb-0.5 text-[11px] text-slate-500">Utilizado</p>
+                  <p className="mb-0.5 text-xs text-slate-500">Utilizado</p>
                   <p className={`text-sm font-bold tabular-nums ${resumo.pct >= 90 ? 'text-red-400' : resumo.pct >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                     {resumo.pct.toFixed(0)}%
                   </p>
@@ -511,7 +511,7 @@ function Orcamentos() {
               <div className="h-2 overflow-hidden rounded-full bg-white/5">
                 <div className={`h-full rounded-full transition-all duration-700 ${obterClasseBarra(resumo.pct)}`} style={{ width: `${Math.min(resumo.pct, 100)}%` }} />
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs text-slate-500">
                 <div><span className="text-slate-300">Orçado:</span> soma dos limites definidos para as categorias do mês.</div>
                 <div className="mt-1"><span className="text-slate-300">Gasto:</span> despesas já realizadas nas categorias que têm orçamento.</div>
                 <div className="mt-1"><span className="text-slate-300">Utilizado:</span> percentual entre o gasto atual e o limite total configurado.</div>
@@ -552,11 +552,11 @@ function Orcamentos() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-white">{categoria.nome}</p>
                       {orcamento ? (
-                        <p className="text-[11px] text-slate-500 tabular-nums">
+                        <p className="text-xs text-slate-500 tabular-nums">
                           {formatarMoeda(gasto)} / {formatarMoeda(limite)}
                         </p>
                       ) : (
-                        <p className="text-[11px] text-slate-600">Sem limite definido</p>
+                        <p className="text-xs text-slate-600">Sem limite definido</p>
                       )}
                     </div>
                     <div className="flex flex-shrink-0 items-center gap-2">
@@ -592,11 +592,11 @@ function Orcamentos() {
                         <div className={`h-full rounded-full transition-all duration-700 ${obterClasseBarra(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                       </div>
                       <div className="mt-1 flex justify-between">
-                        <span className={`text-[10px] font-medium ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <span className={`text-xs font-medium ${pct >= 90 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                           {pct.toFixed(0)}% utilizado
                         </span>
                         {pct > 100 && (
-                          <span className="text-[10px] font-semibold text-red-400">
+                          <span className="text-xs font-semibold text-red-400">
                             +{formatarMoeda(gasto - limite)} acima
                           </span>
                         )}
@@ -617,7 +617,7 @@ function Orcamentos() {
           <div className="fin-panel fin-soft-rise-delay overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.18),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(10,14,26,0.92))] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-200">
                   Simulação inteligente
                 </div>
                 <h2 className="text-xl font-bold text-white">Planeje compras altas antes de assumir novas parcelas</h2>
@@ -636,33 +636,33 @@ function Orcamentos() {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Mês analisado</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Mês analisado</div>
                 <div className="mt-2 text-base font-bold text-white">{MESES[mes - 1]}/{ano}</div>
-                <div className="mt-1 text-[11px] text-slate-500">Base para a projeção abaixo</div>
+                <div className="mt-1 text-xs text-slate-500">Base para a projeção abaixo</div>
               </div>
               <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Base real prevista</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Base real prevista</div>
                 <div className="mt-2 text-base font-bold text-amber-200">{formatarMoeda(resumoSimulacaoAtual?.real || 0)}</div>
-                <div className="mt-1 text-[11px] text-slate-500">Recorrências, parcelas e lançamentos futuros já reais</div>
+                <div className="mt-1 text-xs text-slate-500">Recorrências, parcelas e lançamentos futuros já reais</div>
               </div>
               <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Impacto simulado</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Impacto simulado</div>
                 <div className="mt-2 text-base font-bold text-sky-200">{formatarMoeda(resumoSimulacaoAtual?.simulado || 0)}</div>
-                <div className="mt-1 text-[11px] text-slate-500">Parcelas que você está pensando em assumir</div>
+                <div className="mt-1 text-xs text-slate-500">Parcelas que você está pensando em assumir</div>
               </div>
               <div className="fin-panel rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Total projetado</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Total projetado</div>
                 <div className={`mt-2 text-base font-bold ${obterClasseSaldo(resumoSimulacaoAtual?.folga || 0)}`}>
                   {formatarMoeda(resumoSimulacaoAtual?.total || 0)}
                 </div>
-                <div className="mt-1 text-[11px] text-slate-500">
+                <div className="mt-1 text-xs text-slate-500">
                   {resumoSimulacaoAtual?.orcado
                     ? `Folga vs orçamento: ${formatarMoeda(resumoSimulacaoAtual.folga)}`
                     : 'Sem orçamento consolidado para este mês'}
                 </div>
               </div>
             </div>
-            <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-[11px] text-slate-500">
+            <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-xs text-slate-500">
               <div><span className="text-slate-300">Base real prevista:</span> recorrências, parcelas e lançamentos já existentes que caem no mês.</div>
               <div className="mt-1"><span className="text-slate-300">Impacto simulado:</span> parcelas das compras desejadas adicionadas artificialmente à projeção.</div>
               <div className="mt-1"><span className="text-slate-300">Total projetado:</span> base real prevista + novas simulações do mês.</div>
@@ -683,11 +683,11 @@ function Orcamentos() {
 
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Carteira simulada</div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Carteira simulada</div>
                   <div className="mt-2 text-base font-bold text-white">{formatarMoeda(totalCarteiraSimulada)}</div>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Parcelas abertas</div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Parcelas abertas</div>
                   <div className="mt-2 text-base font-bold text-white">{totalParcelasAbertas}</div>
                 </div>
               </div>
@@ -708,14 +708,14 @@ function Orcamentos() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
                               simulacao.tipo === 'combo'
                                 ? 'bg-purple-500/15 text-purple-200'
                                 : 'bg-sky-500/15 text-sky-200'
                             }`}>
                               {simulacao.tipo === 'combo' ? 'Combo' : 'Produto'}
                             </span>
-                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
                               simulacao.prioridade === 'alta'
                                 ? 'bg-red-500/12 text-red-200'
                                 : simulacao.prioridade === 'media'
@@ -733,7 +733,7 @@ function Orcamentos() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => abrirNovaSimulacao(simulacao)}
-                            className="rounded-lg border border-white/10 px-2 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.04]"
+                            className="rounded-lg border border-white/10 px-2 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-white/[0.04]"
                           >
                             Editar
                           </button>
@@ -749,16 +749,16 @@ function Orcamentos() {
 
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <div className="rounded-xl bg-white/[0.03] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Valor total</div>
+                          <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Valor total</div>
                           <div className="mt-1 text-sm font-bold text-white">{formatarMoeda(simulacao.valor_total)}</div>
                         </div>
                         <div className="rounded-xl bg-white/[0.03] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Primeira parcela</div>
+                          <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Primeira parcela</div>
                           <div className="mt-1 text-sm font-bold text-sky-200">{formatarMoeda(primeiraParcela)}</div>
                         </div>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-400">
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-400">
                         <span>{simulacao.parcelas}x</span>
                         <span>Início em {MESES[simulacao.mes_inicio - 1]}/{simulacao.ano_inicio}</span>
                       </div>
@@ -779,9 +779,9 @@ function Orcamentos() {
                 </div>
                 {melhorJanela && (
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
-                    <div className="text-[10px] uppercase tracking-[0.16em] text-emerald-200">Melhor respiro</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-emerald-200">Melhor respiro</div>
                     <div className="mt-1 text-sm font-bold text-white">{melhorJanela.label}</div>
-                    <div className="mt-0.5 text-[11px] text-emerald-200">Folga estimada {formatarMoeda(melhorJanela.folga)}</div>
+                    <div className="mt-0.5 text-xs text-emerald-200">Folga estimada {formatarMoeda(melhorJanela.folga)}</div>
                   </div>
                 )}
               </div>
@@ -794,7 +794,7 @@ function Orcamentos() {
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
                           <h3 className="text-sm font-semibold text-white">{projecao.label}</h3>
-                          <p className="mt-1 text-[11px] text-slate-500">
+                          <p className="mt-1 text-xs text-slate-500">
                             {projecao.orcado > 0
                               ? `Orçamento consolidado ${formatarMoeda(projecao.orcado)}`
                               : 'Sem orçamento consolidado'}
@@ -802,7 +802,7 @@ function Orcamentos() {
                         </div>
                         <div className="text-right">
                           <div className={`text-base font-bold ${obterClasseSaldo(projecao.folga)}`}>{formatarMoeda(projecao.total)}</div>
-                          <div className="mt-1 text-[11px] text-slate-500">
+                          <div className="mt-1 text-xs text-slate-500">
                             {projecao.orcado > 0 ? `Folga ${formatarMoeda(projecao.folga)}` : 'Total previsto'}
                           </div>
                         </div>
@@ -873,7 +873,7 @@ function Orcamentos() {
                   autoFocus
                   className="w-full rounded-xl border border-white/10 bg-[#111A2E] px-4 py-2.5 text-base font-semibold text-white placeholder-slate-600 focus:outline-none focus:border-purple-500/50"
                 />
-                <p className="mt-1.5 text-[11px] text-slate-600">
+                <p className="mt-1.5 text-xs text-slate-600">
                   Aplica este limite a partir de {`${MESES[mes - 1]}/${ano}`} e todos os meses seguintes
                 </p>
               </div>
@@ -1011,7 +1011,7 @@ function Orcamentos() {
                   <h3 className="text-sm font-bold text-white">
                     {modalSimulacaoId === 'nova' ? 'Nova compra simulada' : 'Editar compra simulada'}
                   </h3>
-                  <p className="text-[11px] text-slate-500">Salva localmente no app e entra no backup local</p>
+                  <p className="text-xs text-slate-500">Salva localmente no app e entra no backup local</p>
                 </div>
               </div>
               <button onClick={resetarFormSimulacao} className="p-1 text-slate-500 transition-colors hover:text-white">

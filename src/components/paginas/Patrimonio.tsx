@@ -334,7 +334,7 @@ function ModalReserva({ reserva, onSalvar, onFechar }: ModalReservaProps) {
               placeholder="100"
               className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 outline-none focus:border-emerald-500"
             />
-            <p className="text-[11px] text-slate-600 mt-1">Ex: `100` = rende 100% da Selic.</p>
+            <p className="text-xs text-slate-600 mt-1">Ex: `100` = rende 100% da Selic.</p>
           </div>
 
           {!reserva && (
@@ -934,7 +934,7 @@ export default function Patrimonio() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-semibold text-white">{reserva.nome}</h3>
                             <span
-                              className="text-[11px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5"
+                              className="text-xs px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5"
                               style={{ color: bancoInfo.cor, borderColor: `${bancoInfo.cor}55`, background: `${bancoInfo.cor}14` }}
                             >
                               <BankLogo banco={reserva.banco} size={16} className="h-4 w-4 object-contain" />
@@ -951,7 +951,7 @@ export default function Patrimonio() {
                           <div className="text-lg font-bold text-emerald-400 tabular-nums">
                             {ocultarValor(formatarMoeda(saldoAtual))}
                           </div>
-                          <div className="text-[11px] text-slate-500">{pctAtivo.toFixed(1)}% dos ativos</div>
+                          <div className="text-xs text-slate-500">{pctAtivo.toFixed(1)}% dos ativos</div>
                         </div>
                       </div>
 
@@ -961,19 +961,19 @@ export default function Patrimonio() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
                         <div className="rounded-xl p-3 bg-emerald-500/10 border border-emerald-500/15">
-                          <div className="text-[11px] text-slate-500 mb-1">Estimativa mensal</div>
+                          <div className="text-xs text-slate-500 mb-1">Estimativa mensal</div>
                           <div className="text-sm font-semibold text-emerald-400 tabular-nums">
                             {rendimentoMensalEstimado !== null ? ocultarValor(formatarMoeda(rendimentoMensalEstimado)) : 'Defina a Selic'}
                           </div>
                         </div>
                         <div className="rounded-xl p-3 bg-white/[0.03] border border-white/10">
-                          <div className="text-[11px] text-slate-500 mb-1">Projecao 6 meses</div>
+                          <div className="text-xs text-slate-500 mb-1">Projecao 6 meses</div>
                           <div className="text-sm font-semibold text-white tabular-nums">
                             {projecao6m !== null ? ocultarValor(formatarMoeda(projecao6m)) : '--'}
                           </div>
                         </div>
                         <div className="rounded-xl p-3 bg-white/[0.03] border border-white/10">
-                          <div className="text-[11px] text-slate-500 mb-1">Projecao 12 meses</div>
+                          <div className="text-xs text-slate-500 mb-1">Projecao 12 meses</div>
                           <div className="text-sm font-semibold text-white tabular-nums">
                             {projecao12m !== null ? ocultarValor(formatarMoeda(projecao12m)) : '--'}
                           </div>
@@ -1056,7 +1056,7 @@ export default function Patrimonio() {
                                       {movimento.tipo === 'deposito' ? '+' : '-'}{formatarMoeda(movimento.valor)}
                                     </span>
                                   </div>
-                                  <div className="flex items-center justify-between gap-3 text-[11px] text-slate-500 mt-0.5">
+                                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500 mt-0.5">
                                     <span className="truncate">{movimento.descricao || 'Sem descricao'}</span>
                                     <span>{new Date(`${movimento.data}T00:00:00`).toLocaleDateString('pt-BR')}</span>
                                   </div>

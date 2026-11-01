@@ -65,11 +65,11 @@ export default function Assinaturas() {
         <div className="bg-[#111A2E] border border-white/[0.06] rounded-2xl p-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[11px] text-slate-500 mb-0.5">Assinaturas detectadas</p>
+              <p className="text-xs text-slate-500 mb-0.5">Assinaturas detectadas</p>
               <p className="text-2xl font-bold text-white">{assinaturas.length}</p>
             </div>
             <div>
-              <p className="text-[11px] text-slate-500 mb-0.5">Custo mensal estimado</p>
+              <p className="text-xs text-slate-500 mb-0.5">Custo mensal estimado</p>
               <p className="text-2xl font-bold text-red-400 tabular-nums">{formatarMoeda(custoMensalTotal)}</p>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function Assinaturas() {
               descrição semelhante e intervalo regular (semanal, quinzenal ou mensal).
             </p>
           </div>
-          <div className="flex gap-3 mt-1 text-[11px] text-slate-600">
+          <div className="flex gap-3 mt-1 text-xs text-slate-600">
             <span className="flex items-center gap-1"><Clock size={11} /> Mensal: 25–35 dias</span>
             <span className="flex items-center gap-1"><Clock size={11} /> Quinzenal: 12–18 dias</span>
             <span className="flex items-center gap-1"><Clock size={11} /> Semanal: 5–9 dias</span>
@@ -120,7 +120,7 @@ export default function Assinaturas() {
                     <p className="text-sm font-semibold text-white truncate capitalize">
                       {assinatura.descricaoOriginal}
                     </p>
-                    <p className="text-[11px] text-slate-500 truncate">{cat?.nome || 'Sem categoria'}</p>
+                    <p className="text-xs text-slate-500 truncate">{cat?.nome || 'Sem categoria'}</p>
                   </div>
                 </div>
 
@@ -129,7 +129,7 @@ export default function Assinaturas() {
                   <p className="text-base font-bold text-red-400 tabular-nums">
                     {formatarMoeda(assinatura.valor)}
                   </p>
-                  <span className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${FREQ_COLOR[assinatura.frequencia]}`}>
+                  <span className={`inline-block mt-0.5 text-xs font-semibold px-2 py-0.5 rounded-full border ${FREQ_COLOR[assinatura.frequencia]}`}>
                     {FREQ_LABEL[assinatura.frequencia]}
                   </span>
                 </div>
@@ -143,7 +143,7 @@ export default function Assinaturas() {
                 <div className="flex items-center gap-2">
                   <Calendar size={12} className="text-slate-600 flex-shrink-0" />
                   <div>
-                    <p className="text-[10px] text-slate-600">Última cobrança</p>
+                    <p className="text-xs text-slate-600">Última cobrança</p>
                     <p className="text-xs text-slate-300">{formatDate(assinatura.ultimaCobranca)}</p>
                   </div>
                 </div>
@@ -155,15 +155,15 @@ export default function Assinaturas() {
                     }
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-600">Próxima estimada</p>
+                    <p className="text-xs text-slate-600">Próxima estimada</p>
                     <p className={`text-xs font-medium ${urgente ? 'text-red-400' : 'text-slate-300'}`}>
                       {formatDate(assinatura.proximaEstimada)}
                       {' '}
                       {diasProx === 0
-                        ? <span className="text-[10px]">(hoje)</span>
+                        ? <span className="text-xs">(hoje)</span>
                         : diasProx > 0
-                          ? <span className="text-[10px]">({diasProx}d)</span>
-                          : <span className="text-[10px]">(vencida)</span>
+                          ? <span className="text-xs">({diasProx}d)</span>
+                          : <span className="text-xs">(vencida)</span>
                       }
                     </p>
                   </div>
@@ -172,10 +172,10 @@ export default function Assinaturas() {
 
               {/* Footer: total pago + ocorrências */}
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.04]">
-                <span className="text-[11px] text-slate-600">
+                <span className="text-xs text-slate-600">
                   {assinatura.ocorrencias} ocorrência{assinatura.ocorrencias !== 1 ? 's' : ''} detectada{assinatura.ocorrencias !== 1 ? 's' : ''}
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-xs text-slate-500">
                   Total pago: <span className="font-semibold text-slate-400 tabular-nums">{formatarMoeda(assinatura.totalPago)}</span>
                 </span>
               </div>
@@ -186,7 +186,7 @@ export default function Assinaturas() {
 
       {/* Nota de rodapé */}
       {assinaturas.length > 0 && (
-        <p className="text-[11px] text-slate-700 text-center flex items-center justify-center gap-1">
+        <p className="text-xs text-slate-700 text-center flex items-center justify-center gap-1">
           <AlertCircle size={10} />
           Detecção baseada em padrão de intervalo e consistência de valor (±20%).
         </p>

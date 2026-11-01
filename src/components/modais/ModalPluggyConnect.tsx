@@ -157,7 +157,7 @@ export default function ModalPluggyConnect({ aberto, onFechar, onSincronizado }:
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white">Conectar Banco</h3>
-              <p className="text-[11px] text-slate-500">Open Finance — Pluggy</p>
+              <p className="text-xs text-slate-500">Open Finance — Pluggy</p>
             </div>
           </div>
           {(etapa === 'erro' || etapa === 'sucesso') && (
@@ -277,7 +277,7 @@ export default function ModalPluggyConnect({ aberto, onFechar, onSincronizado }:
         {/* Rodapé */}
         {(etapa === 'carregando' || etapa === 'widget') && (
           <div className="px-5 pb-4 text-center">
-            <p className="text-slate-600 text-[11px]">
+            <p className="text-slate-600 text-xs">
               🔒 Conexão segura via Open Finance Brasil. Seus dados bancários nunca passam pelo FinanceiroIA.
             </p>
           </div>

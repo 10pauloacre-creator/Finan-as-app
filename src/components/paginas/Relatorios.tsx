@@ -325,7 +325,7 @@ function RelatorioIA() {
                   <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <p className="text-sm font-semibold text-white leading-snug">{r.acao}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${prioridadeCores[r.prioridade] ?? prioridadeCores['media']}`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 capitalize ${prioridadeCores[r.prioridade] ?? prioridadeCores['media']}`}>
                         {r.prioridade}
                       </span>
                     </div>
@@ -423,7 +423,7 @@ function ListaTransacoesDetalhadas({
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold text-red-300">{formatarMoeda(transacao.valor)}</div>
-                  <div className="text-[11px] text-slate-500">Clique para ver detalhes</div>
+                  <div className="text-xs text-slate-500">Clique para ver detalhes</div>
                 </div>
               </summary>
 
@@ -553,7 +553,7 @@ export default function Relatorios() {
           ['Despesas', formatarMoeda(totalMes.despesas)],
           ['Saldo', formatarMoeda(saldo)],
         ],
-        styles: { fontSize: 10 },
+        styles: { fontSize: 12 },
         headStyles: { fillColor: [124, 58, 237] },
         columnStyles: { 1: { halign: 'right' } },
         didParseCell: (data) => {
@@ -574,7 +574,7 @@ export default function Relatorios() {
           startY: finalY1 + 5,
           head: [['Categoria', 'Valor', '%']],
           body: porCategoria.map(c => [c.nome, formatarMoeda(c.valor), `${c.percentual}%`]),
-          styles: { fontSize: 10 },
+          styles: { fontSize: 12 },
           headStyles: { fillColor: [124, 58, 237] },
           columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
         });
@@ -711,8 +711,8 @@ export default function Relatorios() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={dadosAnuais}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="nome" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+                <XAxis dataKey="nome" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                 <Tooltip
                   formatter={(v, name) => [formatarMoeda(Number(v)), name === 'receitas' ? 'Receitas' : 'Despesas']}
                   contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }}

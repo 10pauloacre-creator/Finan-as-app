@@ -230,7 +230,7 @@ function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-white">{config.nome}</h3>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${config.cor.badge}`}>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${config.cor.badge}`}>
                 {config.badge}
               </span>
             </div>
@@ -248,7 +248,7 @@ function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
       </div>
 
       {cacheTs && (
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+        <div className="flex items-center gap-1.5 text-xs text-slate-600">
           <Clock size={11} />
           Última análise: {formatarDataCache(cacheTs)}
         </div>
@@ -269,7 +269,7 @@ function AgenteCard({ config, contexto, aiModel }: AgenteCardProps) {
       ) : !loading && !erro ? (
         <div className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-6 text-center">
           <p className="text-xs text-slate-600">Nenhuma análise ainda</p>
-          <p className="text-[11px] text-slate-700 mt-1">Clique em &quot;Analisar agora&quot; para começar</p>
+          <p className="text-xs text-slate-700 mt-1">Clique em &quot;Analisar agora&quot; para começar</p>
         </div>
       ) : null}
     </div>
@@ -555,7 +555,7 @@ function EvolucaoScore() {
                     style={{ width: `${pct}%`, backgroundColor: corNivel(scoreMesAtual.nivel).bar }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-600 leading-snug">{f.descricao}</p>
+                <p className="text-xs text-slate-600 leading-snug">{f.descricao}</p>
               </div>
             );
           })}

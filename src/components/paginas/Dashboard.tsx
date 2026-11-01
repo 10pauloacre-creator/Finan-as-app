@@ -405,7 +405,7 @@ function SectionHeader({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white sm:w-auto"
         >
           {actionLabel}
           <ArrowRight size={11} />
@@ -469,7 +469,7 @@ function DashboardMetricCard({
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${palette.glow}`} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium tracking-wide text-slate-400">{title}</p>
+          <p className="text-xs font-medium tracking-wide text-slate-400">{title}</p>
           <div className={`mt-3 text-xl font-bold tabular-nums sm:text-2xl ${palette.value}`}>{value}</div>
           <p className="mt-2 text-xs text-slate-500">{subtitle}</p>
         </div>
@@ -708,7 +708,7 @@ function ModalResumoCard({
       <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
         <div>
           <span className="text-sm text-slate-300">{label}</span>
-          {sub && <div className="text-[10px] text-slate-600 mt-0.5">{sub}</div>}
+          {sub && <div className="text-xs text-slate-600 mt-0.5">{sub}</div>}
         </div>
         <span className="text-sm font-semibold tabular-nums" style={{ color: lCor || '#F1F5F9' }}>
           {ocultar(formatarMoeda(valor))}
@@ -719,7 +719,7 @@ function ModalResumoCard({
 
   function SecaoTitulo({ children }: { children: React.ReactNode }) {
     return (
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1 mt-3 first:mt-0">{children}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1 mt-3 first:mt-0">{children}</p>
     );
   }
 
@@ -909,7 +909,7 @@ function ModalResumoCard({
                           <span className="text-sm text-slate-300">{c.nome}</span>
                           <span className="text-sm font-semibold tabular-nums text-amber-400">{ocultar(formatarMoeda(c.valor))}</span>
                         </div>
-                        <div className={`mt-1 text-[11px] ${c.status === 'atrasada' ? 'text-red-300' : 'text-slate-500'}`}>
+                        <div className={`mt-1 text-xs ${c.status === 'atrasada' ? 'text-red-300' : 'text-slate-500'}`}>
                           {c.status === 'atrasada' ? 'Venceu em ' : 'Vence em '}
                           {parseFinancialDate(c.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                         </div>
@@ -985,7 +985,7 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
           <div className="text-3xl font-black tabular-nums" style={{ color: corScore }}>
             {score.total}
           </div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: corScore }}>
+          <div className="text-xs font-semibold uppercase tracking-wide mt-0.5" style={{ color: corScore }}>
             {labelNivel}
           </div>
         </div>
@@ -1002,8 +1002,8 @@ function ScoreWidget({ score, onNavegar }: { score: ScoreFinanceiro; onNavegar: 
             />
           </div>
           <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-slate-600">0</span>
-            <span className="text-[10px] text-slate-600">100</span>
+            <span className="text-xs text-slate-600">0</span>
+            <span className="text-xs text-slate-600">100</span>
           </div>
         </div>
 
@@ -1168,50 +1168,50 @@ function ModalContaBancaria({
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Saldo atual</div>
+              <div className="text-xs text-slate-500">Saldo atual</div>
               <div className="mt-1 text-base font-bold text-white tabular-nums">{ocultar(formatarMoeda(conta.saldo))}</div>
             </div>
             <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-              <div className="text-[11px] text-slate-500">Entradas no mês</div>
+              <div className="text-xs text-slate-500">Entradas no mês</div>
               <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(entradasMes))}</div>
             </div>
             <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-3">
-              <div className="text-[11px] text-slate-500">Saídas no mês</div>
+              <div className="text-xs text-slate-500">Saídas no mês</div>
               <div className="mt-1 text-sm font-semibold text-red-400 tabular-nums">{ocultar(formatarMoeda(saidasMes))}</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Tipo de conta</div>
+              <div className="text-xs text-slate-500">Tipo de conta</div>
               <div className="mt-1 text-sm font-semibold text-white capitalize">{conta.tipo}</div>
             </div>
             {conta.saldo_base != null && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-[11px] text-slate-500">Saldo inicial</div>
+                <div className="text-xs text-slate-500">Saldo inicial</div>
                 <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(conta.saldo_base))}</div>
               </div>
             )}
             {conta.agencia && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-[11px] text-slate-500">Agência</div>
+                <div className="text-xs text-slate-500">Agência</div>
                 <div className="mt-1 text-sm font-semibold text-white">{conta.agencia}</div>
               </div>
             )}
             {conta.conta && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-[11px] text-slate-500">Número da conta</div>
+                <div className="text-xs text-slate-500">Número da conta</div>
                 <div className="mt-1 text-sm font-semibold text-white">{conta.conta}</div>
               </div>
             )}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Cadastrada em</div>
+              <div className="text-xs text-slate-500">Cadastrada em</div>
               <div className="mt-1 text-sm font-semibold text-white">
                 {parseFinancialDate(conta.criado_em).toLocaleDateString('pt-BR')}
               </div>
             </div>
             {conta.atualizado_em && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-[11px] text-slate-500">Última atualização</div>
+                <div className="text-xs text-slate-500">Última atualização</div>
                 <div className="mt-1 text-sm font-semibold text-white">
                   {parseFinancialDate(conta.atualizado_em).toLocaleDateString('pt-BR')}
                 </div>
@@ -1220,10 +1220,10 @@ function ModalContaBancaria({
           </div>
           {conta.pluggy_item_id && (
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-3">
-              <div className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
+              <div className="text-xs text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
               {conta.pluggy_sync_em && (
                 <div>
-                  <div className="text-[11px] text-slate-500">Última sincronização</div>
+                  <div className="text-xs text-slate-500">Última sincronização</div>
                   <div className="mt-0.5 text-sm text-white">{new Date(conta.pluggy_sync_em).toLocaleString('pt-BR')}</div>
                 </div>
               )}
@@ -1232,7 +1232,7 @@ function ModalContaBancaria({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-400">Todos os lançamentos</span>
-              <span className="text-[11px] text-slate-600">{ordenada.length} lançamentos</span>
+              <span className="text-xs text-slate-600">{ordenada.length} lançamentos</span>
             </div>
             <div className="space-y-2">
               {ordenada.length === 0 ? (
@@ -1252,7 +1252,7 @@ function ModalContaBancaria({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{t.descricao}</div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-xs text-slate-500">
                         {cat?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
                     </div>
@@ -1333,26 +1333,26 @@ function ModalCartaoCredito({
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-3">
-              <div className="text-[11px] text-slate-500">Fatura atual</div>
+              <div className="text-xs text-slate-500">Fatura atual</div>
               <div className="mt-1 text-sm font-bold text-red-400 tabular-nums">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Limite total</div>
+              <div className="text-xs text-slate-500">Limite total</div>
               <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(cartao.limite))}</div>
             </div>
             <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-              <div className="text-[11px] text-slate-500">Disponível</div>
+              <div className="text-xs text-slate-500">Disponível</div>
               <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(limiteDisponivel))}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Fecha / Vence</div>
+              <div className="text-xs text-slate-500">Fecha / Vence</div>
               <div className="mt-1 text-sm font-semibold text-white">Dia {cartao.dia_fechamento} / {cartao.dia_vencimento}</div>
             </div>
           </div>
           {cartao.limite > 0 && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-slate-500">Uso do limite</span>
+                <span className="text-xs text-slate-500">Uso do limite</span>
                 <span className={`text-xs font-bold tabular-nums ${usoLimite >= 90 ? 'text-red-400' : usoLimite >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                   {usoLimite.toFixed(1)}%
                 </span>
@@ -1361,45 +1361,45 @@ function ModalCartaoCredito({
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${Math.min(usoLimite, 100)}%`, background: usoLimite >= 90 ? '#EF4444' : usoLimite >= 70 ? '#F59E0B' : '#10B981' }} />
               </div>
-              <div className="mt-1.5 text-[10px] text-slate-600">
+              <div className="mt-1.5 text-xs text-slate-600">
                 Vencimento em {diasAte(cartao.dia_vencimento)} dia(s)
               </div>
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Compras no app</div>
+              <div className="text-xs text-slate-500">Compras no app</div>
               <div className="mt-1 text-sm font-semibold text-white">{compras.length}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Ticket médio</div>
+              <div className="text-xs text-slate-500">Ticket médio</div>
               <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(ticketMedio))}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Maior compra</div>
+              <div className="text-xs text-slate-500">Maior compra</div>
               <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(maiorCompra))}</div>
             </div>
             <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-              <div className="text-[11px] text-slate-500">Estornos / créditos</div>
+              <div className="text-xs text-slate-500">Estornos / créditos</div>
               <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">{ocultar(formatarMoeda(totalEstornos))}</div>
             </div>
           </div>
           {cartao.fatura_ajuste_manual != null && cartao.fatura_ajuste_manual !== 0 && (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
-              <div className="text-[11px] text-amber-400">Fatura com ajuste manual</div>
+              <div className="text-xs text-amber-400">Fatura com ajuste manual</div>
               <div className="mt-1 text-sm font-semibold text-white tabular-nums">{ocultar(formatarMoeda(cartao.fatura_ajuste_manual))}</div>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <div className="text-[11px] text-slate-500">Cadastrado em</div>
+              <div className="text-xs text-slate-500">Cadastrado em</div>
               <div className="mt-1 text-sm font-semibold text-white">
                 {parseFinancialDate(cartao.criado_em).toLocaleDateString('pt-BR')}
               </div>
             </div>
             {cartao.atualizado_em && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="text-[11px] text-slate-500">Última atualização</div>
+                <div className="text-xs text-slate-500">Última atualização</div>
                 <div className="mt-1 text-sm font-semibold text-white">
                   {parseFinancialDate(cartao.atualizado_em).toLocaleDateString('pt-BR')}
                 </div>
@@ -1408,17 +1408,17 @@ function ModalCartaoCredito({
           </div>
           {cartao.pluggy_item_id && (
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-3">
-              <div className="text-[11px] text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
+              <div className="text-xs text-blue-400 font-semibold uppercase tracking-wide mb-2">Open Finance</div>
               {cartao.pluggy_sync_em && (
                 <div>
-                  <div className="text-[11px] text-slate-500">Última sincronização</div>
+                  <div className="text-xs text-slate-500">Última sincronização</div>
                   <div className="mt-0.5 text-sm text-white">{new Date(cartao.pluggy_sync_em).toLocaleString('pt-BR')}</div>
                 </div>
               )}
             </div>
           )}
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="text-[11px] text-slate-500 mb-3">Importar fatura</div>
+            <div className="text-xs text-slate-500 mb-3">Importar fatura</div>
             <div className="flex flex-wrap gap-2">
               <div className="min-w-[200px]">
                 <OCRModelSelect value={configOcr} onChange={onAtualizarOcr} compact />
@@ -1452,7 +1452,7 @@ function ModalCartaoCredito({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-400">Compras lançadas</span>
-              <span className="text-[11px] text-slate-600">{ordenada.length} lançamentos</span>
+              <span className="text-xs text-slate-600">{ordenada.length} lançamentos</span>
             </div>
             <div className="space-y-2">
               {ordenada.length === 0 ? (
@@ -1471,7 +1471,7 @@ function ModalCartaoCredito({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{t.descricao}</div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-xs text-slate-500">
                         {cat?.nome || 'Outros'} • {parseFinancialDate(dataLista).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
                     </div>
@@ -2158,19 +2158,19 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
           <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-[540px]">
             <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-[11px] font-medium text-slate-500">Estrutura</p>
+              <p className="text-xs font-medium text-slate-500">Estrutura</p>
               <p className="mt-1 text-xs font-semibold text-slate-200 sm:text-sm">
                 {ocultar(`${contas.length} conta${contas.length === 1 ? '' : 's'} · ${cartoes.length} cart${cartoes.length === 1 ? 'ão' : 'ões'}`)}
               </p>
             </div>
             <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-[11px] font-medium text-slate-500">Fatura atual</p>
+              <p className="text-xs font-medium text-slate-500">Fatura atual</p>
               <p className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
                 {ocultar(formatarMoeda(totalFaturaAtual))}
               </p>
             </div>
             <div className="fin-panel rounded-2xl border border-white/8 bg-[#111A2E]/72 px-4 py-3">
-              <p className="text-[11px] font-medium text-slate-500">Próximo vencimento</p>
+              <p className="text-xs font-medium text-slate-500">Próximo vencimento</p>
               <p className="mt-1 text-sm font-semibold text-slate-200">
                 {proximoVencimento
                   ? `${proximoVencimento.nome} · ${proximoVencimento.diasRestantes === 0 ? 'hoje' : `${proximoVencimento.diasRestantes}d`}`
@@ -2221,7 +2221,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             onClick={() => setModalResumo('apagar')}
           />
         </div>
-        <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+        <div className="fin-panel rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs text-slate-500">
           <div><span className="text-slate-300">Saldo projetado:</span> saldo em conta menos tudo o que ainda falta pagar no mês.</div>
           <div className="mt-1"><span className="text-slate-300">Gastos do mês:</span> soma de todos os gastos lançados no mês selecionado.</div>
           <div className="mt-1"><span className="text-slate-300">Debitado do saldo:</span> somente saídas já realizadas fora do cartão.</div>
@@ -2273,7 +2273,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       <div className="flex items-center gap-2">
                         <BankLogo banco={conta.banco} size={24} className="h-6 w-6 object-contain flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-[10px] font-medium tracking-wide text-slate-500">{info.nome}</div>
+                          <div className="truncate text-xs font-medium tracking-wide text-slate-500">{info.nome}</div>
                           <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(conta.saldo))}</div>
                         </div>
                         <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
@@ -2319,7 +2319,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                         <CardBrandLogo banco={cartao.banco} nomeCartao={cartao.nome} bandeira={cartao.bandeira} size={12} className="absolute -bottom-1 -right-1 h-3 w-3 object-contain shadow-sm" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[10px] font-medium tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
+                        <div className="truncate text-xs font-medium tracking-wide text-slate-500">{BANCO_INFO[cartao.banco].nome}</div>
                         <div className="mt-1 text-sm font-semibold leading-none tabular-nums">{ocultar(formatarMoeda(cartao.fatura_atual))}</div>
                       </div>
                       <ArrowRight size={12} className="text-slate-500 flex-shrink-0" />
@@ -2352,14 +2352,14 @@ export default function Dashboard({ onNovoPagina }: Props) {
                     <BankLogo banco={cartao.banco} size={36} className="h-9 w-9 rounded-xl border border-white/10 p-1 flex-shrink-0" />
                     <div>
                       <div className="text-sm font-semibold text-white">{cartao.nome}</div>
-                      <div className="text-[11px] text-slate-500 capitalize">{cartao.bandeira}</div>
+                      <div className="text-xs text-slate-500 capitalize">{cartao.bandeira}</div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className={`text-sm font-bold tabular-nums ${pct > 80 ? 'text-red-400' : pct > 50 ? 'text-yellow-400' : 'text-white'}`}>
                       {ocultar(formatarMoeda(cartao.fatura_atual))}
                     </div>
-                    <div className="text-[11px] text-slate-500">fatura atual</div>
+                    <div className="text-xs text-slate-500">fatura atual</div>
                   </div>
                 </div>
                 <div className="mb-2">
@@ -2368,7 +2368,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       style={{ width: `${Math.min(pct, 100)}%`, background: pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : info.cor }} />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>Disponível: <span className="text-emerald-400 font-medium">{ocultar(formatarMoeda(disponivel))}</span></span>
                   <span>Vence em <span className={`font-medium ${diasVenc <= 5 ? "text-red-400" : "text-slate-300"}`}>{diasVenc}d</span> • dia {cartao.dia_vencimento}</span>
                 </div>
@@ -2412,7 +2412,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
             icon={<Sparkles size={15} className="text-sky-400" />}
           />
           {carregandoAutomacoes && (
-            <div className="mb-3 flex items-center gap-1.5 text-[11px] text-slate-500">
+            <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-500">
               <Loader2 size={11} className="animate-spin" />
               Atualizando automações
             </div>
@@ -2422,7 +2422,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
               type="button"
               onClick={() => void atualizarAnaliseIA()}
               disabled={carregandoAutomacoes}
-              className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {carregandoAutomacoes ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
               {carregandoAutomacoes ? 'Atualizando análise' : 'Atualizar análise'}
@@ -2447,7 +2447,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
           {gastosFixos.fixos.length > 0 && (
             <>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Gastos fixos</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Gastos fixos</p>
               <div className="space-y-2 mb-3">
                 {gastosFixos.fixos.map(t => {
                   const cat = categorias.find(c => c.id === t.categoria_id);
@@ -2460,7 +2460,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                        <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • Recorrente mensal</div>
+                        <div className="text-xs text-slate-500">{cat?.nome || 'Outros'} • Recorrente mensal</div>
                       </div>
                       <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
                         -{ocultar(formatarMoeda(t.valor))}
@@ -2474,7 +2474,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
 
           {gastosFixos.parcelados.length > 0 && (
             <>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Parcelados em andamento</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Parcelados em andamento</p>
               <div className="space-y-2 mb-3">
                 {gastosFixos.parcelados.map(t => {
                   const cat = categorias.find(c => c.id === t.categoria_id);
@@ -2487,7 +2487,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-white truncate">{t.descricao}</div>
-                        <div className="text-[11px] text-slate-500">{cat?.nome || 'Outros'} • {t.parcelas}x parcelado</div>
+                        <div className="text-xs text-slate-500">{cat?.nome || 'Outros'} • {t.parcelas}x parcelado</div>
                       </div>
                       <div className="text-sm font-semibold tabular-nums text-red-400 flex-shrink-0">
                         -{ocultar(formatarMoeda(t.valor))}
@@ -2584,7 +2584,7 @@ export default function Dashboard({ onNovoPagina }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-white truncate">{cat?.nome || 'Outros'}</p>
-                        <p className="text-[10px] text-slate-500 tabular-nums">
+                        <p className="text-xs text-slate-500 tabular-nums">
                           {formatarMoeda(gasto)} / {formatarMoeda(o.valor_limite)}
                         </p>
                       </div>

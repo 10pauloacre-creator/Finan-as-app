@@ -176,7 +176,7 @@ export default function Calendario() {
         {/* Cabecalho dias da semana */}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DIAS_SEMANA.map(d => (
-            <div key={d} className="py-2.5 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            <div key={d} className="py-2.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
               {d}
             </div>
           ))}
@@ -242,7 +242,7 @@ export default function Calendario() {
 
                 {/* Saldo do dia */}
                 {temTx && (
-                  <span className={`text-[9px] font-medium leading-none hidden lg:block ${
+                  <span className={`text-xs font-medium leading-none hidden lg:block ${
                     info.saldoDia >= 0 ? 'text-emerald-400' : 'text-red-400'
                   }`}>
                     {info.saldoDia >= 0 ? '+' : ''}{formatarMoeda(Math.abs(info.saldoDia)).replace('R$ ', '')}
@@ -251,7 +251,7 @@ export default function Calendario() {
 
                 {/* Label previsto */}
                 {info.temPrevisao && !temTx && (
-                  <span className="text-[9px] text-amber-500 leading-none hidden lg:block">
+                  <span className="text-xs text-amber-500 leading-none hidden lg:block">
                     Previsto
                   </span>
                 )}

@@ -480,8 +480,8 @@ export default function Investimentos() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-white">{c.nome}</span>
-                        {i === 0 && <span className="text-[10px] bg-purple-600/40 text-purple-300 px-2 py-0.5 rounded-full font-medium">Melhor</span>}
-                        {c.isentoIR && <span className="text-[10px] bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded-full font-medium">Isento IR</span>}
+                        {i === 0 && <span className="text-xs bg-purple-600/40 text-purple-300 px-2 py-0.5 rounded-full font-medium">Melhor</span>}
+                        {c.isentoIR && <span className="text-xs bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded-full font-medium">Isento IR</span>}
                       </div>
                       <div className="text-xs text-slate-500 tabular-nums">
                         Taxa: {c.taxa.toFixed(2)}% a.a.{c.ir > 0 && ` • IR: ${formatarMoeda(c.ir)}`}
@@ -512,8 +512,8 @@ export default function Investimentos() {
                     ))}
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="periodo" tick={{ fill:'#64748B', fontSize:10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill:'#64748B', fontSize:10 }} axisLine={false} tickLine={false}
+                  <XAxis dataKey="periodo" tick={{ fill:'#64748B', fontSize: 12 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis tick={{ fill:'#64748B', fontSize: 12 }} axisLine={false} tickLine={false}
                     tickFormatter={v => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
                   <Tooltip formatter={(v) => [formatarMoeda(Number(v)), '']}
                     contentStyle={{ background:'#0E1220', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', color:'#F1F5F9', fontSize:12 }} />
@@ -579,11 +579,11 @@ export default function Investimentos() {
                                   style={{ background: i < t.seguranca ? corSeguranca(t.seguranca) : 'rgba(255,255,255,0.1)' }} />
                               ))}
                             </div>
-                            <span className="text-[10px]" style={{ color: corSeguranca(t.seguranca) }}>
+                            <span className="text-xs" style={{ color: corSeguranca(t.seguranca) }}>
                               {t.seguranca}/10
                             </span>
                           </div>
-                          <div className="text-[10px] opacity-70">{t.descricao}</div>
+                          <div className="text-xs opacity-70">{t.descricao}</div>
                         </button>
                         {/* Botão info */}
                         <button type="button"
@@ -676,7 +676,7 @@ export default function Investimentos() {
                                     style={{ background: i < tipo.seguranca ? corSeguranca(tipo.seguranca) : 'rgba(255,255,255,0.1)' }} />
                                 ))}
                               </div>
-                              <span className="text-[10px]" style={{ color: corSeguranca(tipo.seguranca) }}>
+                              <span className="text-xs" style={{ color: corSeguranca(tipo.seguranca) }}>
                                 {labelSeguranca(tipo.seguranca)}
                               </span>
                             </div>
@@ -776,7 +776,7 @@ export default function Investimentos() {
                   <div key={label} className="flex gap-3 bg-white/[0.03] rounded-xl px-3 py-2.5">
                     <span className="text-base flex-shrink-0 mt-0.5">{icone}</span>
                     <div className="min-w-0">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
                       <p className="text-xs text-slate-200 font-medium mt-0.5">{valor}</p>
                     </div>
                   </div>
