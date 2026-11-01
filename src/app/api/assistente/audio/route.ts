@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: 'Nao foi possivel ler o audio enviado.' }, { status: 400 });
+    return NextResponse.json({ error: 'Não foi possível ler o áudio enviado.' }, { status: 400 });
   }
 
   const audioFile = formData.get('audio');
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!process.env.OPENROUTER_API_KEY?.trim()) {
     return NextResponse.json(
-      { error: 'O processamento de audio ainda nao esta disponivel nesta configuracao.' },
+      { error: 'O processamento de áudio ainda não está disponível nesta configuração.' },
       { status: 503 },
     );
   }
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         tipo: 'conversa',
         transcricao: '',
-        resposta: 'Nao consegui ouvir o audio. Tente falar mais perto do microfone.',
+        resposta: 'Não consegui ouvir o áudio. Tente falar mais perto do microfone.',
         providerUsed: 'openrouter',
       } satisfies RespostaAssistente);
     }
@@ -122,12 +122,12 @@ ${transcricao}`,
     return NextResponse.json({
       tipo: 'conversa',
       transcricao,
-      resposta: conversation.answer?.trim() || 'Entendi o audio, mas nao identifiquei uma transacao financeira clara.',
+      resposta: conversation.answer?.trim() || 'Entendi o áudio, mas não identifiquei uma transacao financeira clara.',
       providerUsed: conversation.providerUsed || 'openrouter',
     } satisfies RespostaAssistente);
   } catch {
     return NextResponse.json(
-      { error: 'Nao foi possivel processar o audio agora. Tente novamente em instantes.' },
+      { error: 'Não foi possível processar o áudio agora. Tente novamente em instantes.' },
       { status: 503 },
     );
   }

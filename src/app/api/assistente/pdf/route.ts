@@ -84,7 +84,7 @@ function parseFaturaJSON(raw: string): FaturaExtraida | { erro: string } {
       transacoes: parsed.transacoes as TransacaoExtraida[],
     };
   } catch {
-    return { erro: 'Nao consegui interpretar a fatura.' };
+    return { erro: 'Não consegui interpretar a fatura.' };
   }
 }
 
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: 'Nao foi possivel ler o PDF enviado.' }, { status: 400 });
+    return NextResponse.json({ error: 'Não foi possível ler o PDF enviado.' }, { status: 400 });
   }
 
   const pdfFile = formData.get('pdf');
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: 'A analise de PDF ainda nao esta disponivel nesta configuracao.' },
+      { error: 'A análise de PDF ainda não está disponível nesta configuração.' },
       { status: 503 },
     );
   }
@@ -155,7 +155,7 @@ ${extractedText}`,
 
     if (!result.success || !result.answer) {
       return NextResponse.json(
-        { error: result.error || 'Nao foi possivel analisar o PDF agora.' },
+        { error: result.error || 'Não foi possível analisar o PDF agora.' },
         { status: 503 },
       );
     }
@@ -164,7 +164,7 @@ ${extractedText}`,
     if ('erro' in parsed) {
       return NextResponse.json({
         tipo: 'conversa',
-        resposta: `Nao consegui concluir a leitura da fatura. ${parsed.erro}`,
+        resposta: `Não consegui concluir a leitura da fatura. ${parsed.erro}`,
         providerUsed: result.providerUsed,
       } satisfies RespostaPDF);
     }
@@ -188,7 +188,7 @@ ${extractedText}`,
     } satisfies RespostaPDF);
   } catch {
     return NextResponse.json(
-      { error: 'Nao foi possivel analisar o PDF agora. Tente novamente em instantes.' },
+      { error: 'Não foi possível analisar o PDF agora. Tente novamente em instantes.' },
       { status: 503 },
     );
   }

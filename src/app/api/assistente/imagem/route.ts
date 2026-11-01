@@ -37,11 +37,11 @@ function parseImagemJSON(raw: string):
       return { modo: 'lote', transacoes: parsed.transacoes as TransacaoExtraida[] };
     }
     if (parsed.modo === 'erro' || parsed.erro) {
-      return { modo: 'erro', erro: String(parsed.erro ?? 'Nao identificado') };
+      return { modo: 'erro', erro: String(parsed.erro ?? 'Não identificado') };
     }
     return { modo: 'unico', ...parsed } as { modo: 'unico' } & TransacaoExtraida;
   } catch {
-    return { modo: 'erro', erro: 'Nao consegui interpretar a imagem.' };
+    return { modo: 'erro', erro: 'Não consegui interpretar a imagem.' };
   }
 }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: 'Nao foi possivel ler a imagem enviada.' }, { status: 400 });
+    return NextResponse.json({ error: 'Não foi possível ler a imagem enviada.' }, { status: 400 });
   }
 
   const imagemFile = formData.get('imagem');
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: 'A leitura de imagens ainda nao esta disponivel nesta configuracao.' },
+      { error: 'A leitura de imagens ainda não está disponível nesta configuração.' },
       { status: 503 },
     );
   }
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!result.success || !result.answer) {
       return NextResponse.json(
-        { error: result.error || 'Nao foi possivel analisar a imagem agora.' },
+        { error: result.error || 'Não foi possível analisar a imagem agora.' },
         { status: 503 },
       );
     }
@@ -122,12 +122,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({
       tipo: 'conversa',
-      resposta: `Nao consegui identificar transacoes nesta imagem. ${parsed.erro}. Tente enviar um comprovante ou nota fiscal mais legivel.`,
+      resposta: `Não consegui identificar transacoes nesta imagem. ${parsed.erro}. Tente enviar um comprovante ou nota fiscal mais legivel.`,
       providerUsed: result.providerUsed,
     } satisfies RespostaAssistente);
   } catch {
     return NextResponse.json(
-      { error: 'Nao foi possivel analisar a imagem agora. Tente novamente em instantes.' },
+      { error: 'Não foi possível analisar a imagem agora. Tente novamente em instantes.' },
       { status: 503 },
     );
   }

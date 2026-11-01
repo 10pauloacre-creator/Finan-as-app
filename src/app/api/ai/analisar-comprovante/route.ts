@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     formData = await req.formData();
   } catch {
     return NextResponse.json(
-      { success: false, error: 'Nao foi possivel ler o envio do comprovante.' },
+      { success: false, error: 'Não foi possível ler o envio do comprovante.' },
       { status: 400 },
     );
   }
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
 
   if (!textoExtraidoManual && !process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { success: false, error: 'Nao ha modelo multimodal configurado para leitura de comprovantes.' },
+      { success: false, error: 'Não há modelo multimodal configurado para leitura de comprovantes.' },
       { status: 503 },
     );
   }
@@ -231,7 +231,7 @@ export async function POST(req: NextRequest) {
 
       if (!structured.success || !structured.answer) {
         return NextResponse.json(
-          { success: false, error: structured.error || 'Nao foi possivel estruturar os dados do comprovante agora.' },
+          { success: false, error: structured.error || 'Não foi possível estruturar os dados do comprovante agora.' },
           { status: 503 },
         );
       }
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
       data.itens_compra.length === 0
     ) {
       return NextResponse.json(
-        { success: false, error: 'Nao foi possivel identificar dados suficientes no comprovante enviado.' },
+        { success: false, error: 'Não foi possível identificar dados suficientes no comprovante enviado.' },
         { status: 422 },
       );
     }
@@ -278,13 +278,13 @@ export async function POST(req: NextRequest) {
 
     if (message.includes('OPENROUTER_VISION_MODEL')) {
       return NextResponse.json(
-        { success: false, error: 'Nao ha modelo multimodal configurado para leitura de comprovantes.' },
+        { success: false, error: 'Não há modelo multimodal configurado para leitura de comprovantes.' },
         { status: 503 },
       );
     }
 
     return NextResponse.json(
-      { success: false, error: 'Nao foi possivel analisar o comprovante agora. Tente novamente em instantes.' },
+      { success: false, error: 'Não foi possível analisar o comprovante agora. Tente novamente em instantes.' },
       { status: 503 },
     );
   }

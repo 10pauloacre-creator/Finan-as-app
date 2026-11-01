@@ -619,7 +619,7 @@ export default function Salarios() {
                   <div className="mt-1 text-sm font-semibold text-blue-200 tabular-nums">{formatarMoeda(mes.saldoInicial)}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
-                  <div className="text-[11px] text-slate-500">Salario da referencia</div>
+                  <div className="text-[11px] text-slate-500">Salário da referência</div>
                   <div className="mt-1 text-sm font-semibold text-emerald-300 tabular-nums">{formatarMoeda(mes.salarioReferencia)}</div>
                 </div>
                 <div className="rounded-xl bg-white/[0.03] p-3">
@@ -634,7 +634,7 @@ export default function Salarios() {
 
               <div className="mt-4 space-y-2 rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-xs">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-400">Ja debitado no mes</span>
+                  <span className="text-slate-400">Já debitado no mês</span>
                   <span className="font-semibold text-red-300 tabular-nums">{formatarMoeda(mes.debitadoNoMes)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">

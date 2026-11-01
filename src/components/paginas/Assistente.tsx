@@ -313,7 +313,7 @@ function TransacaoCard({ tx, status, revisao, revisando, contas, cartoes, onConf
                 {revisao.sugestoes.categoria && <p>• Categoria sugerida: {revisao.sugestoes.categoria}</p>}
                 {revisao.sugestoes.metodo_pagamento && <p>• Metodo sugerido: {revisao.sugestoes.metodo_pagamento}</p>}
                 {revisao.sugestoes.data && <p>• Data sugerida: {revisao.sugestoes.data}</p>}
-                {revisao.sugestoes.descricao && <p>• Descricao sugerida: {revisao.sugestoes.descricao}</p>}
+                {revisao.sugestoes.descricao && <p>• Descrição sugerida: {revisao.sugestoes.descricao}</p>}
               </div>
             </div>
           )}
@@ -745,7 +745,7 @@ export default function Assistente() {
       return {
         status: 'revisar',
         confianca: 0,
-        resumo: 'Nao consegui concluir a revisao contextual automatica. Revise manualmente antes de salvar.',
+        resumo: 'Não consegui concluir a revisão contextual automatica. Revise manualmente antes de salvar.',
         alertas: ['A validacao contextual da IA falhou nesta tentativa.'],
         perguntas: ['Este valor, metodo e origem parecem corretos para voce?'],
         exige_confirmacao_explicita: true,

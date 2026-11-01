@@ -681,7 +681,7 @@ export default function Cartoes() {
 
       const extraidas = data.transacoes || (data.transacao ? [data.transacao] : []);
       if (!extraidas.length) {
-        throw new Error(data.resposta || 'A IA nao encontrou lancamentos validos nesse arquivo.');
+        throw new Error(data.resposta || 'A IA não encontrou lançamentos válidos nesse arquivo.');
       }
 
       const existentes = [...(transacoesPorCartao[cartao.id] || [])];
@@ -743,7 +743,7 @@ export default function Cartoes() {
       setStatusImportacao({
         cartaoId: cartao.id,
         tipo: 'erro',
-        mensagem: error instanceof Error ? error.message : 'Nao foi possivel importar os lancamentos desse cartao.',
+        mensagem: error instanceof Error ? error.message : 'Não foi possível importar os lançamentos desse cartao.',
       });
     } finally {
       setCartaoImportandoId(null);
@@ -1129,7 +1129,7 @@ export default function Cartoes() {
                         </div>
                         {!emEdicao && (
                           <div className="mb-1 text-[11px] text-slate-500">
-                            Lancamentos identificados: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
+                            Lançamentos identificados: <span className="text-slate-300 tabular-nums">{formatarMoeda(baseLancamentos)}</span>
                             {totalProximaFatura > 0 ? <> {' '}• Próxima: <span className="text-blue-300 tabular-nums">{formatarMoeda(totalProximaFatura)}</span></> : null}
                           </div>
                         )}

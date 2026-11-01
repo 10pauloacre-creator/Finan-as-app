@@ -46,8 +46,8 @@ type FormState = {
 
 const METODOS: { valor: MetodoPagamento; label: string; icone: string }[] = [
   { valor: 'pix', label: 'Pix', icone: 'PIX' },
-  { valor: 'debito', label: 'Debito', icone: 'DB' },
-  { valor: 'credito', label: 'Credito', icone: 'CR' },
+  { valor: 'debito', label: 'Débito', icone: 'DB' },
+  { valor: 'credito', label: 'Crédito', icone: 'CR' },
   { valor: 'emprestimo', label: 'Emprestimo', icone: 'EMP' },
   { valor: 'financiamento', label: 'Financiamento', icone: 'FIN' },
   { valor: 'dinheiro', label: 'Dinheiro', icone: 'R$' },
@@ -209,7 +209,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
         setItensCompraIA(Array.isArray(data.dados.itens_compra) ? data.dados.itens_compra : []);
       }
     } catch {
-      setErroIA('Nao foi possivel analisar a imagem. Preencha manualmente.');
+      setErroIA('Não foi possível analisar a imagem. Preencha manualmente.');
     } finally {
       setAnalisandoIA(false);
     }
@@ -316,7 +316,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
         <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-slate-700 bg-slate-900 lg:rounded-2xl">
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900 p-5">
             <h2 className="text-lg font-bold text-white">
-              {transacaoEditar ? 'Editar transacao' : 'Nova transacao'}
+              {transacaoEditar ? 'Editar transação' : 'Nova transação'}
             </h2>
             <button onClick={onFechar} className="rounded-lg p-1 text-slate-400 hover:text-white">
               <X size={20} />
@@ -326,7 +326,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
           {sucesso && (
             <div className="flex items-center justify-center gap-2 bg-emerald-900/30 p-4 text-emerald-400">
               <CheckCircle size={18} />
-              <span className="text-sm font-medium">Transacao salva!</span>
+              <span className="text-sm font-medium">Transação salva!</span>
             </div>
           )}
 
@@ -421,7 +421,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             )}
 
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Descricao *</label>
+              <label className="mb-1 block text-xs text-slate-400">Descrição *</label>
               <input
                 type="text"
                 placeholder="Ex: Mercado, aluguel, parcela do carro"
@@ -706,7 +706,7 @@ export default function ModalNovaTransacao({ aberto, onFechar, transacaoEditar, 
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Observacoes</label>
+              <label className="mb-1 block text-xs text-slate-400">Observações</label>
               <textarea
                 rows={3}
                 placeholder="Anote detalhes importantes sobre este lancamento"

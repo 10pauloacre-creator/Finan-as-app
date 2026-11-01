@@ -207,7 +207,7 @@ async function extractTextWithVisionFallback(
   const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
   const prompt = [
     'Extraia o texto desta imagem com maxima fidelidade.',
-    'Nao resuma, nao interprete e nao classifique.',
+    'Não resuma, nao interprete e nao classifique.',
     'Preserve valores, datas e nomes como aparecerem.',
     'Responda apenas com o texto extraido em portugues do Brasil.',
   ].join('\n');
